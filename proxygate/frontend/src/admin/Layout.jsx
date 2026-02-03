@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import {
@@ -17,6 +18,11 @@ import LanguageSwitcher from '../shared/LanguageSwitcher'
 export default function AdminLayout() {
   const navigate = useNavigate()
   const { t } = useTranslation()
+  const [appVersion, setAppVersion] = useState('')
+
+  useEffect(() => {
+    api.getVersion().then(data => setAppVersion(data.version || '')).catch(() => {})
+  }, [])
 
   const navItems = [
     { path: '/admin', icon: LayoutDashboard, label: t('admin.dashboard'), exact: true },
@@ -78,6 +84,9 @@ export default function AdminLayout() {
             <LogOut className="w-5 h-5" />
             <span>{t('auth.logout')}</span>
           </button>
+          {appVersion && (
+            <p className="text-xs text-gray-400 text-center mt-3">v{appVersion}</p>
+          )}
         </div>
       </aside>
 

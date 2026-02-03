@@ -21,6 +21,24 @@ router = APIRouter()
 # Path to store system settings
 SYSTEM_SETTINGS_FILE = Path("/opt/proxygate/.system_settings.json")
 
+# Version file locations (check multiple paths)
+VERSION_PATHS = [
+    Path("/opt/proxygate/VERSION"),
+    Path("/opt/proxygate/proxygate/VERSION"),
+]
+
+def get_app_version() -> str:
+    """Get application version from VERSION file."""
+    for path in VERSION_PATHS:
+        if path.exists():
+            try:
+                return path.read_text().strip()
+            except:
+                pass
+    return "unknown"
+
+APP_VERSION = get_app_version()
+
 
 class SystemSettings(BaseModel):
     domain: str = Field(default="", description="Main domain for the system")
@@ -230,6 +248,12 @@ def get_system_info() -> dict:
         pass
 
     return info
+
+
+@router.get("/version")
+async def get_version():
+    """Get application version (no auth required)."""
+    return {"version": APP_VERSION}
 
 
 @router.get("/settings")

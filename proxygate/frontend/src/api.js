@@ -273,6 +273,11 @@ class ApiClient {
   }
 
   // System Settings API methods
+  async getVersion() {
+    const response = await fetch(`${this.baseUrl}/admin/system/version`)
+    return response.json()
+  }
+
   async getSystemSettings() {
     return this.request('/admin/system/settings')
   }
