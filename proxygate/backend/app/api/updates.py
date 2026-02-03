@@ -24,7 +24,26 @@ router = APIRouter()
 # Path to store update settings
 SETTINGS_FILE = Path("/opt/proxygate/.update_settings.json")
 UPDATE_LOG_FILE = Path("/opt/proxygate/.update_log.json")
-INSTALL_DIR = Path("/opt/proxygate")
+
+# Detect correct paths - repo might be in /opt/proxygate or /opt/proxygate/proxygate
+def get_install_dirs():
+    """Detect the correct installation directories."""
+    # Check if nested structure exists (installer creates /opt/proxygate/proxygate)
+    nested = Path("/opt/proxygate/proxygate")
+    base = Path("/opt/proxygate")
+
+    if (nested / ".git").exists():
+        return nested, base  # repo_dir, deploy_dir
+    elif (base / ".git").exists():
+        return base, base
+    else:
+        # Assume nested structure even without .git
+        if (nested / "backend").exists():
+            return nested, base
+        return base, base
+
+REPO_DIR, DEPLOY_DIR = get_install_dirs()
+INSTALL_DIR = DEPLOY_DIR  # For backwards compatibility
 
 
 class GitHubSettings(BaseModel):
@@ -108,7 +127,7 @@ def get_current_commit() -> Optional[str]:
     try:
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
-            cwd=INSTALL_DIR,
+            cwd=REPO_DIR,
             capture_output=True,
             text=True,
             timeout=10
@@ -125,7 +144,7 @@ def get_current_branch() -> Optional[str]:
     try:
         result = subprocess.run(
             ["git", "branch", "--show-current"],
-            cwd=INSTALL_DIR,
+            cwd=REPO_DIR,
             capture_output=True,
             text=True,
             timeout=10
@@ -314,12 +333,14 @@ async def run_update_process():
         branch = gh_settings.get("branch", "main")
 
         add_log("Starting update process...")
+        add_log(f"Repository directory: {REPO_DIR}")
+        add_log(f"Deploy directory: {DEPLOY_DIR}")
 
         # Step 1: Git fetch
         add_log("Fetching latest changes from GitHub...")
         result = subprocess.run(
             ["git", "fetch", "origin", branch],
-            cwd=INSTALL_DIR,
+            cwd=REPO_DIR,
             capture_output=True,
             text=True,
             timeout=120
@@ -332,7 +353,7 @@ async def run_update_process():
         add_log(f"Resetting to origin/{branch}...")
         result = subprocess.run(
             ["git", "reset", "--hard", f"origin/{branch}"],
-            cwd=INSTALL_DIR,
+            cwd=REPO_DIR,
             capture_output=True,
             text=True,
             timeout=60
@@ -343,11 +364,31 @@ async def run_update_process():
 
         add_log("Code updated successfully")
 
-        # Step 3: Install Python dependencies
+        # Step 3: Copy updated files to deploy directory (if different)
+        if REPO_DIR != DEPLOY_DIR:
+            add_log("Copying updated files to deploy directory...")
+            # Copy backend (preserving venv)
+            subprocess.run(
+                ["rsync", "-av", "--exclude", "venv", "--exclude", "__pycache__",
+                 str(REPO_DIR / "backend") + "/", str(DEPLOY_DIR / "backend") + "/"],
+                capture_output=True,
+                timeout=60
+            )
+            # Copy frontend source
+            subprocess.run(
+                ["rsync", "-av", "--exclude", "node_modules", "--exclude", "dist",
+                 str(REPO_DIR / "frontend") + "/", str(DEPLOY_DIR / "frontend") + "/"],
+                capture_output=True,
+                timeout=60
+            )
+            add_log("Files copied to deploy directory")
+
+        # Step 4: Install Python dependencies
         add_log("Installing Python dependencies...")
+        venv_pip = DEPLOY_DIR / "backend" / "venv" / "bin" / "pip"
         result = subprocess.run(
-            [f"{INSTALL_DIR}/backend/venv/bin/pip", "install", "-r", "requirements.txt"],
-            cwd=INSTALL_DIR / "backend",
+            [str(venv_pip), "install", "-r", "requirements.txt"],
+            cwd=DEPLOY_DIR / "backend",
             capture_output=True,
             text=True,
             timeout=300
@@ -357,11 +398,12 @@ async def run_update_process():
         else:
             add_log("Python dependencies updated")
 
-        # Step 4: Run migrations
+        # Step 5: Run migrations
         add_log("Running database migrations...")
+        venv_alembic = DEPLOY_DIR / "backend" / "venv" / "bin" / "alembic"
         result = subprocess.run(
-            [f"{INSTALL_DIR}/backend/venv/bin/alembic", "upgrade", "head"],
-            cwd=INSTALL_DIR / "backend",
+            [str(venv_alembic), "upgrade", "head"],
+            cwd=DEPLOY_DIR / "backend",
             capture_output=True,
             text=True,
             timeout=120
@@ -371,11 +413,13 @@ async def run_update_process():
         else:
             add_log("Database migrations complete")
 
-        # Step 5: Build frontend
+        # Step 6: Build frontend
         add_log("Building frontend...")
+        frontend_dir = DEPLOY_DIR / "frontend"
+
         result = subprocess.run(
             ["npm", "install"],
-            cwd=INSTALL_DIR / "frontend",
+            cwd=frontend_dir,
             capture_output=True,
             text=True,
             timeout=300
@@ -385,7 +429,7 @@ async def run_update_process():
 
         result = subprocess.run(
             ["npm", "run", "build"],
-            cwd=INSTALL_DIR / "frontend",
+            cwd=frontend_dir,
             capture_output=True,
             text=True,
             timeout=300
@@ -395,11 +439,11 @@ async def run_update_process():
             return
         add_log("Frontend built successfully")
 
-        # Step 6: Copy frontend to web directory
+        # Step 7: Copy frontend to web directory
         add_log("Deploying frontend...")
         subprocess.run(["rm", "-rf", "/var/www/proxygate"], capture_output=True, timeout=30)
         subprocess.run(
-            ["cp", "-r", str(INSTALL_DIR / "frontend" / "dist"), "/var/www/proxygate"],
+            ["cp", "-r", str(frontend_dir / "dist"), "/var/www/proxygate"],
             capture_output=True,
             timeout=30
         )
@@ -410,7 +454,7 @@ async def run_update_process():
         )
         add_log("Frontend deployed")
 
-        # Step 7: Restart backend service
+        # Step 8: Restart backend service
         add_log("Restarting backend service...")
         result = subprocess.run(
             ["systemctl", "restart", "proxygate"],
