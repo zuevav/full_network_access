@@ -398,6 +398,17 @@ async def run_update_process():
             )
             add_log("Files copied to deploy directory")
 
+            # Copy VERSION file to deploy directory root
+            version_src = CODE_DIR / "VERSION"
+            version_dst = DEPLOY_DIR / "VERSION"
+            if version_src.exists():
+                subprocess.run(
+                    ["/usr/bin/cp", str(version_src), str(version_dst)],
+                    capture_output=True,
+                    timeout=10
+                )
+                add_log("VERSION file copied")
+
         # Step 4: Install Python dependencies
         add_log("Installing Python dependencies...")
         venv_pip = DEPLOY_DIR / "backend" / "venv" / "bin" / "pip"
