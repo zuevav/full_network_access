@@ -68,13 +68,27 @@ export default function Settings() {
   // Messages
   const [message, setMessage] = useState(null)
 
+  // App version
+  const [appVersion, setAppVersion] = useState('...')
+
   // Load all data
   useEffect(() => {
     loadSystemSettings()
     loadServiceStatus()
     loadSSLSettings()
     loadAdminProfile()
+    loadVersion()
   }, [])
+
+  const loadVersion = async () => {
+    try {
+      const data = await api.getVersion()
+      setAppVersion(data.version || 'unknown')
+    } catch (error) {
+      console.error('Error loading version:', error)
+      setAppVersion('unknown')
+    }
+  }
 
   // Poll SSL log when processing
   useEffect(() => {
@@ -654,7 +668,7 @@ export default function Settings() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-gray-600">
             <div>
               <p className="font-medium text-gray-900">{t('settings.version')}</p>
-              <p>2.0.0</p>
+              <p>{appVersion}</p>
             </div>
             <div>
               <p className="font-medium text-gray-900">{t('settings.system')}</p>
