@@ -51,7 +51,8 @@
     "templates": "Шаблоны",
     "requests": "Заявки",
     "security": "Безопасность",
-    "settings": "Настройки"
+    "settings": "Настройки",
+    "updates": "Обновления"
   },
   "dashboard": {
     "title": "Главная",
@@ -244,6 +245,29 @@
     "remoteId": "Remote ID",
     "localId": "Local ID",
     "certificate": "Сертификат"
+  },
+  "updates": {
+    "title": "Обновление системы",
+    "currentVersion": "Текущая версия",
+    "lastCheck": "Последняя проверка",
+    "lastUpdate": "Последнее обновление",
+    "checkForUpdates": "Проверить обновления",
+    "applyUpdates": "Применить обновления",
+    "updatesAvailable": "Доступны обновления",
+    "systemUpToDate": "Система обновлена",
+    "commitsBehind": "Вы отстаёте на {{count}} коммит(ов)",
+    "recentChanges": "Последние изменения",
+    "updateInProgress": "Обновление в процессе",
+    "updateComplete": "Обновление завершено",
+    "pleaseWait": "Пожалуйста, подождите. Не закрывайте эту страницу.",
+    "githubSettings": "Настройки GitHub",
+    "githubToken": "GitHub Personal Access Token",
+    "repository": "Репозиторий",
+    "branch": "Ветка",
+    "tokenHint": "Токену нужны права 'repo'",
+    "createToken": "Создать токен",
+    "configured": "Настроено",
+    "notConfigured": "Не настроено"
   },
   "errors": {
     "networkError": "Ошибка сети. Проверьте подключение.",

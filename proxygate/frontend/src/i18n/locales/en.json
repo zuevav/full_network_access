@@ -51,7 +51,8 @@
     "templates": "Templates",
     "requests": "Requests",
     "security": "Security",
-    "settings": "Settings"
+    "settings": "Settings",
+    "updates": "Updates"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -244,6 +245,29 @@
     "remoteId": "Remote ID",
     "localId": "Local ID",
     "certificate": "Certificate"
+  },
+  "updates": {
+    "title": "System Updates",
+    "currentVersion": "Current Version",
+    "lastCheck": "Last Check",
+    "lastUpdate": "Last Update",
+    "checkForUpdates": "Check for Updates",
+    "applyUpdates": "Apply Updates",
+    "updatesAvailable": "Updates Available",
+    "systemUpToDate": "System Up to Date",
+    "commitsBehind": "You are {{count}} commit(s) behind",
+    "recentChanges": "Recent Changes",
+    "updateInProgress": "Update In Progress",
+    "updateComplete": "Update Complete",
+    "pleaseWait": "Please wait. Do not close this page.",
+    "githubSettings": "GitHub Settings",
+    "githubToken": "GitHub Personal Access Token",
+    "repository": "Repository",
+    "branch": "Branch",
+    "tokenHint": "Token needs 'repo' scope",
+    "createToken": "Create token",
+    "configured": "Configured",
+    "notConfigured": "Not configured"
   },
   "errors": {
     "networkError": "Network error. Please check your connection.",

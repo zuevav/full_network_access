@@ -10,6 +10,7 @@ import Templates from './admin/pages/Templates'
 import DomainRequests from './admin/pages/DomainRequests'
 import Security from './admin/pages/Security'
 import Settings from './admin/pages/Settings'
+import Updates from './admin/pages/Updates'
 
 // Portal pages
 import PortalLogin from './portal/pages/PortalLogin'
@@ -66,6 +67,7 @@ function App() {
           <Route path="domain-requests" element={<DomainRequests />} />
           <Route path="security" element={<Security />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="updates" element={<Updates />} />
         </Route>
 
         {/* Portal (client) routes */}
