@@ -8,6 +8,7 @@ import Clients from './admin/pages/Clients'
 import ClientDetail from './admin/pages/ClientDetail'
 import Templates from './admin/pages/Templates'
 import DomainRequests from './admin/pages/DomainRequests'
+import Security from './admin/pages/Security'
 import Settings from './admin/pages/Settings'
 
 // Portal pages
@@ -63,6 +64,7 @@ function App() {
           <Route path="clients/:id" element={<ClientDetail />} />
           <Route path="templates" element={<Templates />} />
           <Route path="domain-requests" element={<DomainRequests />} />
+          <Route path="security" element={<Security />} />
           <Route path="settings" element={<Settings />} />
         </Route>
 
