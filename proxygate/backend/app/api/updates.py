@@ -384,14 +384,14 @@ async def run_update_process():
             add_log("Copying updated files to deploy directory...")
             # Copy backend (preserving venv)
             subprocess.run(
-                ["rsync", "-av", "--exclude", "venv", "--exclude", "__pycache__",
+                ["/usr/bin/rsync", "-av", "--exclude", "venv", "--exclude", "__pycache__",
                  str(CODE_DIR / "backend") + "/", str(DEPLOY_DIR / "backend") + "/"],
                 capture_output=True,
                 timeout=60
             )
             # Copy frontend source
             subprocess.run(
-                ["rsync", "-av", "--exclude", "node_modules", "--exclude", "dist",
+                ["/usr/bin/rsync", "-av", "--exclude", "node_modules", "--exclude", "dist",
                  str(CODE_DIR / "frontend") + "/", str(DEPLOY_DIR / "frontend") + "/"],
                 capture_output=True,
                 timeout=60
@@ -433,7 +433,7 @@ async def run_update_process():
         frontend_dir = DEPLOY_DIR / "frontend"
 
         result = subprocess.run(
-            ["npm", "install"],
+            ["/usr/bin/npm", "install"],
             cwd=frontend_dir,
             capture_output=True,
             text=True,
@@ -443,7 +443,7 @@ async def run_update_process():
             add_log(f"WARNING: npm install had issues: {result.stderr[:200]}")
 
         result = subprocess.run(
-            ["npm", "run", "build"],
+            ["/usr/bin/npm", "run", "build"],
             cwd=frontend_dir,
             capture_output=True,
             text=True,
@@ -456,14 +456,14 @@ async def run_update_process():
 
         # Step 7: Copy frontend to web directory
         add_log("Deploying frontend...")
-        subprocess.run(["rm", "-rf", "/var/www/proxygate"], capture_output=True, timeout=30)
+        subprocess.run(["/usr/bin/rm", "-rf", "/var/www/proxygate"], capture_output=True, timeout=30)
         subprocess.run(
-            ["cp", "-r", str(frontend_dir / "dist"), "/var/www/proxygate"],
+            ["/usr/bin/cp", "-r", str(frontend_dir / "dist"), "/var/www/proxygate"],
             capture_output=True,
             timeout=30
         )
         subprocess.run(
-            ["chown", "-R", "www-data:www-data", "/var/www/proxygate"],
+            ["/usr/bin/chown", "-R", "www-data:www-data", "/var/www/proxygate"],
             capture_output=True,
             timeout=30
         )
@@ -472,7 +472,7 @@ async def run_update_process():
         # Step 8: Restart backend service
         add_log("Restarting backend service...")
         result = subprocess.run(
-            ["systemctl", "restart", "proxygate"],
+            ["/usr/bin/systemctl", "restart", "proxygate"],
             capture_output=True,
             text=True,
             timeout=60
