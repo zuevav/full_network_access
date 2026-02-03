@@ -31,6 +31,39 @@ SOCKS_PROXY_PORT="1080"
 INSTALL_SSL="n"
 
 #===============================================================================
+# Функция для чтения ввода (работает даже при curl | bash)
+#===============================================================================
+read_input() {
+    local prompt="$1"
+    local default="$2"
+    local result=""
+
+    if [[ -n "$default" ]]; then
+        echo -en "${YELLOW}${prompt} [${default}]:${NC} " > /dev/tty
+    else
+        echo -en "${YELLOW}${prompt}:${NC} " > /dev/tty
+    fi
+
+    read -r result < /dev/tty
+
+    if [[ -z "$result" ]]; then
+        echo "$default"
+    else
+        echo "$result"
+    fi
+}
+
+read_confirm() {
+    local prompt="$1"
+    local result=""
+
+    echo -en "${YELLOW}${prompt} (y/n):${NC} " > /dev/tty
+    read -r result < /dev/tty
+
+    [[ "$result" == "y" || "$result" == "Y" ]]
+}
+
+#===============================================================================
 # Проверка root
 #===============================================================================
 check_root() {
@@ -44,7 +77,6 @@ check_root() {
 # Определение IP сервера (предпочитаем IPv4)
 #===============================================================================
 detect_server_ip() {
-    # Пробуем получить IPv4
     SERVER_IP=$(curl -4 -s --connect-timeout 5 ifconfig.me 2>/dev/null || \
                 curl -4 -s --connect-timeout 5 icanhazip.com 2>/dev/null || \
                 curl -4 -s --connect-timeout 5 ipv4.icanhazip.com 2>/dev/null || \
@@ -81,16 +113,12 @@ interactive_setup() {
     echo ""
 
     # IP сервера
-    echo -e "${YELLOW}IP адрес сервера (IPv4) [${SERVER_IP}]:${NC}"
-    read -r input_ip
-    if [[ -n "$input_ip" ]]; then
-        SERVER_IP="$input_ip"
-    fi
+    SERVER_IP=$(read_input "IP адрес сервера (IPv4)" "$SERVER_IP")
 
     # Домен
     echo ""
-    echo -e "${YELLOW}Домен для VPN/панели (или Enter для использования IP):${NC}"
-    read -r input_domain
+    local input_domain
+    input_domain=$(read_input "Домен для VPN/панели (Enter = использовать IP)" "")
     if [[ -n "$input_domain" ]]; then
         DOMAIN="$input_domain"
     else
@@ -99,36 +127,24 @@ interactive_setup() {
 
     # Admin пароль
     echo ""
-    echo -e "${YELLOW}Пароль администратора [${ADMIN_PASSWORD}] (Enter = автогенерация):${NC}"
-    read -r input_admin_pass
-    if [[ -n "$input_admin_pass" ]]; then
-        ADMIN_PASSWORD="$input_admin_pass"
-    fi
+    local input_pass
+    input_pass=$(read_input "Пароль администратора (Enter = автогенерация)" "$ADMIN_PASSWORD")
+    ADMIN_PASSWORD="$input_pass"
 
     # Admin email
     echo ""
-    echo -e "${YELLOW}Email администратора [admin@${DOMAIN}]:${NC}"
-    read -r input_admin_email
-    if [[ -n "$input_admin_email" ]]; then
-        ADMIN_EMAIL="$input_admin_email"
-    else
-        ADMIN_EMAIL="admin@${DOMAIN}"
-    fi
+    ADMIN_EMAIL=$(read_input "Email администратора" "admin@${DOMAIN}")
 
     echo ""
     echo -e "${BLUE}=== Telegram уведомления (опционально) ===${NC}"
     echo ""
 
     # Telegram
-    echo -e "${YELLOW}Telegram Bot Token (Enter для пропуска):${NC}"
-    read -r input_tg_token
-    TELEGRAM_TOKEN="$input_tg_token"
+    TELEGRAM_TOKEN=$(read_input "Telegram Bot Token (Enter = пропустить)" "")
 
     if [[ -n "$TELEGRAM_TOKEN" ]]; then
         echo ""
-        echo -e "${YELLOW}Telegram Chat ID (куда слать уведомления):${NC}"
-        read -r input_tg_chat
-        TELEGRAM_CHAT_ID="$input_tg_chat"
+        TELEGRAM_CHAT_ID=$(read_input "Telegram Chat ID" "")
     fi
 
     echo ""
@@ -136,20 +152,17 @@ interactive_setup() {
     echo ""
 
     # Порты прокси
-    echo -e "${YELLOW}HTTP Proxy порт [3128]:${NC}"
-    read -r input_http_port
-    HTTP_PROXY_PORT="${input_http_port:-3128}"
-
+    HTTP_PROXY_PORT=$(read_input "HTTP Proxy порт" "3128")
     echo ""
-    echo -e "${YELLOW}SOCKS5 Proxy порт [1080]:${NC}"
-    read -r input_socks_port
-    SOCKS_PROXY_PORT="${input_socks_port:-1080}"
+    SOCKS_PROXY_PORT=$(read_input "SOCKS5 Proxy порт" "1080")
 
     # SSL сертификат
     echo ""
-    echo -e "${YELLOW}Установить Let's Encrypt SSL? (y/n) [n]:${NC}"
-    read -r input_ssl
-    INSTALL_SSL="${input_ssl:-n}"
+    if read_confirm "Установить Let's Encrypt SSL?"; then
+        INSTALL_SSL="y"
+    else
+        INSTALL_SSL="n"
+    fi
 
     # Показываем итоговую конфигурацию
     echo ""
@@ -169,9 +182,7 @@ interactive_setup() {
     echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo ""
 
-    echo -e "${YELLOW}Всё верно? Начать установку? (y/n):${NC}"
-    read -r confirm
-    if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+    if ! read_confirm "Всё верно? Начать установку?"; then
         log_warn "Установка отменена"
         exit 0
     fi
@@ -183,19 +194,15 @@ interactive_setup() {
 fix_repositories() {
     log_info "Проверка репозиториев..."
 
-    # Определяем версию Ubuntu
     UBUNTU_CODENAME=$(lsb_release -cs 2>/dev/null || echo "unknown")
     log_info "Версия Ubuntu: $UBUNTU_CODENAME"
 
-    # Если oracular или другая проблемная версия - исправляем на noble (24.04 LTS)
     if [[ "$UBUNTU_CODENAME" == "oracular" ]] || grep -q "oracular" /etc/apt/sources.list 2>/dev/null; then
         log_warn "Обнаружена проблемная версия Ubuntu. Переключаем на noble (24.04 LTS)..."
 
-        # Удаляем все старые источники
         rm -f /etc/apt/sources.list.d/*.list 2>/dev/null || true
         rm -f /etc/apt/sources.list.d/*.sources 2>/dev/null || true
 
-        # Создаём чистый sources.list
         cat > /etc/apt/sources.list << 'EOFSOURCES'
 deb http://archive.ubuntu.com/ubuntu noble main restricted universe multiverse
 deb http://archive.ubuntu.com/ubuntu noble-updates main restricted universe multiverse
@@ -215,7 +222,6 @@ update_system() {
 
     export DEBIAN_FRONTEND=noninteractive
 
-    # Сначала исправляем репозитории если нужно
     fix_repositories
 
     apt-get update -y
@@ -268,7 +274,6 @@ install_python() {
     apt-get update -y
     apt-get install -y python3.12 python3.12-venv python3.12-dev python3-pip
 
-    # Установка как default
     update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
 
     log_success "Python 3.12 установлен"
@@ -286,7 +291,6 @@ install_postgresql() {
     systemctl start postgresql
     systemctl enable postgresql
 
-    # Создание пользователя и БД
     sudo -u postgres psql -c "DROP DATABASE IF EXISTS proxygate;"
     sudo -u postgres psql -c "DROP USER IF EXISTS proxygate;"
     sudo -u postgres psql -c "CREATE USER proxygate WITH PASSWORD '$DB_PASSWORD';"
@@ -332,23 +336,19 @@ install_strongswan() {
 
     apt-get install -y strongswan strongswan-pki libcharon-extra-plugins libcharon-extauth-plugins
 
-    # Создание директорий
     mkdir -p /etc/swanctl/conf.d
     mkdir -p /etc/swanctl/x509
     mkdir -p /etc/swanctl/x509ca
     mkdir -p /etc/swanctl/private
 
-    # Генерация CA сертификата
     log_info "Генерация VPN сертификатов..."
 
     cd /etc/swanctl
 
-    # CA ключ и сертификат
     pki --gen --type rsa --size 4096 --outform pem > private/ca-key.pem
     pki --self --ca --lifetime 3650 --in private/ca-key.pem \
         --type rsa --dn "CN=ProxyGate VPN CA" --outform pem > x509ca/ca-cert.pem
 
-    # Серверный ключ и сертификат
     pki --gen --type rsa --size 4096 --outform pem > private/server-key.pem
     pki --pub --in private/server-key.pem --type rsa | \
         pki --issue --lifetime 1825 \
@@ -368,7 +368,6 @@ install_3proxy() {
     log_info "Установка 3proxy..."
 
     apt-get install -y 3proxy || {
-        # Сборка из исходников если нет в репозитории
         cd /tmp
         git clone https://github.com/3proxy/3proxy.git
         cd 3proxy
@@ -381,7 +380,6 @@ install_3proxy() {
     mkdir -p /etc/3proxy
     mkdir -p /var/log/3proxy
 
-    # Базовый конфиг
     cat > /etc/3proxy/3proxy.cfg << EOFPROXY
 daemon
 pidfile /var/run/3proxy.pid
@@ -393,13 +391,9 @@ log /var/log/3proxy/3proxy.log D
 logformat "- +_L%t.%. %N.%p %E %U %C:%c %R:%r %O %I %h %T"
 rotate 30
 
-# Users (will be managed by ProxyGate)
 include /etc/3proxy/users.cfg
-
-# ACL
 include /etc/3proxy/acl.cfg
 
-# Services
 auth strong
 allow *
 proxy -p${HTTP_PROXY_PORT}
@@ -409,7 +403,6 @@ EOFPROXY
     touch /etc/3proxy/users.cfg
     touch /etc/3proxy/acl.cfg
 
-    # Systemd сервис для 3proxy
     cat > /etc/systemd/system/3proxy.service << 'EOF'
 [Unit]
 Description=3proxy Proxy Server
@@ -437,14 +430,11 @@ EOF
 setup_project_files() {
     log_info "Настройка файлов проекта..."
 
-    # Определяем где находится скрипт
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     PROJECT_SOURCE="$(dirname "$SCRIPT_DIR")"
 
-    # Создаём директорию установки
     mkdir -p $INSTALL_DIR
 
-    # Копируем файлы
     cp -r "$PROJECT_SOURCE/backend" "$INSTALL_DIR/"
     cp -r "$PROJECT_SOURCE/frontend" "$INSTALL_DIR/"
     cp -r "$PROJECT_SOURCE/nginx" "$INSTALL_DIR/" 2>/dev/null || true
@@ -501,8 +491,6 @@ SSL_KEY_PATH=/etc/letsencrypt/live/${DOMAIN}/privkey.pem
 EOF
 
     chmod 600 $INSTALL_DIR/.env
-
-    # Также создаём в backend
     cp $INSTALL_DIR/.env $INSTALL_DIR/backend/.env
 
     log_success ".env файл создан"
@@ -535,7 +523,6 @@ build_frontend() {
 
     cd $INSTALL_DIR/frontend
 
-    # Создаём .env для фронтенда
     cat > .env << EOF
 VITE_API_URL=https://${DOMAIN}/api
 EOF
@@ -543,7 +530,6 @@ EOF
     npm install
     npm run build
 
-    # Копируем в nginx
     mkdir -p /var/www/proxygate
     cp -r dist/* /var/www/proxygate/
 
@@ -574,7 +560,6 @@ server {
     listen 443 ssl http2;
     server_name ${DOMAIN};
 
-    # SSL (will be configured after certbot)
     ssl_certificate /etc/nginx/ssl/selfsigned.crt;
     ssl_certificate_key /etc/nginx/ssl/selfsigned.key;
 
@@ -585,7 +570,6 @@ server {
     root /var/www/proxygate;
     index index.html;
 
-    # API
     location /api {
         proxy_pass http://127.0.0.1:8000;
         proxy_http_version 1.1;
@@ -595,12 +579,10 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
-    # Frontend
     location / {
         try_files \$uri \$uri/ /index.html;
     }
 
-    # Static files
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
@@ -608,7 +590,6 @@ server {
 }
 EOF
 
-    # Самоподписанный сертификат (временный)
     mkdir -p /etc/nginx/ssl
     openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
         -keyout /etc/nginx/ssl/selfsigned.key \
@@ -665,10 +646,7 @@ init_database() {
     cd $INSTALL_DIR/backend
     source venv/bin/activate
 
-    # Применяем миграции
     alembic upgrade head
-
-    # Создаём админа и начальные данные
     python scripts/init_db.py
 
     deactivate
@@ -686,20 +664,11 @@ configure_firewall() {
     ufw default deny incoming
     ufw default allow outgoing
 
-    # SSH
     ufw allow 22/tcp
-
-    # HTTP/HTTPS
     ufw allow 80/tcp
     ufw allow 443/tcp
-
-    # IKEv2 VPN
     ufw allow 500/udp
     ufw allow 4500/udp
-
-    # Proxy (только если нужен внешний доступ)
-    # ufw allow 3128/tcp
-    # ufw allow 1080/tcp
 
     ufw --force enable
 
@@ -712,7 +681,6 @@ configure_firewall() {
 setup_cron() {
     log_info "Настройка cron задач..."
 
-    # Создаём скрипт обновления
     cat > $INSTALL_DIR/update.sh << 'EOF'
 #!/bin/bash
 cd /opt/proxygate
@@ -722,7 +690,6 @@ deactivate
 EOF
     chmod +x $INSTALL_DIR/update.sh
 
-    # Добавляем в cron
     (crontab -l 2>/dev/null | grep -v proxygate; echo "*/30 * * * * $INSTALL_DIR/update.sh >> /var/log/proxygate-cron.log 2>&1") | crontab -
 
     log_success "Cron задачи настроены"
@@ -752,7 +719,6 @@ install_letsencrypt() {
         return
     fi
 
-    # Проверяем что домен не IP
     if [[ "$DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         log_warn "Let's Encrypt требует доменное имя, не IP. Пропускаем SSL."
         return
@@ -762,17 +728,14 @@ install_letsencrypt() {
 
     apt-get install -y certbot python3-certbot-nginx
 
-    # Получаем сертификат
     certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email "$ADMIN_EMAIL" --redirect || {
         log_warn "Не удалось получить SSL сертификат. Проверьте DNS записи."
         return
     }
 
-    # Обновляем nginx конфиг с правильными путями
     sed -i "s|/etc/nginx/ssl/selfsigned.crt|/etc/letsencrypt/live/${DOMAIN}/fullchain.pem|g" /etc/nginx/sites-available/proxygate
     sed -i "s|/etc/nginx/ssl/selfsigned.key|/etc/letsencrypt/live/${DOMAIN}/privkey.pem|g" /etc/nginx/sites-available/proxygate
 
-    # Добавляем автообновление в cron
     (crontab -l 2>/dev/null | grep -v certbot; echo "0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
 
     nginx -t && systemctl reload nginx
@@ -801,7 +764,7 @@ start_services() {
 print_installation_info() {
     echo ""
     echo -e "${GREEN}╔══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${GREEN}║          Установка завершена успешно!                        ║${NC}"
+    echo -e "${GREEN}║          УСТАНОВКА ЗАВЕРШЕНА УСПЕШНО!                        ║${NC}"
     echo -e "${GREEN}╚══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     echo -e "${BLUE}Данные для входа:${NC}"
@@ -820,11 +783,15 @@ print_installation_info() {
     echo ""
     echo -e "${BLUE}Файлы конфигурации:${NC}"
     echo "  $INSTALL_DIR/.env"
+    echo "  $INSTALL_DIR/credentials.txt"
     echo ""
-    echo -e "${YELLOW}Для SSL сертификата Let's Encrypt выполните:${NC}"
-    echo "  apt install certbot python3-certbot-nginx"
-    echo "  certbot --nginx -d ${DOMAIN}"
-    echo ""
+
+    if [[ "$INSTALL_SSL" != "y" ]]; then
+        echo -e "${YELLOW}Для SSL сертификата Let's Encrypt выполните:${NC}"
+        echo "  apt install certbot python3-certbot-nginx"
+        echo "  certbot --nginx -d ${DOMAIN}"
+        echo ""
+    fi
 
     # Сохраняем credentials
     cat > $INSTALL_DIR/credentials.txt << EOF
@@ -841,10 +808,13 @@ Secret Key: ${SECRET_KEY}
 
 Server IP: ${SERVER_IP}
 Domain: ${DOMAIN}
+
+HTTP Proxy Port: ${HTTP_PROXY_PORT}
+SOCKS5 Proxy Port: ${SOCKS_PROXY_PORT}
 EOF
     chmod 600 $INSTALL_DIR/credentials.txt
 
-    echo -e "${YELLOW}Credentials сохранены в: $INSTALL_DIR/credentials.txt${NC}"
+    echo -e "${GREEN}Credentials сохранены в: $INSTALL_DIR/credentials.txt${NC}"
     echo ""
 }
 
