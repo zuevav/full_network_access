@@ -297,18 +297,59 @@ function UpdateStatusCard({ onCheckUpdates }) {
         </div>
       )}
 
-      {/* Update Progress */}
-      {status?.is_updating && (
-        <div className="card p-6 border-2 border-yellow-500">
-          <h3 className="font-semibold text-yellow-700 mb-4 flex items-center gap-2">
-            <Loader2 className="w-5 h-5 animate-spin" />
-            Update In Progress
+      {/* Update Progress / Log */}
+      {(status?.is_updating || status?.update_log?.length > 0) && (
+        <div className={`card p-6 border-2 ${
+          status?.is_updating
+            ? 'border-yellow-500'
+            : status?.update_log?.some(l => l.includes('ERROR'))
+              ? 'border-red-500'
+              : status?.update_log?.some(l => l.includes('COMPLETE'))
+                ? 'border-green-500'
+                : 'border-gray-300'
+        }`}>
+          <h3 className={`font-semibold mb-4 flex items-center gap-2 ${
+            status?.is_updating
+              ? 'text-yellow-700'
+              : status?.update_log?.some(l => l.includes('ERROR'))
+                ? 'text-red-700'
+                : status?.update_log?.some(l => l.includes('COMPLETE'))
+                  ? 'text-green-700'
+                  : 'text-gray-700'
+          }`}>
+            {status?.is_updating ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Update In Progress
+              </>
+            ) : status?.update_log?.some(l => l.includes('ERROR')) ? (
+              <>
+                <AlertCircle className="w-5 h-5" />
+                Update Failed
+              </>
+            ) : status?.update_log?.some(l => l.includes('COMPLETE')) ? (
+              <>
+                <CheckCircle className="w-5 h-5" />
+                Update Complete
+              </>
+            ) : (
+              <>
+                <Clock className="w-5 h-5" />
+                Update Log
+              </>
+            )}
           </h3>
 
-          <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm text-green-400 max-h-64 overflow-y-auto">
+          <div className="bg-gray-900 rounded-lg p-4 font-mono text-sm text-green-400 max-h-64 overflow-y-auto" ref={(el) => {
+            if (el && status?.is_updating) el.scrollTop = el.scrollHeight
+          }}>
             {status.update_log?.length > 0 ? (
               status.update_log.map((line, idx) => (
-                <div key={idx} className={line.includes('ERROR') ? 'text-red-400' : line.includes('WARNING') ? 'text-yellow-400' : ''}>
+                <div key={idx} className={
+                  line.includes('ERROR') ? 'text-red-400' :
+                  line.includes('WARNING') ? 'text-yellow-400' :
+                  line.includes('COMPLETE') ? 'text-green-300 font-bold' : ''
+                }>
                   {line}
                 </div>
               ))
@@ -317,9 +358,15 @@ function UpdateStatusCard({ onCheckUpdates }) {
             )}
           </div>
 
-          <p className="text-sm text-gray-500 mt-4">
-            Please wait. Do not close this page.
-          </p>
+          {status?.is_updating ? (
+            <p className="text-sm text-gray-500 mt-4">
+              Please wait. Do not close this page.
+            </p>
+          ) : status?.update_log?.some(l => l.includes('COMPLETE')) ? (
+            <p className="text-sm text-green-600 mt-4">
+              Update completed successfully. Refresh the page to see the new version.
+            </p>
+          ) : null}
         </div>
       )}
     </div>
