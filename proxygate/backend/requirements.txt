@@ -1,18 +1,38 @@
+# ProxyGate Backend Requirements
+# Версии зафиксированы для совместимости
+
+# Web Framework
 fastapi==0.115.0
 uvicorn[standard]==0.32.0
+starlette>=0.37.2
+
+# Database
 sqlalchemy==2.0.36
 alembic==1.14.0
 asyncpg==0.30.0
 aiosqlite==0.20.0
+
+# Pydantic (ВАЖНО: aiogram требует <2.10)
 pydantic==2.9.2
 pydantic-settings==2.6.0
+
+# Security (ВАЖНО: bcrypt 4.0.1 для совместимости с passlib)
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
+
+# HTTP & Networking
 python-multipart==0.0.17
 aiofiles==24.1.0
 httpx==0.28.0
 dnspython==2.7.0
+
+# Telegram Bot
 aiogram==3.14.0
+
+# Templates & Scheduling
 jinja2==3.1.4
 apscheduler==3.10.4
+
+# 2FA
 pyotp==2.9.0

@@ -2,9 +2,15 @@
 set -e
 
 #===============================================================================
-# ProxyGate Auto-Installer v1.1
+# ProxyGate Auto-Installer v1.2
 # Полная автоматическая установка VPN/Proxy системы
 # Поддержка: Ubuntu 22.04 LTS, 24.04 LTS
+#
+# Исправления v1.2:
+# - Фикс pydantic версии (2.9.2 для совместимости с aiogram)
+# - Фикс bcrypt версии (4.0.1 для совместимости с passlib)
+# - Добавлен asyncpg для PostgreSQL
+# - Улучшен поиск директории проекта
 #===============================================================================
 
 RED='\033[0;31m'
@@ -658,6 +664,37 @@ EOF
 }
 
 #===============================================================================
+# Исправление requirements.txt для совместимости версий
+#===============================================================================
+fix_requirements() {
+    log_info "Проверка и исправление requirements.txt..."
+
+    local req_file="$INSTALL_DIR/backend/requirements.txt"
+
+    # Исправляем pydantic: aiogram требует <2.10
+    if grep -q "pydantic==2.10" "$req_file" 2>/dev/null; then
+        sed -i 's/pydantic==2.10.0/pydantic==2.9.2/' "$req_file"
+        sed -i 's/pydantic==2.10/pydantic==2.9.2/' "$req_file"
+        log_info "Исправлена версия pydantic -> 2.9.2"
+    fi
+
+    # Добавляем asyncpg если отсутствует
+    if ! grep -q "asyncpg" "$req_file" 2>/dev/null; then
+        # Добавляем после alembic
+        sed -i '/alembic/a asyncpg==0.30.0' "$req_file"
+        log_info "Добавлен asyncpg==0.30.0"
+    fi
+
+    # Добавляем bcrypt с правильной версией (4.0.1 совместим с passlib)
+    if ! grep -q "bcrypt==" "$req_file" 2>/dev/null; then
+        echo "bcrypt==4.0.1" >> "$req_file"
+        log_info "Добавлен bcrypt==4.0.1"
+    fi
+
+    log_success "requirements.txt проверен"
+}
+
+#===============================================================================
 # Настройка Python окружения
 #===============================================================================
 setup_python_env() {
@@ -665,11 +702,22 @@ setup_python_env() {
 
     cd $INSTALL_DIR/backend
 
+    # Исправляем requirements.txt перед установкой
+    fix_requirements
+
+    # Создаём виртуальное окружение
     python3.12 -m venv venv
     source venv/bin/activate
 
+    # Обновляем pip
     pip install --upgrade pip wheel setuptools
+
+    # Устанавливаем зависимости
     pip install -r requirements.txt
+
+    # Принудительно устанавливаем правильную версию bcrypt
+    # (passlib 1.7.4 несовместим с bcrypt 5.x)
+    pip install bcrypt==4.0.1
 
     deactivate
 
