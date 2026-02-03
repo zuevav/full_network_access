@@ -100,24 +100,32 @@ def get_server_ip() -> str:
         return ""
 
 
-def check_service_status(service_name: str) -> str:
-    """Check if a systemd service is running."""
-    try:
-        result = subprocess.run(
-            ["systemctl", "is-active", service_name],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        status = result.stdout.strip()
-        if status == "active":
-            return "running"
-        elif status == "inactive":
-            return "stopped"
-        else:
-            return "error"
-    except:
-        return "error"
+def check_service_status(service_name: str, alternatives: list = None) -> str:
+    """Check if a systemd service is running. Try alternatives if main name fails."""
+    names_to_try = [service_name]
+    if alternatives:
+        names_to_try.extend(alternatives)
+
+    for name in names_to_try:
+        try:
+            result = subprocess.run(
+                ["systemctl", "is-active", name],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            status = result.stdout.strip()
+            if status == "active":
+                return "running"
+            elif status == "inactive":
+                return "stopped"
+            # If found but not active/inactive, continue to next alternative
+            elif status in ["failed", "activating", "deactivating"]:
+                return "error"
+        except:
+            continue
+
+    return "stopped"  # Service not found = stopped
 
 
 def check_port_open(port: int, host: str = "127.0.0.1") -> bool:
@@ -141,18 +149,50 @@ def get_system_info() -> dict:
         "disk_usage": ""
     }
 
+    # Hostname
     try:
-        # Hostname
         result = subprocess.run(["hostname"], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
             info["hostname"] = result.stdout.strip()
+    except Exception:
+        # Fallback: try reading /etc/hostname
+        try:
+            with open("/etc/hostname") as f:
+                info["hostname"] = f.read().strip()
+        except:
+            pass
 
-        # Uptime
+    # Uptime - try different approaches
+    try:
         result = subprocess.run(["uptime", "-p"], capture_output=True, text=True, timeout=5)
-        if result.returncode == 0:
+        if result.returncode == 0 and result.stdout.strip():
             info["uptime"] = result.stdout.strip().replace("up ", "")
+        else:
+            # Fallback: parse regular uptime output
+            result = subprocess.run(["uptime"], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                # Parse "up X days, H:MM" format
+                output = result.stdout.strip()
+                if "up" in output:
+                    up_part = output.split("up")[1].split(",")[0].strip()
+                    info["uptime"] = up_part
+    except Exception:
+        # Fallback: read from /proc/uptime
+        try:
+            with open("/proc/uptime") as f:
+                uptime_seconds = float(f.read().split()[0])
+                days = int(uptime_seconds // 86400)
+                hours = int((uptime_seconds % 86400) // 3600)
+                minutes = int((uptime_seconds % 3600) // 60)
+                if days > 0:
+                    info["uptime"] = f"{days}d {hours}h {minutes}m"
+                else:
+                    info["uptime"] = f"{hours}h {minutes}m"
+        except:
+            pass
 
-        # Memory
+    # Memory
+    try:
         result = subprocess.run(["free", "-h"], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
             lines = result.stdout.strip().split('\n')
@@ -160,16 +200,33 @@ def get_system_info() -> dict:
                 parts = lines[1].split()
                 if len(parts) >= 3:
                     info["memory_usage"] = f"{parts[2]} / {parts[1]}"
+    except Exception:
+        # Fallback: read from /proc/meminfo
+        try:
+            with open("/proc/meminfo") as f:
+                meminfo = f.read()
+                total = used = 0
+                for line in meminfo.split('\n'):
+                    if line.startswith("MemTotal:"):
+                        total = int(line.split()[1]) // 1024  # MB
+                    elif line.startswith("MemAvailable:"):
+                        available = int(line.split()[1]) // 1024  # MB
+                        used = total - available
+                if total > 0:
+                    info["memory_usage"] = f"{used}MB / {total}MB"
+        except:
+            pass
 
-        # Disk
+    # Disk
+    try:
         result = subprocess.run(["df", "-h", "/"], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
             lines = result.stdout.strip().split('\n')
             if len(lines) > 1:
                 parts = lines[1].split()
-                if len(parts) >= 4:
+                if len(parts) >= 5:
                     info["disk_usage"] = f"{parts[2]} / {parts[1]} ({parts[4]})"
-    except:
+    except Exception:
         pass
 
     return info
@@ -201,42 +258,51 @@ async def get_status(admin: CurrentAdmin):
     """Get system and service status."""
     settings = load_system_settings()
 
-    # Define services to check
+    # Define services to check with alternative names
     services = [
         {
             "name": "nginx",
             "display_name": "Nginx Web Server",
-            "ports": [80, 443]
+            "ports": [80, 443],
+            "alternatives": []
         },
         {
             "name": "proxygate",
             "display_name": "ProxyGate Backend",
-            "ports": [8000]
+            "ports": [8000],
+            "alternatives": ["proxygate.service"]
         },
         {
             "name": "strongswan",
             "display_name": "StrongSwan VPN",
-            "ports": [500]
+            "ports": [500],
+            "alternatives": ["strongswan-starter", "ipsec", "charon"]
         },
         {
             "name": "3proxy",
             "display_name": "3proxy HTTP/SOCKS",
-            "ports": [settings.get("http_proxy_port", 3128), settings.get("socks_proxy_port", 1080)]
+            "ports": [settings.get("http_proxy_port", 3128), settings.get("socks_proxy_port", 1080)],
+            "alternatives": ["3proxy.service"]
         },
         {
             "name": "postgresql",
             "display_name": "PostgreSQL Database",
-            "ports": [5432]
+            "ports": [5432],
+            "alternatives": ["postgresql@14-main", "postgresql@15-main", "postgresql@16-main", "postgres"]
         }
     ]
 
     service_statuses = []
     for svc in services:
-        svc_status = check_service_status(svc["name"])
+        svc_status = check_service_status(svc["name"], svc.get("alternatives", []))
 
         # Check first port for status indicator
         port = svc["ports"][0] if svc["ports"] else None
         port_open = check_port_open(port) if port else None
+
+        # If systemctl says stopped but port is open, service is likely running
+        if svc_status == "stopped" and port_open:
+            svc_status = "running"
 
         service_statuses.append(ServiceStatus(
             name=svc["name"],

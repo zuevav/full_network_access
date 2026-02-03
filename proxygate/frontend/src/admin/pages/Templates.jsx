@@ -1,15 +1,26 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Edit, Trash2, X } from 'lucide-react'
 import api from '../../api'
 
 function TemplateModal({ isOpen, onClose, template, onSuccess }) {
-  const [name, setName] = useState(template?.name || '')
-  const [icon, setIcon] = useState(template?.icon || '')
-  const [description, setDescription] = useState(template?.description || '')
-  const [domainsText, setDomainsText] = useState(template?.domains?.join('\n') || '')
+  const [name, setName] = useState('')
+  const [icon, setIcon] = useState('')
+  const [description, setDescription] = useState('')
+  const [domainsText, setDomainsText] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  // Reset form when template changes or modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setName(template?.name || '')
+      setIcon(template?.icon || '')
+      setDescription(template?.description || '')
+      setDomainsText(template?.domains?.join('\n') || '')
+      setError('')
+    }
+  }, [template, isOpen])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
