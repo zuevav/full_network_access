@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { useTranslation } from 'react-i18next'
 import {
   Smartphone,
   Monitor,
@@ -14,7 +15,7 @@ import {
 } from 'lucide-react'
 import api from '../../api'
 
-function DeviceCard({ icon: Icon, title, description, profileUrl, instructions }) {
+function DeviceCard({ icon: Icon, title, description, profileUrl, instructions, t }) {
   const [expanded, setExpanded] = useState(false)
 
   return (
@@ -22,7 +23,7 @@ function DeviceCard({ icon: Icon, title, description, profileUrl, instructions }
       <div className="p-4 sm:p-6">
         <div className="flex items-start gap-4">
           <div className="p-3 bg-primary-50 rounded-xl">
-            <Icon className="w-6 h-6 text-primary-600" />
+            {typeof Icon === 'function' ? <Icon className="w-6 h-6 text-primary-600" /> : Icon}
           </div>
           <div className="flex-1">
             <h3 className="font-semibold text-gray-900">{title}</h3>
@@ -35,14 +36,14 @@ function DeviceCard({ icon: Icon, title, description, profileUrl, instructions }
           className="btn btn-primary w-full mt-4 flex items-center justify-center gap-2"
         >
           <Download className="w-4 h-4" />
-          Скачать профиль
+          {t('portalDevices.downloadProfile')}
         </a>
 
         <button
           onClick={() => setExpanded(!expanded)}
           className="w-full mt-3 text-sm text-gray-500 flex items-center justify-center gap-1 hover:text-gray-700"
         >
-          Как установить
+          {t('portalDevices.howToInstall')}
           {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
         </button>
 
@@ -59,6 +60,7 @@ function DeviceCard({ icon: Icon, title, description, profileUrl, instructions }
 }
 
 export default function PortalDevices() {
+  const { t } = useTranslation()
   const [showPassword, setShowPassword] = useState(false)
   const [copied, setCopied] = useState('')
 
@@ -76,72 +78,47 @@ export default function PortalDevices() {
   const devices = [
     {
       icon: Smartphone,
-      title: 'iPhone / iPad',
-      description: 'Автоматическая настройка — ничего устанавливать не нужно!',
+      title: t('portalDevices.devices.iphone.title'),
+      description: t('portalDevices.devices.iphone.description'),
       profileUrl: '/api/portal/profiles/ios',
-      instructions: [
-        'Нажмите кнопку "Скачать профиль" (в Safari)',
-        'Откройте "Настройки"',
-        'Вверху появится "Профиль загружен"',
-        'Нажмите "Установить"',
-        'Готово! VPN включится автоматически',
-      ],
+      instructions: t('portalDevices.devices.iphone.instructions', { returnObjects: true }),
     },
     {
-      icon: () => <span className="text-2xl">🤖</span>,
-      title: 'Android',
-      description: 'Нужно приложение strongSwan (бесплатное)',
+      icon: <span className="text-2xl">🤖</span>,
+      title: t('portalDevices.devices.android.title'),
+      description: t('portalDevices.devices.android.description'),
       profileUrl: '/api/portal/profiles/android',
-      instructions: [
-        'Установите strongSwan из Play Store',
-        'Скачайте профиль .sswan',
-        'Откройте файл в strongSwan',
-        'Нажмите "Импорт"',
-        'Подключитесь к VPN',
-      ],
+      instructions: t('portalDevices.devices.android.instructions', { returnObjects: true }),
     },
     {
       icon: Monitor,
-      title: 'Windows 10/11',
-      description: 'Автоматическая настройка — запустите скрипт',
+      title: t('portalDevices.devices.windows.title'),
+      description: t('portalDevices.devices.windows.description'),
       profileUrl: '/api/portal/profiles/windows',
-      instructions: [
-        'Скачайте файл .ps1',
-        'Правый клик → "Запуск от имени администратора"',
-        'Дождитесь завершения скрипта',
-        'Откройте Настройки → Сеть → VPN',
-        'Нажмите "ProxyGate VPN" → Подключить',
-        'Введите пароль (только при первом разе)',
-      ],
+      instructions: t('portalDevices.devices.windows.instructions', { returnObjects: true }),
     },
     {
-      icon: () => <span className="text-2xl">🍏</span>,
-      title: 'macOS',
-      description: 'Профиль для Mac',
+      icon: <span className="text-2xl">🍏</span>,
+      title: t('portalDevices.devices.macos.title'),
+      description: t('portalDevices.devices.macos.description'),
       profileUrl: '/api/portal/profiles/macos',
-      instructions: [
-        'Скачайте профиль .mobileconfig',
-        'Дважды кликните на файл',
-        'Откройте Системные настройки → Профили',
-        'Установите профиль ProxyGate',
-        'VPN появится в строке меню',
-      ],
+      instructions: t('portalDevices.devices.macos.instructions', { returnObjects: true }),
     },
   ]
 
   return (
     <div className="space-y-6 pb-20 md:pb-0">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Мои устройства</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('portalDevices.title')}</h1>
         <p className="text-gray-500 mt-1">
-          Выберите устройство и скачайте профиль для настройки VPN
+          {t('portalDevices.subtitle')}
         </p>
       </div>
 
       {/* Device cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {devices.map((device, idx) => (
-          <DeviceCard key={idx} {...device} />
+          <DeviceCard key={idx} {...device} t={t} />
         ))}
       </div>
 
@@ -149,10 +126,10 @@ export default function PortalDevices() {
       {profileInfo?.proxy && (
         <div className="card p-4 sm:p-6">
           <h2 className="font-semibold text-gray-900 mb-4">
-            Альтернатива: Прокси (для браузера)
+            {t('portalDevices.proxyAlternative')}
           </h2>
           <p className="text-sm text-gray-600 mb-4">
-            Если VPN не подходит, настройте прокси в браузере или системе.
+            {t('portalDevices.proxyDescription')}
           </p>
 
           <div className="space-y-3 text-sm">
@@ -165,7 +142,7 @@ export default function PortalDevices() {
               <code className="font-mono">{profileInfo.proxy.host}:{profileInfo.proxy.socks_port}</code>
             </div>
             <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-              <span className="text-gray-500">Логин</span>
+              <span className="text-gray-500">{t('portalDevices.username')}</span>
               <div className="flex items-center gap-2">
                 <code className="font-mono">{profileInfo.proxy.username}</code>
                 <button
@@ -177,7 +154,7 @@ export default function PortalDevices() {
               </div>
             </div>
             <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-              <span className="text-gray-500">Пароль</span>
+              <span className="text-gray-500">{t('portalDevices.password')}</span>
               <div className="flex items-center gap-2">
                 <code className="font-mono">
                   {showPassword ? profileInfo.proxy.password : '••••••••'}
@@ -203,10 +180,10 @@ export default function PortalDevices() {
             className="btn btn-secondary w-full mt-4 flex items-center justify-center gap-2"
           >
             <Download className="w-4 h-4" />
-            Скачать PAC-файл
+            {t('portalDevices.downloadPac')}
           </a>
           <p className="text-xs text-gray-500 mt-2 text-center">
-            PAC автоматически направляет нужные сайты через прокси
+            {t('portalDevices.pacDescription')}
           </p>
         </div>
       )}
@@ -221,8 +198,8 @@ export default function PortalDevices() {
         <div className="flex items-center gap-3">
           <span className="text-2xl">🤖</span>
           <div className="flex-1">
-            <p className="font-medium text-gray-900">strongSwan для Android</p>
-            <p className="text-sm text-gray-500">Бесплатно в Play Store</p>
+            <p className="font-medium text-gray-900">{t('portalDevices.strongswanAndroid')}</p>
+            <p className="text-sm text-gray-500">{t('portalDevices.freeInPlayStore')}</p>
           </div>
           <ExternalLink className="w-5 h-5 text-gray-400" />
         </div>

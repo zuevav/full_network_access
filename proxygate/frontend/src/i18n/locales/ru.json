@@ -169,7 +169,33 @@
     "newPassword": "Новый пароль",
     "confirmPassword": "Подтвердите пароль",
     "passwordChanged": "Пароль успешно изменен",
-    "passwordMismatch": "Пароли не совпадают"
+    "passwordMismatch": "Пароли не совпадают",
+    "passwordTooShort": "Пароль должен быть не менее 8 символов",
+    "systemSettings": "Настройки системы",
+    "serviceStatus": "Статус сервисов",
+    "adminProfile": "Профиль администратора",
+    "saveProfile": "Сохранить профиль",
+    "profileUpdated": "Профиль обновлен",
+    "restart": "Перезапустить",
+    "serviceRestarted": "Сервис {{service}} перезапущен",
+    "hostname": "Имя сервера",
+    "uptime": "Время работы",
+    "memory": "Память",
+    "disk": "Диск",
+    "about": "О ProxyGate",
+    "version": "Версия",
+    "system": "Система",
+    "features": "Возможности"
+  },
+  "ssl": {
+    "title": "SSL / Let's Encrypt",
+    "domain": "Домен",
+    "email": "Email для уведомлений",
+    "obtainCertificate": "Получить сертификат",
+    "renewCertificate": "Продлить сертификат",
+    "certificateActive": "SSL сертификат активен",
+    "certificateRenewed": "Сертификат успешно продлен",
+    "expiresOn": "Истекает"
   },
   "portal": {
     "title": "Личный кабинет",
@@ -187,7 +213,8 @@
     "setupInstructions": "Инструкции по настройке"
   },
   "portalDevices": {
-    "title": "Ваши устройства",
+    "title": "Мои устройства",
+    "subtitle": "Выберите устройство и скачайте профиль для настройки VPN",
     "vpnProfiles": "VPN профили",
     "proxyAccounts": "Прокси аккаунты",
     "downloadProfile": "Скачать профиль",
@@ -199,7 +226,61 @@
     "username": "Логин",
     "password": "Пароль",
     "noVpnProfiles": "VPN профили не настроены",
-    "noProxyAccounts": "Прокси аккаунты не настроены"
+    "noProxyAccounts": "Прокси аккаунты не настроены",
+    "howToInstall": "Как установить",
+    "proxyAlternative": "Альтернатива: Прокси (для браузера)",
+    "proxyDescription": "Если VPN не подходит, настройте прокси в браузере или системе.",
+    "downloadPac": "Скачать PAC-файл",
+    "pacDescription": "PAC автоматически направляет нужные сайты через прокси",
+    "devices": {
+      "iphone": {
+        "title": "iPhone / iPad",
+        "description": "Автоматическая настройка — ничего устанавливать не нужно!",
+        "instructions": [
+          "Нажмите кнопку \"Скачать профиль\" (в Safari)",
+          "Откройте \"Настройки\"",
+          "Вверху появится \"Профиль загружен\"",
+          "Нажмите \"Установить\"",
+          "Готово! VPN включится автоматически"
+        ]
+      },
+      "android": {
+        "title": "Android",
+        "description": "Нужно приложение strongSwan (бесплатное)",
+        "instructions": [
+          "Установите strongSwan из Play Store",
+          "Скачайте профиль .sswan",
+          "Откройте файл в strongSwan",
+          "Нажмите \"Импорт\"",
+          "Подключитесь к VPN"
+        ]
+      },
+      "windows": {
+        "title": "Windows 10/11",
+        "description": "Автоматическая настройка — запустите скрипт",
+        "instructions": [
+          "Скачайте файл .ps1",
+          "Правый клик → \"Запуск от имени администратора\"",
+          "Дождитесь завершения скрипта",
+          "Откройте Настройки → Сеть → VPN",
+          "Нажмите \"ProxyGate VPN\" → Подключить",
+          "Введите пароль (только при первом разе)"
+        ]
+      },
+      "macos": {
+        "title": "macOS",
+        "description": "Профиль для Mac",
+        "instructions": [
+          "Скачайте профиль .mobileconfig",
+          "Дважды кликните на файл",
+          "Откройте Системные настройки → Профили",
+          "Установите профиль ProxyGate",
+          "VPN появится в строке меню"
+        ]
+      }
+    },
+    "strongswanAndroid": "strongSwan для Android",
+    "freeInPlayStore": "Бесплатно в Play Store"
   },
   "portalDomains": {
     "title": "Ваши домены",
