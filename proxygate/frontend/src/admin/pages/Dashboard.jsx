@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   Users,
   UserCheck,
@@ -34,7 +35,7 @@ function StatCard({ icon: Icon, label, value, color = 'primary' }) {
   )
 }
 
-function ClientList({ title, clients, emptyText }) {
+function ClientList({ title, clients, emptyText, t }) {
   return (
     <div className="card">
       <div className="p-4 border-b border-gray-100">
@@ -56,8 +57,8 @@ function ClientList({ title, clients, emptyText }) {
                 {client.days_left !== undefined && (
                   <p className={`text-sm ${client.days_left < 0 ? 'text-red-500' : 'text-yellow-600'}`}>
                     {client.days_left < 0
-                      ? `Expired ${Math.abs(client.days_left)} days ago`
-                      : `${client.days_left} days left`
+                      ? t('dashboard.expiredDaysAgo', { count: Math.abs(client.days_left) })
+                      : t('dashboard.daysLeft', { count: client.days_left })
                     }
                   </p>
                 )}
@@ -80,46 +81,47 @@ function ClientList({ title, clients, emptyText }) {
 }
 
 export default function Dashboard() {
+  const { t } = useTranslation()
   const { data, isLoading, error } = useQuery({
     queryKey: ['dashboard'],
     queryFn: () => api.getDashboard(),
   })
 
   if (isLoading) {
-    return <div className="text-center py-12">Loading...</div>
+    return <div className="text-center py-12">{t('common.loading')}</div>
   }
 
   if (error) {
-    return <div className="text-center py-12 text-red-600">Error loading dashboard</div>
+    return <div className="text-center py-12 text-red-600">{t('dashboard.errorLoading')}</div>
   }
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">Dashboard</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('dashboard.title')}</h1>
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <StatCard
           icon={Users}
-          label="Total Clients"
+          label={t('dashboard.totalClients')}
           value={data.total_clients}
           color="primary"
         />
         <StatCard
           icon={UserCheck}
-          label="Active"
+          label={t('dashboard.activeClients')}
           value={data.active_clients}
           color="green"
         />
         <StatCard
           icon={UserX}
-          label="Inactive"
+          label={t('dashboard.inactiveClients')}
           value={data.inactive_clients}
           color="red"
         />
         <StatCard
           icon={Globe}
-          label="Total Domains"
+          label={t('dashboard.totalDomains')}
           value={data.total_domains}
           color="primary"
         />
@@ -134,7 +136,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-3">
             <MessageSquare className="w-5 h-5 text-yellow-600" />
             <span className="font-medium text-yellow-800">
-              {data.pending_domain_requests} pending domain request(s)
+              {data.pending_domain_requests} {t('dashboard.pendingRequests')}
             </span>
             <ChevronRight className="w-5 h-5 text-yellow-600 ml-auto" />
           </div>
@@ -144,19 +146,22 @@ export default function Dashboard() {
       {/* Client lists */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <ClientList
-          title="Expiring Soon"
+          title={t('dashboard.expiringSoon')}
           clients={data.expiring_soon}
-          emptyText="No clients expiring soon"
+          emptyText={t('dashboard.noClientsExpiring')}
+          t={t}
         />
         <ClientList
-          title="Expired"
+          title={t('dashboard.expired')}
           clients={data.expired}
-          emptyText="No expired clients"
+          emptyText={t('dashboard.noExpiredClients')}
+          t={t}
         />
         <ClientList
-          title="Recent Clients"
+          title={t('dashboard.recentClients')}
           clients={data.recent_clients}
-          emptyText="No clients yet"
+          emptyText={t('dashboard.noClientsYet')}
+          t={t}
         />
       </div>
     </div>
