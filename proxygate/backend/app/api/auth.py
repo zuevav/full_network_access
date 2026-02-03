@@ -4,7 +4,9 @@ from sqlalchemy import select
 from app.api.deps import DBSession, CurrentAdmin
 from app.models import AdminUser
 from app.schemas.auth import AdminLoginRequest, TokenResponse, AdminUserResponse
-from app.utils.security import verify_password, create_access_token, verify_totp
+from app.utils.security import verify_password, create_access_token, verify_totp, get_password_hash
+from pydantic import BaseModel, Field, EmailStr
+from typing import Optional
 from app.services.security_service import SecurityService
 from app.middleware.security import get_client_ip
 from app.config import settings
@@ -108,3 +110,65 @@ async def get_current_admin_info(admin: CurrentAdmin):
         has_totp=admin.totp_secret is not None,
         is_active=admin.is_active
     )
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=8)
+
+
+class UpdateProfileRequest(BaseModel):
+    username: Optional[str] = Field(None, min_length=3, max_length=50)
+    email: Optional[EmailStr] = None
+
+
+@router.post("/change-password")
+async def change_admin_password(
+    request: ChangePasswordRequest,
+    admin: CurrentAdmin,
+    db: DBSession
+):
+    """Change admin password."""
+    # Verify current password
+    if not verify_password(request.current_password, admin.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect"
+        )
+
+    # Update password
+    admin.password_hash = get_password_hash(request.new_password)
+    await db.commit()
+
+    return {"success": True, "message": "Password changed successfully"}
+
+
+@router.put("/profile")
+async def update_admin_profile(
+    request: UpdateProfileRequest,
+    admin: CurrentAdmin,
+    db: DBSession
+):
+    """Update admin profile."""
+    if request.username:
+        # Check if username is taken
+        result = await db.execute(
+            select(AdminUser).where(
+                AdminUser.username == request.username,
+                AdminUser.id != admin.id
+            )
+        )
+        existing = result.scalar_one_or_none()
+        if existing:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Username already taken"
+            )
+        admin.username = request.username
+
+    if request.email is not None:
+        admin.email = request.email
+
+    await db.commit()
+
+    return {"success": True, "message": "Profile updated successfully"}

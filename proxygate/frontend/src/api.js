@@ -248,6 +248,65 @@ class ApiClient {
     return this.request('/admin/updates/log')
   }
 
+  // SSL/Let's Encrypt API methods
+  async getSSLSettings() {
+    return this.request('/admin/ssl/settings')
+  }
+
+  async saveSSLSettings(data) {
+    return this.request('/admin/ssl/settings', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async obtainSSLCertificate() {
+    return this.request('/admin/ssl/obtain', { method: 'POST' })
+  }
+
+  async renewSSLCertificate() {
+    return this.request('/admin/ssl/renew', { method: 'POST' })
+  }
+
+  async getSSLLog() {
+    return this.request('/admin/ssl/log')
+  }
+
+  // System Settings API methods
+  async getSystemSettings() {
+    return this.request('/admin/system/settings')
+  }
+
+  async saveSystemSettings(data) {
+    return this.request('/admin/system/settings', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async getServiceStatus() {
+    return this.request('/admin/system/status')
+  }
+
+  async restartService(serviceName) {
+    return this.request(`/admin/system/restart/${serviceName}`, { method: 'POST' })
+  }
+
+  // Admin Account API methods
+  async changeAdminPassword(currentPassword, newPassword) {
+    return this.request('/admin/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    })
+  }
+
+  async updateAdminProfile(data) {
+    return this.request('/admin/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
   // Portal (client) API methods
   async clientLogin(username, password) {
     const data = await this.request('/portal/auth/login', {

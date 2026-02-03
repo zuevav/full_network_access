@@ -169,7 +169,33 @@
     "newPassword": "New Password",
     "confirmPassword": "Confirm Password",
     "passwordChanged": "Password changed successfully",
-    "passwordMismatch": "Passwords do not match"
+    "passwordMismatch": "Passwords do not match",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "systemSettings": "System Settings",
+    "serviceStatus": "Service Status",
+    "adminProfile": "Admin Profile",
+    "saveProfile": "Save Profile",
+    "profileUpdated": "Profile updated successfully",
+    "restart": "Restart",
+    "serviceRestarted": "Service {{service}} restarted",
+    "hostname": "Hostname",
+    "uptime": "Uptime",
+    "memory": "Memory",
+    "disk": "Disk",
+    "about": "About ProxyGate",
+    "version": "Version",
+    "system": "System",
+    "features": "Features"
+  },
+  "ssl": {
+    "title": "SSL / Let's Encrypt",
+    "domain": "Domain",
+    "email": "Email for notifications",
+    "obtainCertificate": "Obtain Certificate",
+    "renewCertificate": "Renew Certificate",
+    "certificateActive": "SSL Certificate is active",
+    "certificateRenewed": "Certificate renewed successfully",
+    "expiresOn": "Expires"
   },
   "portal": {
     "title": "Client Portal",
@@ -188,6 +214,7 @@
   },
   "portalDevices": {
     "title": "Your Devices",
+    "subtitle": "Choose your device and download the profile to set up VPN",
     "vpnProfiles": "VPN Profiles",
     "proxyAccounts": "Proxy Accounts",
     "downloadProfile": "Download Profile",
@@ -199,7 +226,61 @@
     "username": "Username",
     "password": "Password",
     "noVpnProfiles": "No VPN profiles configured",
-    "noProxyAccounts": "No proxy accounts configured"
+    "noProxyAccounts": "No proxy accounts configured",
+    "howToInstall": "How to install",
+    "proxyAlternative": "Alternative: Proxy (for browser)",
+    "proxyDescription": "If VPN doesn't suit you, configure proxy in your browser or system.",
+    "downloadPac": "Download PAC file",
+    "pacDescription": "PAC file automatically routes necessary sites through proxy",
+    "devices": {
+      "iphone": {
+        "title": "iPhone / iPad",
+        "description": "Automatic setup - no app installation required!",
+        "instructions": [
+          "Tap 'Download Profile' button (in Safari)",
+          "Open 'Settings'",
+          "'Profile Downloaded' will appear at the top",
+          "Tap 'Install'",
+          "Done! VPN will connect automatically"
+        ]
+      },
+      "android": {
+        "title": "Android",
+        "description": "Requires strongSwan app (free)",
+        "instructions": [
+          "Install strongSwan from Play Store",
+          "Download .sswan profile",
+          "Open the file in strongSwan",
+          "Tap 'Import'",
+          "Connect to VPN"
+        ]
+      },
+      "windows": {
+        "title": "Windows 10/11",
+        "description": "Automatic setup - run the script",
+        "instructions": [
+          "Download .ps1 file",
+          "Right-click → 'Run as Administrator'",
+          "Wait for the script to complete",
+          "Open Settings → Network → VPN",
+          "Click 'ProxyGate VPN' → Connect",
+          "Enter password (first time only)"
+        ]
+      },
+      "macos": {
+        "title": "macOS",
+        "description": "Profile for Mac",
+        "instructions": [
+          "Download .mobileconfig profile",
+          "Double-click the file",
+          "Open System Preferences → Profiles",
+          "Install ProxyGate profile",
+          "VPN will appear in menu bar"
+        ]
+      }
+    },
+    "strongswanAndroid": "strongSwan for Android",
+    "freeInPlayStore": "Free in Play Store"
   },
   "portalDomains": {
     "title": "Your Domains",

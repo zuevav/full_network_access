@@ -2,7 +2,7 @@ from fastapi import APIRouter
 
 from app.api import auth, clients, domains, templates, payments, dashboard, vpn, proxy, profiles
 from app.api import portal_auth, portal_profile, portal_domains, portal_account
-from app.api import domain_requests, public, security, updates
+from app.api import domain_requests, public, security, updates, ssl, system
 
 api_router = APIRouter()
 
@@ -19,6 +19,8 @@ api_router.include_router(dashboard.router, prefix="/admin/dashboard", tags=["Ad
 api_router.include_router(domain_requests.router, prefix="/admin/domain-requests", tags=["Admin Domain Requests"])
 api_router.include_router(security.router, prefix="/admin", tags=["Admin Security"])
 api_router.include_router(updates.router, prefix="/admin/updates", tags=["Admin Updates"])
+api_router.include_router(ssl.router, prefix="/admin/ssl", tags=["Admin SSL"])
+api_router.include_router(system.router, prefix="/admin/system", tags=["Admin System"])
 
 # Client Portal API routes
 api_router.include_router(portal_auth.router, prefix="/portal/auth", tags=["Portal Auth"])
