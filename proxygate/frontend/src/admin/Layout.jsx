@@ -6,7 +6,8 @@ import {
   Settings,
   LogOut,
   Globe,
-  MessageSquare
+  MessageSquare,
+  Shield
 } from 'lucide-react'
 import api from '../api'
 
@@ -15,6 +16,7 @@ const navItems = [
   { path: '/admin/clients', icon: Users, label: 'Clients' },
   { path: '/admin/templates', icon: FileText, label: 'Templates' },
   { path: '/admin/domain-requests', icon: MessageSquare, label: 'Requests' },
+  { path: '/admin/security', icon: Shield, label: 'Security' },
   { path: '/admin/settings', icon: Settings, label: 'Settings' },
 ]
 

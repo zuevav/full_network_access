@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import init_db, close_db
 from app.api import api_router
+from app.middleware.security import SecurityMiddleware
 
 
 @asynccontextmanager
@@ -23,6 +24,9 @@ app = FastAPI(
     version="2.0.0",
     lifespan=lifespan
 )
+
+# Security middleware (brute force protection)
+app.add_middleware(SecurityMiddleware)
 
 # CORS middleware
 app.add_middleware(
