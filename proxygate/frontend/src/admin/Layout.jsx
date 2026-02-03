@@ -1,0 +1,80 @@
+import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import {
+  LayoutDashboard,
+  Users,
+  FileText,
+  Settings,
+  LogOut,
+  Globe,
+  MessageSquare
+} from 'lucide-react'
+import api from '../api'
+
+const navItems = [
+  { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', exact: true },
+  { path: '/admin/clients', icon: Users, label: 'Clients' },
+  { path: '/admin/templates', icon: FileText, label: 'Templates' },
+  { path: '/admin/domain-requests', icon: MessageSquare, label: 'Requests' },
+  { path: '/admin/settings', icon: Settings, label: 'Settings' },
+]
+
+export default function AdminLayout() {
+  const navigate = useNavigate()
+
+  const handleLogout = () => {
+    api.adminLogout()
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 flex">
+      {/* Sidebar */}
+      <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <Globe className="w-8 h-8 text-primary-600" />
+            <span className="text-xl font-bold text-gray-900">ProxyGate</span>
+          </div>
+          <p className="text-sm text-gray-500 mt-1">Admin Panel</p>
+        </div>
+
+        <nav className="flex-1 p-4">
+          <ul className="space-y-1">
+            {navItems.map((item) => (
+              <li key={item.path}>
+                <NavLink
+                  to={item.path}
+                  end={item.exact}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-3 py-2 rounded-lg transition-colors ${
+                      isActive
+                        ? 'bg-primary-50 text-primary-700'
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`
+                  }
+                >
+                  <item.icon className="w-5 h-5" />
+                  <span>{item.label}</span>
+                </NavLink>
+              </li>
+            ))}
+          </ul>
+        </nav>
+
+        <div className="p-4 border-t border-gray-100">
+          <button
+            onClick={handleLogout}
+            className="flex items-center gap-3 px-3 py-2 w-full text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* Main content */}
+      <main className="flex-1 p-8 overflow-auto">
+        <Outlet />
+      </main>
+    </div>
+  )
+}
