@@ -538,11 +538,64 @@ EOF
 setup_project_files() {
     log_info "Настройка файлов проекта..."
 
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    PROJECT_SOURCE="$(dirname "$SCRIPT_DIR")"
+    # Определяем директорию с исходниками проекта
+    PROJECT_SOURCE=""
+
+    # Метод 1: Используем BASH_SOURCE если доступен
+    if [[ -n "${BASH_SOURCE[0]}" ]] && [[ "${BASH_SOURCE[0]}" != "bash" ]]; then
+        SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)"
+        if [[ -n "$SCRIPT_DIR" ]] && [[ -d "$SCRIPT_DIR/backend" ]]; then
+            PROJECT_SOURCE="$SCRIPT_DIR"
+            log_info "Источник проекта (BASH_SOURCE): $PROJECT_SOURCE"
+        fi
+    fi
+
+    # Метод 2: Проверяем текущую директорию
+    if [[ -z "$PROJECT_SOURCE" ]] && [[ -d "./backend" ]]; then
+        PROJECT_SOURCE="$(pwd)"
+        log_info "Источник проекта (pwd): $PROJECT_SOURCE"
+    fi
+
+    # Метод 3: Ищем в типичных местах после клонирования
+    if [[ -z "$PROJECT_SOURCE" ]]; then
+        for candidate in \
+            "/tmp/"*"/full_network_access/proxygate" \
+            "/tmp/proxygate" \
+            "$HOME/proxygate" \
+            "$HOME/full_network_access/proxygate"; do
+            if [[ -d "$candidate/backend" ]]; then
+                PROJECT_SOURCE="$candidate"
+                log_info "Источник проекта (поиск): $PROJECT_SOURCE"
+                break
+            fi
+        done
+    fi
+
+    # Метод 4: Поиск через find (последний вариант)
+    if [[ -z "$PROJECT_SOURCE" ]]; then
+        log_info "Поиск директории проекта..."
+        PROJECT_SOURCE=$(find /tmp -maxdepth 4 -type d -name "proxygate" 2>/dev/null | while read dir; do
+            if [[ -d "$dir/backend" ]] && [[ -d "$dir/frontend" ]]; then
+                echo "$dir"
+                break
+            fi
+        done | head -1)
+        if [[ -n "$PROJECT_SOURCE" ]]; then
+            log_info "Источник проекта (find): $PROJECT_SOURCE"
+        fi
+    fi
+
+    # Проверяем что нашли
+    if [[ -z "$PROJECT_SOURCE" ]] || [[ ! -d "$PROJECT_SOURCE/backend" ]]; then
+        log_error "Не удалось найти файлы проекта!"
+        log_error "Убедитесь что backend/ и frontend/ находятся в директории со скриптом"
+        log_error "Или запустите скрипт из директории proxygate/"
+        exit 1
+    fi
 
     mkdir -p $INSTALL_DIR
 
+    log_info "Копирование файлов из $PROJECT_SOURCE..."
     cp -r "$PROJECT_SOURCE/backend" "$INSTALL_DIR/"
     cp -r "$PROJECT_SOURCE/frontend" "$INSTALL_DIR/"
     cp -r "$PROJECT_SOURCE/nginx" "$INSTALL_DIR/" 2>/dev/null || true
