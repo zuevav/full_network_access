@@ -2,9 +2,15 @@
 set -e
 
 #===============================================================================
-# ProxyGate Auto-Installer v1.3
+# ProxyGate Auto-Installer v1.4
 # Полная автоматическая установка VPN/Proxy системы
 # Поддержка: Ubuntu 22.04 LTS, 24.04 LTS
+#
+# Исправления v1.4:
+# - Добавлен git safe.directory для работы обновлений от root
+# - Исправлен PATH в systemd сервисе для git и других команд
+# - Добавлено копирование VERSION файла
+# - Улучшена поддержка системы обновлений
 #
 # Исправления v1.3:
 # - Фикс pydantic версии (2.9.2 для совместимости с aiogram)
@@ -609,6 +615,7 @@ setup_project_files() {
     cp -r "$PROJECT_SOURCE/frontend" "$INSTALL_DIR/"
     cp -r "$PROJECT_SOURCE/nginx" "$INSTALL_DIR/" 2>/dev/null || true
     cp "$PROJECT_SOURCE/.env.example" "$INSTALL_DIR/.env.example" 2>/dev/null || true
+    cp "$PROJECT_SOURCE/VERSION" "$INSTALL_DIR/VERSION" 2>/dev/null || echo "2.1.0" > "$INSTALL_DIR/VERSION"
 
     log_success "Файлы проекта скопированы в $INSTALL_DIR"
 }
@@ -836,7 +843,7 @@ Type=simple
 User=root
 Group=root
 WorkingDirectory=${INSTALL_DIR}/backend
-Environment="PATH=${INSTALL_DIR}/backend/venv/bin"
+Environment="PATH=/usr/bin:/usr/local/bin:${INSTALL_DIR}/backend/venv/bin"
 EnvironmentFile=${INSTALL_DIR}/.env
 ExecStart=${INSTALL_DIR}/backend/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 Restart=always
@@ -960,6 +967,27 @@ install_letsencrypt() {
 }
 
 #===============================================================================
+# Настройка git для системы обновлений
+#===============================================================================
+configure_git_for_updates() {
+    log_info "Настройка git для системы обновлений..."
+
+    # Добавляем директорию в safe.directory чтобы root мог выполнять git команды
+    # (владелец директории может отличаться от пользователя сервиса)
+    git config --global --add safe.directory "$INSTALL_DIR"
+
+    # Инициализируем git репо если его нет (для отслеживания версий)
+    if [[ ! -d "$INSTALL_DIR/.git" ]]; then
+        cd "$INSTALL_DIR"
+        git init
+        git add -A
+        git commit -m "Initial installation v$(cat VERSION 2>/dev/null || echo '2.1.0')" 2>/dev/null || true
+    fi
+
+    log_success "Git настроен для обновлений"
+}
+
+#===============================================================================
 # Запуск сервисов
 #===============================================================================
 start_services() {
@@ -1069,6 +1097,7 @@ main() {
     init_database
     configure_firewall
     setup_cron
+    configure_git_for_updates
     start_services
     install_letsencrypt
 
