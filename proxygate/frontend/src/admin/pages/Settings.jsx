@@ -14,7 +14,8 @@ import {
   Key,
   Save,
   Eye,
-  EyeOff
+  EyeOff,
+  ExternalLink
 } from 'lucide-react'
 import api from '../../api'
 
@@ -204,8 +205,8 @@ export default function Settings() {
   const handleRenewCertificate = async () => {
     try {
       await api.renewSSLCertificate()
-      showMessage(t('ssl.certificateRenewed'))
-      loadSSLSettings()
+      setSslSettings(prev => ({ ...prev, is_processing: true }))
+      setSslLog([])
     } catch (error) {
       showMessage(error.message, 'error')
     }
@@ -515,6 +516,15 @@ export default function Settings() {
                     <p className="text-xs text-green-600 mt-1">
                       {t('ssl.expiresOn')}: {sslSettings.certificate_expiry}
                     </p>
+                  )}
+                  {window.location.protocol === 'http:' && sslSettings.domain && (
+                    <a
+                      href={`https://${sslSettings.domain}/admin`}
+                      className="mt-2 inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      {t('ssl.goToHttps')}
+                    </a>
                   )}
                 </div>
               )}

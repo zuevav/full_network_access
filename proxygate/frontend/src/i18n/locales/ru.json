@@ -195,7 +195,8 @@
     "renewCertificate": "Продлить сертификат",
     "certificateActive": "SSL сертификат активен",
     "certificateRenewed": "Сертификат успешно продлен",
-    "expiresOn": "Истекает"
+    "expiresOn": "Истекает",
+    "goToHttps": "Перейти на HTTPS"
   },
   "portal": {
     "title": "Личный кабинет",

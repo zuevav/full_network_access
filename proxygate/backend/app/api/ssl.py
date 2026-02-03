@@ -360,9 +360,66 @@ async def obtain_certificate(background_tasks: BackgroundTasks, admin: CurrentAd
     return {"success": True, "message": "Certificate request started"}
 
 
+async def run_certbot_renew_process(domain: str):
+    """Background task to renew SSL certificate."""
+    status_data = load_ssl_status()
+    status_data["is_processing"] = True
+    status_data["log"] = []
+    save_ssl_status(status_data)
+
+    log = []
+
+    def add_log(message: str):
+        log.append(f"[{datetime.now().strftime('%H:%M:%S')}] {message}")
+        status_data["log"] = log
+        save_ssl_status(status_data)
+
+    try:
+        add_log(f"Starting SSL certificate renewal for {domain}...")
+
+        # Run certbot renew
+        add_log("Running certbot renew...")
+        result = subprocess.run(
+            ["/usr/bin/certbot", "renew", "--cert-name", domain, "--force-renewal"],
+            capture_output=True,
+            text=True,
+            timeout=300
+        )
+
+        if result.returncode != 0:
+            add_log(f"ERROR: Renewal failed: {result.stderr}")
+            return
+
+        add_log("Certificate renewed successfully!")
+
+        # Reload nginx
+        add_log("Reloading nginx...")
+        result = subprocess.run(
+            ["/usr/bin/systemctl", "reload", "nginx"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            add_log(f"WARNING: Nginx reload had issues: {result.stderr}")
+        else:
+            add_log("Nginx reloaded successfully")
+
+        add_log("SSL RENEWAL COMPLETE!")
+
+    except subprocess.TimeoutExpired:
+        add_log("ERROR: Command timed out")
+    except Exception as e:
+        add_log(f"ERROR: {str(e)}")
+    finally:
+        status_data["is_processing"] = False
+        save_ssl_status(status_data)
+
+
 @router.post("/renew")
-async def renew_certificate(admin: CurrentAdmin):
-    """Manually renew SSL certificate."""
+async def renew_certificate(background_tasks: BackgroundTasks, admin: CurrentAdmin):
+    """Manually renew SSL certificate (runs in background)."""
     settings = load_ssl_settings()
 
     if not settings or not settings.get("domain"):
@@ -380,30 +437,16 @@ async def renew_certificate(admin: CurrentAdmin):
             detail="No certificate to renew. Obtain certificate first."
         )
 
-    try:
-        result = subprocess.run(
-            ["/usr/bin/certbot", "renew", "--cert-name", domain, "--force-renewal"],
-            capture_output=True,
-            text=True,
-            timeout=300
-        )
-
-        if result.returncode != 0:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Renewal failed: {result.stderr}"
-            )
-
-        # Reload nginx
-        subprocess.run(["/usr/bin/systemctl", "reload", "nginx"], capture_output=True, timeout=30)
-
-        return {"success": True, "message": "Certificate renewed successfully"}
-
-    except subprocess.TimeoutExpired:
+    status_data = load_ssl_status()
+    if status_data.get("is_processing"):
         raise HTTPException(
-            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
-            detail="Renewal timed out"
+            status_code=status.HTTP_409_CONFLICT,
+            detail="SSL operation already in progress"
         )
+
+    background_tasks.add_task(run_certbot_renew_process, domain)
+
+    return {"success": True, "message": "Certificate renewal started"}
 
 
 @router.get("/log")
