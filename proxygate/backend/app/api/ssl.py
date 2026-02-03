@@ -88,7 +88,7 @@ def check_certificate_exists(domain: str) -> tuple[bool, Optional[str]]:
 
     try:
         result = subprocess.run(
-            ["openssl", "x509", "-enddate", "-noout", "-in", str(cert_path)],
+            ["/usr/bin/openssl", "x509", "-enddate", "-noout", "-in", str(cert_path)],
             capture_output=True,
             text=True,
             timeout=10
@@ -159,13 +159,13 @@ async def run_certbot_process(domain: str, email: str):
 
         # Step 1: Stop nginx temporarily for standalone mode
         add_log("Stopping nginx temporarily...")
-        subprocess.run(["systemctl", "stop", "nginx"], capture_output=True, timeout=30)
+        subprocess.run(["/usr/bin/systemctl", "stop", "nginx"], capture_output=True, timeout=30)
 
         # Step 2: Run certbot
         add_log("Running certbot to obtain certificate...")
         result = subprocess.run(
             [
-                "certbot", "certonly",
+                "/usr/bin/certbot", "certonly",
                 "--standalone",
                 "--non-interactive",
                 "--agree-tos",
@@ -182,11 +182,11 @@ async def run_certbot_process(domain: str, email: str):
             add_log(f"Certbot error: {result.stderr}")
             # Try webroot method if standalone fails
             add_log("Trying webroot method...")
-            subprocess.run(["systemctl", "start", "nginx"], capture_output=True, timeout=30)
+            subprocess.run(["/usr/bin/systemctl", "start", "nginx"], capture_output=True, timeout=30)
 
             result = subprocess.run(
                 [
-                    "certbot", "certonly",
+                    "/usr/bin/certbot", "certonly",
                     "--webroot",
                     "--non-interactive",
                     "--agree-tos",
@@ -204,7 +204,7 @@ async def run_certbot_process(domain: str, email: str):
                 return
         else:
             # Restart nginx after standalone
-            subprocess.run(["systemctl", "start", "nginx"], capture_output=True, timeout=30)
+            subprocess.run(["/usr/bin/systemctl", "start", "nginx"], capture_output=True, timeout=30)
 
         add_log("Certificate obtained successfully!")
 
@@ -279,7 +279,7 @@ server {{
         # Step 4: Test nginx configuration
         add_log("Testing nginx configuration...")
         result = subprocess.run(
-            ["nginx", "-t"],
+            ["/usr/sbin/nginx", "-t"],
             capture_output=True,
             text=True,
             timeout=30
@@ -298,7 +298,7 @@ server {{
         # Step 5: Reload nginx
         add_log("Reloading nginx...")
         result = subprocess.run(
-            ["systemctl", "reload", "nginx"],
+            ["/usr/bin/systemctl", "reload", "nginx"],
             capture_output=True,
             text=True,
             timeout=30
@@ -311,7 +311,7 @@ server {{
 
         # Step 6: Setup auto-renewal cron
         add_log("Setting up auto-renewal...")
-        cron_job = "0 12 * * * /usr/bin/certbot renew --quiet && systemctl reload nginx"
+        cron_job = "0 12 * * * /usr/bin/certbot renew --quiet && /usr/bin/systemctl reload nginx"
         result = subprocess.run(
             ["bash", "-c", f'(crontab -l 2>/dev/null | grep -v certbot; echo "{cron_job}") | crontab -'],
             capture_output=True,
@@ -328,7 +328,7 @@ server {{
         add_log(f"ERROR: {str(e)}")
     finally:
         # Make sure nginx is running
-        subprocess.run(["systemctl", "start", "nginx"], capture_output=True, timeout=30)
+        subprocess.run(["/usr/bin/systemctl", "start", "nginx"], capture_output=True, timeout=30)
         status_data["is_processing"] = False
         save_ssl_status(status_data)
 
@@ -382,7 +382,7 @@ async def renew_certificate(admin: CurrentAdmin):
 
     try:
         result = subprocess.run(
-            ["certbot", "renew", "--cert-name", domain, "--force-renewal"],
+            ["/usr/bin/certbot", "renew", "--cert-name", domain, "--force-renewal"],
             capture_output=True,
             text=True,
             timeout=300
@@ -395,7 +395,7 @@ async def renew_certificate(admin: CurrentAdmin):
             )
 
         # Reload nginx
-        subprocess.run(["systemctl", "reload", "nginx"], capture_output=True, timeout=30)
+        subprocess.run(["/usr/bin/systemctl", "reload", "nginx"], capture_output=True, timeout=30)
 
         return {"success": True, "message": "Certificate renewed successfully"}
 
