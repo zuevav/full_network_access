@@ -100,24 +100,32 @@ def get_server_ip() -> str:
         return ""
 
 
-def check_service_status(service_name: str) -> str:
-    """Check if a systemd service is running."""
-    try:
-        result = subprocess.run(
-            ["systemctl", "is-active", service_name],
-            capture_output=True,
-            text=True,
-            timeout=5
-        )
-        status = result.stdout.strip()
-        if status == "active":
-            return "running"
-        elif status == "inactive":
-            return "stopped"
-        else:
-            return "error"
-    except:
-        return "error"
+def check_service_status(service_name: str, alternatives: list = None) -> str:
+    """Check if a systemd service is running. Try alternatives if main name fails."""
+    names_to_try = [service_name]
+    if alternatives:
+        names_to_try.extend(alternatives)
+
+    for name in names_to_try:
+        try:
+            result = subprocess.run(
+                ["systemctl", "is-active", name],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            status = result.stdout.strip()
+            if status == "active":
+                return "running"
+            elif status == "inactive":
+                return "stopped"
+            # If found but not active/inactive, continue to next alternative
+            elif status in ["failed", "activating", "deactivating"]:
+                return "error"
+        except:
+            continue
+
+    return "stopped"  # Service not found = stopped
 
 
 def check_port_open(port: int, host: str = "127.0.0.1") -> bool:
@@ -201,42 +209,51 @@ async def get_status(admin: CurrentAdmin):
     """Get system and service status."""
     settings = load_system_settings()
 
-    # Define services to check
+    # Define services to check with alternative names
     services = [
         {
             "name": "nginx",
             "display_name": "Nginx Web Server",
-            "ports": [80, 443]
+            "ports": [80, 443],
+            "alternatives": []
         },
         {
             "name": "proxygate",
             "display_name": "ProxyGate Backend",
-            "ports": [8000]
+            "ports": [8000],
+            "alternatives": ["proxygate.service"]
         },
         {
             "name": "strongswan",
             "display_name": "StrongSwan VPN",
-            "ports": [500]
+            "ports": [500],
+            "alternatives": ["strongswan-starter", "ipsec", "charon"]
         },
         {
             "name": "3proxy",
             "display_name": "3proxy HTTP/SOCKS",
-            "ports": [settings.get("http_proxy_port", 3128), settings.get("socks_proxy_port", 1080)]
+            "ports": [settings.get("http_proxy_port", 3128), settings.get("socks_proxy_port", 1080)],
+            "alternatives": ["3proxy.service"]
         },
         {
             "name": "postgresql",
             "display_name": "PostgreSQL Database",
-            "ports": [5432]
+            "ports": [5432],
+            "alternatives": ["postgresql@14-main", "postgresql@15-main", "postgresql@16-main", "postgres"]
         }
     ]
 
     service_statuses = []
     for svc in services:
-        svc_status = check_service_status(svc["name"])
+        svc_status = check_service_status(svc["name"], svc.get("alternatives", []))
 
         # Check first port for status indicator
         port = svc["ports"][0] if svc["ports"] else None
         port_open = check_port_open(port) if port else None
+
+        # If systemctl says stopped but port is open, service is likely running
+        if svc_status == "stopped" and port_open:
+            svc_status = "running"
 
         service_statuses.append(ServiceStatus(
             name=svc["name"],
