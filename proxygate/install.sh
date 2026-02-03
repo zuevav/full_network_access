@@ -732,8 +732,9 @@ build_frontend() {
 
     cd $INSTALL_DIR/frontend
 
+    # Используем относительный путь к API (работает и с HTTP и с HTTPS)
     cat > .env << EOF
-VITE_API_URL=https://${DOMAIN}/api
+VITE_API_URL=/api
 EOF
 
     npm install
@@ -751,34 +752,25 @@ EOF
 configure_nginx() {
     log_info "Настройка Nginx..."
 
+    # Изначально настраиваем только HTTP
+    # SSL/HTTPS настраивается позже через интерфейс или вручную
     cat > /etc/nginx/sites-available/proxygate << EOF
+# ProxyGate Nginx Configuration
+# SSL можно настроить позже через: certbot --nginx -d ${DOMAIN}
+
 server {
     listen 80;
-    server_name ${DOMAIN};
-
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-
-    location / {
-        return 301 https://\$server_name\$request_uri;
-    }
-}
-
-server {
-    listen 443 ssl http2;
-    server_name ${DOMAIN};
-
-    ssl_certificate /etc/nginx/ssl/selfsigned.crt;
-    ssl_certificate_key /etc/nginx/ssl/selfsigned.key;
-
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256;
-    ssl_prefer_server_ciphers off;
+    server_name ${DOMAIN} ${SERVER_IP};
 
     root /var/www/proxygate;
     index index.html;
 
+    # Let's Encrypt challenge
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    # API proxy
     location /api {
         proxy_pass http://127.0.0.1:8000;
         proxy_http_version 1.1;
@@ -786,12 +778,17 @@ server {
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
     }
 
+    # Frontend SPA
     location / {
         try_files \$uri \$uri/ /index.html;
     }
 
+    # Static files caching
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
         expires 1y;
         add_header Cache-Control "public, immutable";
@@ -799,18 +796,15 @@ server {
 }
 EOF
 
-    mkdir -p /etc/nginx/ssl
-    openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-        -keyout /etc/nginx/ssl/selfsigned.key \
-        -out /etc/nginx/ssl/selfsigned.crt \
-        -subj "/CN=${DOMAIN}"
+    # Создаём директорию для certbot
+    mkdir -p /var/www/certbot
 
     ln -sf /etc/nginx/sites-available/proxygate /etc/nginx/sites-enabled/
     rm -f /etc/nginx/sites-enabled/default
 
     nginx -t && systemctl reload nginx
 
-    log_success "Nginx настроен"
+    log_success "Nginx настроен (HTTP). SSL можно настроить позже."
 }
 
 #===============================================================================
@@ -921,15 +915,19 @@ create_directories() {
 }
 
 #===============================================================================
-# Установка Let's Encrypt SSL
+# Установка Let's Encrypt SSL (опционально)
 #===============================================================================
 install_letsencrypt() {
     if [[ "$INSTALL_SSL" != "y" ]]; then
+        log_info "SSL не запрошен. Можно настроить позже командой:"
+        log_info "  sudo certbot --nginx -d $DOMAIN"
         return
     fi
 
     if [[ "$DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         log_warn "Let's Encrypt требует доменное имя, не IP. Пропускаем SSL."
+        log_info "Для настройки SSL позже используйте домен и выполните:"
+        log_info "  sudo certbot --nginx -d YOUR_DOMAIN"
         return
     fi
 
@@ -937,19 +935,16 @@ install_letsencrypt() {
 
     apt-get install -y certbot python3-certbot-nginx
 
-    certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email "$ADMIN_EMAIL" --redirect || {
-        log_warn "Не удалось получить SSL сертификат. Проверьте DNS записи."
-        return
-    }
-
-    sed -i "s|/etc/nginx/ssl/selfsigned.crt|/etc/letsencrypt/live/${DOMAIN}/fullchain.pem|g" /etc/nginx/sites-available/proxygate
-    sed -i "s|/etc/nginx/ssl/selfsigned.key|/etc/letsencrypt/live/${DOMAIN}/privkey.pem|g" /etc/nginx/sites-available/proxygate
-
-    (crontab -l 2>/dev/null | grep -v certbot; echo "0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
-
-    nginx -t && systemctl reload nginx
-
-    log_success "Let's Encrypt SSL установлен"
+    # Пробуем получить сертификат
+    if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email "$ADMIN_EMAIL" --redirect; then
+        # Настраиваем автопродление
+        (crontab -l 2>/dev/null | grep -v certbot; echo "0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
+        log_success "Let's Encrypt SSL установлен"
+    else
+        log_warn "Не удалось получить SSL сертификат."
+        log_warn "Проверьте что DNS запись для $DOMAIN указывает на $SERVER_IP"
+        log_info "Попробуйте позже: sudo certbot --nginx -d $DOMAIN"
+    fi
 }
 
 #===============================================================================
@@ -978,11 +973,11 @@ print_installation_info() {
     echo ""
     echo -e "${BLUE}Данные для входа:${NC}"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo -e "  Админ-панель:  ${GREEN}https://${DOMAIN}/admin${NC}"
+    echo -e "  Админ-панель:  ${GREEN}http://${DOMAIN}/admin${NC}"
     echo -e "  Логин:         ${GREEN}admin${NC}"
     echo -e "  Пароль:        ${GREEN}${ADMIN_PASSWORD}${NC}"
     echo ""
-    echo -e "  Клиент-портал: ${GREEN}https://${DOMAIN}/portal${NC}"
+    echo -e "  Клиент-портал: ${GREEN}http://${DOMAIN}/portal${NC}"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
     echo -e "${BLUE}Полезные команды:${NC}"
@@ -994,13 +989,12 @@ print_installation_info() {
     echo "  $INSTALL_DIR/.env"
     echo "  $INSTALL_DIR/credentials.txt"
     echo ""
-
-    if [[ "$INSTALL_SSL" != "y" ]]; then
-        echo -e "${YELLOW}Для SSL сертификата Let's Encrypt выполните:${NC}"
-        echo "  apt install certbot python3-certbot-nginx"
-        echo "  certbot --nginx -d ${DOMAIN}"
-        echo ""
-    fi
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${YELLOW}Для включения HTTPS (Let's Encrypt):${NC}"
+    echo "  sudo apt install -y certbot python3-certbot-nginx"
+    echo "  sudo certbot --nginx -d ${DOMAIN}"
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
 
     # Сохраняем credentials
     cat > $INSTALL_DIR/credentials.txt << EOF
@@ -1008,7 +1002,9 @@ ProxyGate Installation Credentials
 ===================================
 Generated: $(date)
 
-Admin Panel: https://${DOMAIN}/admin
+Admin Panel: http://${DOMAIN}/admin
+Client Portal: http://${DOMAIN}/portal
+
 Username: admin
 Password: ${ADMIN_PASSWORD}
 
@@ -1020,6 +1016,11 @@ Domain: ${DOMAIN}
 
 HTTP Proxy Port: ${HTTP_PROXY_PORT}
 SOCKS5 Proxy Port: ${SOCKS_PROXY_PORT}
+
+---
+To enable HTTPS:
+  sudo apt install -y certbot python3-certbot-nginx
+  sudo certbot --nginx -d ${DOMAIN}
 EOF
     chmod 600 $INSTALL_DIR/credentials.txt
 
