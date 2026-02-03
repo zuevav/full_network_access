@@ -149,18 +149,50 @@ def get_system_info() -> dict:
         "disk_usage": ""
     }
 
+    # Hostname
     try:
-        # Hostname
         result = subprocess.run(["hostname"], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
             info["hostname"] = result.stdout.strip()
+    except Exception:
+        # Fallback: try reading /etc/hostname
+        try:
+            with open("/etc/hostname") as f:
+                info["hostname"] = f.read().strip()
+        except:
+            pass
 
-        # Uptime
+    # Uptime - try different approaches
+    try:
         result = subprocess.run(["uptime", "-p"], capture_output=True, text=True, timeout=5)
-        if result.returncode == 0:
+        if result.returncode == 0 and result.stdout.strip():
             info["uptime"] = result.stdout.strip().replace("up ", "")
+        else:
+            # Fallback: parse regular uptime output
+            result = subprocess.run(["uptime"], capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:
+                # Parse "up X days, H:MM" format
+                output = result.stdout.strip()
+                if "up" in output:
+                    up_part = output.split("up")[1].split(",")[0].strip()
+                    info["uptime"] = up_part
+    except Exception:
+        # Fallback: read from /proc/uptime
+        try:
+            with open("/proc/uptime") as f:
+                uptime_seconds = float(f.read().split()[0])
+                days = int(uptime_seconds // 86400)
+                hours = int((uptime_seconds % 86400) // 3600)
+                minutes = int((uptime_seconds % 3600) // 60)
+                if days > 0:
+                    info["uptime"] = f"{days}d {hours}h {minutes}m"
+                else:
+                    info["uptime"] = f"{hours}h {minutes}m"
+        except:
+            pass
 
-        # Memory
+    # Memory
+    try:
         result = subprocess.run(["free", "-h"], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
             lines = result.stdout.strip().split('\n')
@@ -168,16 +200,33 @@ def get_system_info() -> dict:
                 parts = lines[1].split()
                 if len(parts) >= 3:
                     info["memory_usage"] = f"{parts[2]} / {parts[1]}"
+    except Exception:
+        # Fallback: read from /proc/meminfo
+        try:
+            with open("/proc/meminfo") as f:
+                meminfo = f.read()
+                total = used = 0
+                for line in meminfo.split('\n'):
+                    if line.startswith("MemTotal:"):
+                        total = int(line.split()[1]) // 1024  # MB
+                    elif line.startswith("MemAvailable:"):
+                        available = int(line.split()[1]) // 1024  # MB
+                        used = total - available
+                if total > 0:
+                    info["memory_usage"] = f"{used}MB / {total}MB"
+        except:
+            pass
 
-        # Disk
+    # Disk
+    try:
         result = subprocess.run(["df", "-h", "/"], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
             lines = result.stdout.strip().split('\n')
             if len(lines) > 1:
                 parts = lines[1].split()
-                if len(parts) >= 4:
+                if len(parts) >= 5:
                     info["disk_usage"] = f"{parts[2]} / {parts[1]} ({parts[4]})"
-    except:
+    except Exception:
         pass
 
     return info
