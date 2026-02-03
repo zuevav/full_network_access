@@ -54,13 +54,24 @@ else
     git clone https://github.com/zuevav/full_network_access.git
 fi
 
-cd full_network_access/proxygate
+PROXYGATE_DIR="$TEMP_DIR/full_network_access/proxygate"
+cd "$PROXYGATE_DIR"
+
+echo -e "${BLUE}[INFO]${NC} Директория проекта: $PROXYGATE_DIR"
+
+# Проверяем что файлы на месте
+if [[ ! -d "backend" ]] || [[ ! -d "frontend" ]]; then
+    echo -e "${RED}[ERROR]${NC} Файлы проекта не найдены!"
+    ls -la
+    exit 1
+fi
 
 # Запуск основного установщика
 chmod +x install.sh
-./install.sh
+bash install.sh
 
 # Очистка
+cd /
 rm -rf $TEMP_DIR
 
 echo -e "${GREEN}Готово!${NC}"
