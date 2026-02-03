@@ -2,8 +2,9 @@
 set -e
 
 #===============================================================================
-# ProxyGate Auto-Installer
+# ProxyGate Auto-Installer v1.1
 # Полная автоматическая установка VPN/Proxy системы
+# Поддержка: Ubuntu 22.04 LTS, 24.04 LTS
 #===============================================================================
 
 RED='\033[0;31m'
@@ -29,6 +30,7 @@ TELEGRAM_CHAT_ID=""
 HTTP_PROXY_PORT="3128"
 SOCKS_PROXY_PORT="1080"
 INSTALL_SSL="n"
+SYSTEM_PYTHON=""  # Системный Python (3.10 или 3.11)
 
 #===============================================================================
 # Функция для чтения ввода (работает даже при curl | bash)
@@ -64,6 +66,23 @@ read_confirm() {
 }
 
 #===============================================================================
+# Отключение интерактивных диалогов
+#===============================================================================
+disable_interactive() {
+    export DEBIAN_FRONTEND=noninteractive
+    export NEEDRESTART_MODE=a
+    export NEEDRESTART_SUSPEND=1
+
+    # Отключаем needrestart если установлен
+    if [[ -f /etc/needrestart/needrestart.conf ]]; then
+        sed -i "s/#\$nrconf{restart} = 'i';/\$nrconf{restart} = 'a';/" /etc/needrestart/needrestart.conf 2>/dev/null || true
+    fi
+
+    # Отключаем интерактивные диалоги dpkg
+    echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections 2>/dev/null || true
+}
+
+#===============================================================================
 # Проверка root
 #===============================================================================
 check_root() {
@@ -71,6 +90,23 @@ check_root() {
         log_error "Скрипт должен быть запущен от root (sudo)"
         exit 1
     fi
+}
+
+#===============================================================================
+# Определение системного Python
+#===============================================================================
+detect_system_python() {
+    # Находим системный Python (не из deadsnakes)
+    if [[ -x /usr/bin/python3.11 ]]; then
+        SYSTEM_PYTHON="/usr/bin/python3.11"
+    elif [[ -x /usr/bin/python3.10 ]]; then
+        SYSTEM_PYTHON="/usr/bin/python3.10"
+    elif [[ -x /usr/bin/python3.12 ]] && dpkg -l | grep -q "^ii  python3.12 "; then
+        SYSTEM_PYTHON="/usr/bin/python3.12"
+    else
+        SYSTEM_PYTHON=$(which python3 2>/dev/null || echo "/usr/bin/python3")
+    fi
+    log_info "Системный Python: $SYSTEM_PYTHON"
 }
 
 #===============================================================================
@@ -220,13 +256,13 @@ EOFSOURCES
 update_system() {
     log_info "Обновление системы..."
 
-    export DEBIAN_FRONTEND=noninteractive
-
+    disable_interactive
     fix_repositories
 
-    apt-get update -y
-    apt-get upgrade -y
-    apt-get dist-upgrade -y
+    # Обновляем без интерактивных запросов
+    apt-get update -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
+    apt-get upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
+    apt-get dist-upgrade -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold"
     apt-get autoremove -y
     apt-get autoclean -y
 
@@ -270,14 +306,49 @@ install_base_packages() {
 install_python() {
     log_info "Установка Python 3.12..."
 
-    add-apt-repository -y ppa:deadsnakes/ppa
-    apt-get update -y
-    apt-get install -y python3.12 python3.12-venv python3.12-dev python3-pip
+    # Определяем системный Python ДО изменений
+    detect_system_python
 
-    update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
+    # Устанавливаем python3-apt для системного Python (нужен для apt)
+    apt-get install -y python3-apt 2>/dev/null || true
+
+    # Добавляем PPA
+    add-apt-repository -y ppa:deadsnakes/ppa 2>/dev/null || true
+    apt-get update -y || true
+
+    # Устанавливаем Python 3.12
+    apt-get install -y python3.12 python3.12-venv python3.12-dev
+
+    # Устанавливаем pip для Python 3.12
+    curl -sS https://bootstrap.pypa.io/get-pip.py | python3.12 || {
+        apt-get install -y python3-pip
+    }
+
+    # ВАЖНО: НЕ меняем системный python3, это ломает apt!
+    # Вместо этого создаём симлинк python3.12 и используем его явно
+    # update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.12 1
+
+    # Убеждаемся что системный Python работает для apt
+    if [[ -n "$SYSTEM_PYTHON" ]] && [[ -x "$SYSTEM_PYTHON" ]]; then
+        # Восстанавливаем системный Python как default если он был изменён
+        update-alternatives --install /usr/bin/python3 python3 "$SYSTEM_PYTHON" 2 2>/dev/null || true
+    fi
 
     log_success "Python 3.12 установлен"
     python3.12 --version
+
+    # Проверяем что apt работает
+    log_info "Проверка работы apt..."
+    apt-get update -y > /dev/null 2>&1 || {
+        log_warn "apt update выдал ошибку, пробуем исправить..."
+        # Если apt сломан - восстанавливаем системный Python
+        if [[ -x /usr/bin/python3.10 ]]; then
+            update-alternatives --set python3 /usr/bin/python3.10 2>/dev/null || true
+        elif [[ -x /usr/bin/python3.11 ]]; then
+            update-alternatives --set python3 /usr/bin/python3.11 2>/dev/null || true
+        fi
+        apt-get update -y || true
+    }
 }
 
 #===============================================================================
@@ -301,13 +372,50 @@ install_postgresql() {
 }
 
 #===============================================================================
-# Установка Node.js
+# Установка Node.js 20
 #===============================================================================
 install_nodejs() {
     log_info "Установка Node.js 20..."
 
-    curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+    # Удаляем старые версии Node.js если есть
+    apt-get remove -y nodejs npm 2>/dev/null || true
+    rm -f /etc/apt/sources.list.d/nodesource*.list 2>/dev/null || true
+    rm -f /etc/apt/keyrings/nodesource.gpg 2>/dev/null || true
+
+    # Устанавливаем зависимости
+    apt-get install -y ca-certificates curl gnupg
+
+    # Создаём директорию для ключей
+    mkdir -p /etc/apt/keyrings
+
+    # Скачиваем и добавляем GPG ключ NodeSource
+    curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+
+    # Добавляем репозиторий NodeSource
+    NODE_MAJOR=20
+    echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+
+    # Обновляем и устанавливаем
+    apt-get update -y
     apt-get install -y nodejs
+
+    # Проверяем установку
+    if ! command -v node &> /dev/null || ! command -v npm &> /dev/null; then
+        log_error "Node.js не установился корректно. Пробуем альтернативный метод..."
+
+        # Альтернативный метод через NVM
+        curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        nvm install 20
+        nvm use 20
+        nvm alias default 20
+
+        # Создаём симлинки
+        ln -sf "$NVM_DIR/versions/node/$(nvm current)/bin/node" /usr/local/bin/node
+        ln -sf "$NVM_DIR/versions/node/$(nvm current)/bin/npm" /usr/local/bin/npm
+        ln -sf "$NVM_DIR/versions/node/$(nvm current)/bin/npx" /usr/local/bin/npx
+    fi
 
     log_success "Node.js установлен"
     node --version
