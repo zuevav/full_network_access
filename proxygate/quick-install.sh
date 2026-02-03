@@ -23,6 +23,20 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
+# Исправляем репозитории если нужно (для oracular и др.)
+echo -e "${BLUE}[INFO]${NC} Проверка репозиториев..."
+if grep -q "oracular" /etc/apt/sources.list 2>/dev/null; then
+    echo -e "${BLUE}[INFO]${NC} Исправление репозиториев..."
+    rm -f /etc/apt/sources.list.d/*.list 2>/dev/null || true
+    rm -f /etc/apt/sources.list.d/*.sources 2>/dev/null || true
+    cat > /etc/apt/sources.list << 'EOFSOURCES'
+deb http://archive.ubuntu.com/ubuntu noble main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu noble-updates main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu noble-backports main restricted universe multiverse
+deb http://security.ubuntu.com/ubuntu noble-security main restricted universe multiverse
+EOFSOURCES
+fi
+
 # Установка git если нет
 apt-get update -y
 apt-get install -y git curl
