@@ -25,25 +25,39 @@ router = APIRouter()
 SETTINGS_FILE = Path("/opt/proxygate/.update_settings.json")
 UPDATE_LOG_FILE = Path("/opt/proxygate/.update_log.json")
 
-# Detect correct paths - repo might be in /opt/proxygate or /opt/proxygate/proxygate
+# Detect correct paths
 def get_install_dirs():
-    """Detect the correct installation directories."""
-    # Check if nested structure exists (installer creates /opt/proxygate/proxygate)
+    """Detect the correct installation directories.
+
+    Returns: (git_dir, code_dir, deploy_dir)
+    - git_dir: where .git is located (for git commands)
+    - code_dir: where backend/frontend code is in the repo
+    - deploy_dir: where we deploy to
+    """
     nested = Path("/opt/proxygate/proxygate")
     base = Path("/opt/proxygate")
 
-    if (nested / ".git").exists():
-        return nested, base  # repo_dir, deploy_dir
-    elif (base / ".git").exists():
-        return base, base
-    else:
-        # Assume nested structure even without .git
-        if (nested / "backend").exists():
-            return nested, base
-        return base, base
+    # Case 1: .git at /opt/proxygate, code at /opt/proxygate/proxygate (cloned repo)
+    if (base / ".git").exists() and (nested / "backend").exists():
+        return base, nested, base  # git at base, code at nested, deploy at base
 
-REPO_DIR, DEPLOY_DIR = get_install_dirs()
-INSTALL_DIR = DEPLOY_DIR  # For backwards compatibility
+    # Case 2: .git at /opt/proxygate/proxygate (nested git repo)
+    if (nested / ".git").exists():
+        return nested, nested, base
+
+    # Case 3: .git at /opt/proxygate, code also at /opt/proxygate
+    if (base / ".git").exists():
+        return base, base, base
+
+    # Fallback: assume nested structure without git
+    if (nested / "backend").exists():
+        return nested, nested, base
+
+    return base, base, base
+
+GIT_DIR, CODE_DIR, DEPLOY_DIR = get_install_dirs()
+REPO_DIR = CODE_DIR  # For backwards compatibility
+INSTALL_DIR = DEPLOY_DIR
 
 
 class GitHubSettings(BaseModel):
@@ -127,7 +141,7 @@ def get_current_commit() -> Optional[str]:
     try:
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
-            cwd=REPO_DIR,
+            cwd=GIT_DIR,
             capture_output=True,
             text=True,
             timeout=10
@@ -144,7 +158,7 @@ def get_current_branch() -> Optional[str]:
     try:
         result = subprocess.run(
             ["git", "branch", "--show-current"],
-            cwd=REPO_DIR,
+            cwd=GIT_DIR,
             capture_output=True,
             text=True,
             timeout=10
@@ -333,14 +347,15 @@ async def run_update_process():
         branch = gh_settings.get("branch", "main")
 
         add_log("Starting update process...")
-        add_log(f"Repository directory: {REPO_DIR}")
+        add_log(f"Git directory: {GIT_DIR}")
+        add_log(f"Code directory: {CODE_DIR}")
         add_log(f"Deploy directory: {DEPLOY_DIR}")
 
         # Step 1: Git fetch
         add_log("Fetching latest changes from GitHub...")
         result = subprocess.run(
             ["git", "fetch", "origin", branch],
-            cwd=REPO_DIR,
+            cwd=GIT_DIR,
             capture_output=True,
             text=True,
             timeout=120
@@ -353,7 +368,7 @@ async def run_update_process():
         add_log(f"Resetting to origin/{branch}...")
         result = subprocess.run(
             ["git", "reset", "--hard", f"origin/{branch}"],
-            cwd=REPO_DIR,
+            cwd=GIT_DIR,
             capture_output=True,
             text=True,
             timeout=60
@@ -364,20 +379,20 @@ async def run_update_process():
 
         add_log("Code updated successfully")
 
-        # Step 3: Copy updated files to deploy directory (if different)
-        if REPO_DIR != DEPLOY_DIR:
+        # Step 3: Copy updated files to deploy directory (if code dir != deploy dir)
+        if CODE_DIR != DEPLOY_DIR:
             add_log("Copying updated files to deploy directory...")
             # Copy backend (preserving venv)
             subprocess.run(
                 ["rsync", "-av", "--exclude", "venv", "--exclude", "__pycache__",
-                 str(REPO_DIR / "backend") + "/", str(DEPLOY_DIR / "backend") + "/"],
+                 str(CODE_DIR / "backend") + "/", str(DEPLOY_DIR / "backend") + "/"],
                 capture_output=True,
                 timeout=60
             )
             # Copy frontend source
             subprocess.run(
                 ["rsync", "-av", "--exclude", "node_modules", "--exclude", "dist",
-                 str(REPO_DIR / "frontend") + "/", str(DEPLOY_DIR / "frontend") + "/"],
+                 str(CODE_DIR / "frontend") + "/", str(DEPLOY_DIR / "frontend") + "/"],
                 capture_output=True,
                 timeout=60
             )
