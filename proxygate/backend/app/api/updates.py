@@ -140,7 +140,7 @@ def get_current_commit() -> Optional[str]:
     """Get current git commit hash."""
     try:
         result = subprocess.run(
-            ["git", "rev-parse", "HEAD"],
+            ["/usr/bin/git", "rev-parse", "HEAD"],
             cwd=GIT_DIR,
             capture_output=True,
             text=True,
@@ -157,7 +157,7 @@ def get_current_branch() -> Optional[str]:
     """Get current git branch."""
     try:
         result = subprocess.run(
-            ["git", "branch", "--show-current"],
+            ["/usr/bin/git", "branch", "--show-current"],
             cwd=GIT_DIR,
             capture_output=True,
             text=True,
@@ -354,7 +354,7 @@ async def run_update_process():
         # Step 1: Git fetch
         add_log("Fetching latest changes from GitHub...")
         result = subprocess.run(
-            ["git", "fetch", "origin", branch],
+            ["/usr/bin/git", "fetch", "origin", branch],
             cwd=GIT_DIR,
             capture_output=True,
             text=True,
@@ -367,7 +367,7 @@ async def run_update_process():
         # Step 2: Git reset to origin/branch
         add_log(f"Resetting to origin/{branch}...")
         result = subprocess.run(
-            ["git", "reset", "--hard", f"origin/{branch}"],
+            ["/usr/bin/git", "reset", "--hard", f"origin/{branch}"],
             cwd=GIT_DIR,
             capture_output=True,
             text=True,
