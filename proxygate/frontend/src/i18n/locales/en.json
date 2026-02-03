@@ -195,7 +195,8 @@
     "renewCertificate": "Renew Certificate",
     "certificateActive": "SSL Certificate is active",
     "certificateRenewed": "Certificate renewed successfully",
-    "expiresOn": "Expires"
+    "expiresOn": "Expires",
+    "goToHttps": "Go to HTTPS"
   },
   "portal": {
     "title": "Client Portal",
