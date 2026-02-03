@@ -268,7 +268,7 @@ server {{
         # Backup existing config
         if NGINX_CONFIG_PATH.exists():
             backup_path = NGINX_CONFIG_PATH.with_suffix('.bak')
-            subprocess.run(["cp", str(NGINX_CONFIG_PATH), str(backup_path)], capture_output=True)
+            subprocess.run(["/usr/bin/cp", str(NGINX_CONFIG_PATH), str(backup_path)], capture_output=True)
 
         # Write new config
         with open(NGINX_CONFIG_PATH, 'w') as f:
@@ -290,7 +290,7 @@ server {{
             # Restore backup
             backup_path = NGINX_CONFIG_PATH.with_suffix('.bak')
             if backup_path.exists():
-                subprocess.run(["cp", str(backup_path), str(NGINX_CONFIG_PATH)], capture_output=True)
+                subprocess.run(["/usr/bin/cp", str(backup_path), str(NGINX_CONFIG_PATH)], capture_output=True)
             return
 
         add_log("Nginx configuration valid")
