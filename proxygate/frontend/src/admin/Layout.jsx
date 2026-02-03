@@ -8,7 +8,8 @@ import {
   LogOut,
   Globe,
   MessageSquare,
-  Shield
+  Shield,
+  Download
 } from 'lucide-react'
 import api from '../api'
 import LanguageSwitcher from '../shared/LanguageSwitcher'
@@ -24,6 +25,7 @@ export default function AdminLayout() {
     { path: '/admin/domain-requests', icon: MessageSquare, label: t('admin.requests') },
     { path: '/admin/security', icon: Shield, label: t('admin.security') },
     { path: '/admin/settings', icon: Settings, label: t('admin.settings') },
+    { path: '/admin/updates', icon: Download, label: t('admin.updates') },
   ]
 
   const handleLogout = () => {

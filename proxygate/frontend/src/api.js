@@ -216,6 +216,38 @@ class ApiClient {
     })
   }
 
+  // System Updates API methods
+  async getUpdateSettings() {
+    return this.request('/admin/updates/settings')
+  }
+
+  async saveUpdateSettings(data) {
+    return this.request('/admin/updates/settings', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async deleteUpdateSettings() {
+    return this.request('/admin/updates/settings', { method: 'DELETE' })
+  }
+
+  async getUpdateStatus() {
+    return this.request('/admin/updates/status')
+  }
+
+  async checkForUpdates() {
+    return this.request('/admin/updates/check', { method: 'POST' })
+  }
+
+  async applyUpdates() {
+    return this.request('/admin/updates/apply', { method: 'POST' })
+  }
+
+  async getUpdateLog() {
+    return this.request('/admin/updates/log')
+  }
+
   // Portal (client) API methods
   async clientLogin(username, password) {
     const data = await this.request('/portal/auth/login', {
