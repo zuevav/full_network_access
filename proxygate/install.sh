@@ -23,8 +23,12 @@ SERVER_IP=""
 DB_PASSWORD=""
 SECRET_KEY=""
 ADMIN_PASSWORD=""
+ADMIN_EMAIL=""
 TELEGRAM_TOKEN=""
 TELEGRAM_CHAT_ID=""
+HTTP_PROXY_PORT="3128"
+SOCKS_PROXY_PORT="1080"
+INSTALL_SSL="n"
 
 #===============================================================================
 # Проверка root
@@ -37,11 +41,15 @@ check_root() {
 }
 
 #===============================================================================
-# Определение IP сервера
+# Определение IP сервера (предпочитаем IPv4)
 #===============================================================================
 detect_server_ip() {
-    SERVER_IP=$(curl -s ifconfig.me || curl -s icanhazip.com || hostname -I | awk '{print $1}')
-    log_info "Определён IP сервера: $SERVER_IP"
+    # Пробуем получить IPv4
+    SERVER_IP=$(curl -4 -s --connect-timeout 5 ifconfig.me 2>/dev/null || \
+                curl -4 -s --connect-timeout 5 icanhazip.com 2>/dev/null || \
+                curl -4 -s --connect-timeout 5 ipv4.icanhazip.com 2>/dev/null || \
+                hostname -I | awk '{print $1}')
+    log_info "Автоопределённый IP: $SERVER_IP"
 }
 
 #===============================================================================
@@ -68,8 +76,20 @@ interactive_setup() {
     detect_server_ip
     generate_secrets
 
+    echo ""
+    echo -e "${BLUE}=== Основные настройки ===${NC}"
+    echo ""
+
+    # IP сервера
+    echo -e "${YELLOW}IP адрес сервера (IPv4) [${SERVER_IP}]:${NC}"
+    read -r input_ip
+    if [[ -n "$input_ip" ]]; then
+        SERVER_IP="$input_ip"
+    fi
+
     # Домен
-    echo -e "${YELLOW}Введите домен (или Enter для использования IP):${NC}"
+    echo ""
+    echo -e "${YELLOW}Домен для VPN/панели (или Enter для использования IP):${NC}"
     read -r input_domain
     if [[ -n "$input_domain" ]]; then
         DOMAIN="$input_domain"
@@ -77,28 +97,113 @@ interactive_setup() {
         DOMAIN="$SERVER_IP"
     fi
 
-    # Telegram (опционально)
-    echo -e "${YELLOW}Telegram Bot Token (Enter для пропуска):${NC}"
-    read -r TELEGRAM_TOKEN
+    # Admin пароль
+    echo ""
+    echo -e "${YELLOW}Пароль администратора [${ADMIN_PASSWORD}] (Enter = автогенерация):${NC}"
+    read -r input_admin_pass
+    if [[ -n "$input_admin_pass" ]]; then
+        ADMIN_PASSWORD="$input_admin_pass"
+    fi
 
-    if [[ -n "$TELEGRAM_TOKEN" ]]; then
-        echo -e "${YELLOW}Telegram Chat ID:${NC}"
-        read -r TELEGRAM_CHAT_ID
+    # Admin email
+    echo ""
+    echo -e "${YELLOW}Email администратора [admin@${DOMAIN}]:${NC}"
+    read -r input_admin_email
+    if [[ -n "$input_admin_email" ]]; then
+        ADMIN_EMAIL="$input_admin_email"
+    else
+        ADMIN_EMAIL="admin@${DOMAIN}"
     fi
 
     echo ""
-    log_info "=== Конфигурация ==="
-    echo "  Домен/IP: $DOMAIN"
-    echo "  Server IP: $SERVER_IP"
-    echo "  Admin пароль: $ADMIN_PASSWORD"
-    echo "  Telegram: $([ -n "$TELEGRAM_TOKEN" ] && echo "Да" || echo "Нет")"
+    echo -e "${BLUE}=== Telegram уведомления (опционально) ===${NC}"
     echo ""
 
-    echo -e "${YELLOW}Начать установку? (y/n):${NC}"
+    # Telegram
+    echo -e "${YELLOW}Telegram Bot Token (Enter для пропуска):${NC}"
+    read -r input_tg_token
+    TELEGRAM_TOKEN="$input_tg_token"
+
+    if [[ -n "$TELEGRAM_TOKEN" ]]; then
+        echo ""
+        echo -e "${YELLOW}Telegram Chat ID (куда слать уведомления):${NC}"
+        read -r input_tg_chat
+        TELEGRAM_CHAT_ID="$input_tg_chat"
+    fi
+
+    echo ""
+    echo -e "${BLUE}=== Дополнительные настройки ===${NC}"
+    echo ""
+
+    # Порты прокси
+    echo -e "${YELLOW}HTTP Proxy порт [3128]:${NC}"
+    read -r input_http_port
+    HTTP_PROXY_PORT="${input_http_port:-3128}"
+
+    echo ""
+    echo -e "${YELLOW}SOCKS5 Proxy порт [1080]:${NC}"
+    read -r input_socks_port
+    SOCKS_PROXY_PORT="${input_socks_port:-1080}"
+
+    # SSL сертификат
+    echo ""
+    echo -e "${YELLOW}Установить Let's Encrypt SSL? (y/n) [n]:${NC}"
+    read -r input_ssl
+    INSTALL_SSL="${input_ssl:-n}"
+
+    # Показываем итоговую конфигурацию
+    echo ""
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${GREEN}                    КОНФИГУРАЦИЯ                              ${NC}"
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+    echo -e "  ${BLUE}Server IP:${NC}        $SERVER_IP"
+    echo -e "  ${BLUE}Домен:${NC}            $DOMAIN"
+    echo -e "  ${BLUE}Admin email:${NC}      $ADMIN_EMAIL"
+    echo -e "  ${BLUE}Admin пароль:${NC}     $ADMIN_PASSWORD"
+    echo -e "  ${BLUE}HTTP Proxy:${NC}       $HTTP_PROXY_PORT"
+    echo -e "  ${BLUE}SOCKS5 Proxy:${NC}     $SOCKS_PROXY_PORT"
+    echo -e "  ${BLUE}Telegram:${NC}         $([ -n "$TELEGRAM_TOKEN" ] && echo "Да (Chat: $TELEGRAM_CHAT_ID)" || echo "Нет")"
+    echo -e "  ${BLUE}Let's Encrypt:${NC}    $([ "$INSTALL_SSL" = "y" ] && echo "Да" || echo "Нет")"
+    echo ""
+    echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
+    echo -e "${YELLOW}Всё верно? Начать установку? (y/n):${NC}"
     read -r confirm
     if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
         log_warn "Установка отменена"
         exit 0
+    fi
+}
+
+#===============================================================================
+# Исправление репозиториев (для проблемных версий Ubuntu)
+#===============================================================================
+fix_repositories() {
+    log_info "Проверка репозиториев..."
+
+    # Определяем версию Ubuntu
+    UBUNTU_CODENAME=$(lsb_release -cs 2>/dev/null || echo "unknown")
+    log_info "Версия Ubuntu: $UBUNTU_CODENAME"
+
+    # Если oracular или другая проблемная версия - исправляем на noble (24.04 LTS)
+    if [[ "$UBUNTU_CODENAME" == "oracular" ]] || grep -q "oracular" /etc/apt/sources.list 2>/dev/null; then
+        log_warn "Обнаружена проблемная версия Ubuntu. Переключаем на noble (24.04 LTS)..."
+
+        # Удаляем все старые источники
+        rm -f /etc/apt/sources.list.d/*.list 2>/dev/null || true
+        rm -f /etc/apt/sources.list.d/*.sources 2>/dev/null || true
+
+        # Создаём чистый sources.list
+        cat > /etc/apt/sources.list << 'EOFSOURCES'
+deb http://archive.ubuntu.com/ubuntu noble main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu noble-updates main restricted universe multiverse
+deb http://archive.ubuntu.com/ubuntu noble-backports main restricted universe multiverse
+deb http://security.ubuntu.com/ubuntu noble-security main restricted universe multiverse
+EOFSOURCES
+
+        log_success "Репозитории исправлены на noble"
     fi
 }
 
@@ -109,6 +214,9 @@ update_system() {
     log_info "Обновление системы..."
 
     export DEBIAN_FRONTEND=noninteractive
+
+    # Сначала исправляем репозитории если нужно
+    fix_repositories
 
     apt-get update -y
     apt-get upgrade -y
@@ -274,7 +382,7 @@ install_3proxy() {
     mkdir -p /var/log/3proxy
 
     # Базовый конфиг
-    cat > /etc/3proxy/3proxy.cfg << 'EOFPROXY'
+    cat > /etc/3proxy/3proxy.cfg << EOFPROXY
 daemon
 pidfile /var/run/3proxy.pid
 nserver 8.8.8.8
@@ -294,8 +402,8 @@ include /etc/3proxy/acl.cfg
 # Services
 auth strong
 allow *
-proxy -p3128
-socks -p1080
+proxy -p${HTTP_PROXY_PORT}
+socks -p${SOCKS_PROXY_PORT}
 EOFPROXY
 
     touch /etc/3proxy/users.cfg
@@ -371,8 +479,12 @@ API_HOST=0.0.0.0
 API_PORT=8000
 
 # Admin
-ADMIN_EMAIL=admin@${DOMAIN}
+ADMIN_EMAIL=${ADMIN_EMAIL}
 ADMIN_PASSWORD=${ADMIN_PASSWORD}
+
+# Proxy ports
+HTTP_PROXY_PORT=${HTTP_PROXY_PORT}
+SOCKS_PROXY_PORT=${SOCKS_PROXY_PORT}
 
 # Paths
 PROFILES_DIR=/var/lib/proxygate/profiles
@@ -633,6 +745,42 @@ create_directories() {
 }
 
 #===============================================================================
+# Установка Let's Encrypt SSL
+#===============================================================================
+install_letsencrypt() {
+    if [[ "$INSTALL_SSL" != "y" ]]; then
+        return
+    fi
+
+    # Проверяем что домен не IP
+    if [[ "$DOMAIN" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        log_warn "Let's Encrypt требует доменное имя, не IP. Пропускаем SSL."
+        return
+    fi
+
+    log_info "Установка Let's Encrypt SSL..."
+
+    apt-get install -y certbot python3-certbot-nginx
+
+    # Получаем сертификат
+    certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email "$ADMIN_EMAIL" --redirect || {
+        log_warn "Не удалось получить SSL сертификат. Проверьте DNS записи."
+        return
+    }
+
+    # Обновляем nginx конфиг с правильными путями
+    sed -i "s|/etc/nginx/ssl/selfsigned.crt|/etc/letsencrypt/live/${DOMAIN}/fullchain.pem|g" /etc/nginx/sites-available/proxygate
+    sed -i "s|/etc/nginx/ssl/selfsigned.key|/etc/letsencrypt/live/${DOMAIN}/privkey.pem|g" /etc/nginx/sites-available/proxygate
+
+    # Добавляем автообновление в cron
+    (crontab -l 2>/dev/null | grep -v certbot; echo "0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
+
+    nginx -t && systemctl reload nginx
+
+    log_success "Let's Encrypt SSL установлен"
+}
+
+#===============================================================================
 # Запуск сервисов
 #===============================================================================
 start_services() {
@@ -730,6 +878,7 @@ main() {
     configure_firewall
     setup_cron
     start_services
+    install_letsencrypt
 
     print_installation_info
 }
