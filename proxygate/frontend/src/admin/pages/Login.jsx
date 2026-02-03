@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Globe, AlertCircle } from 'lucide-react'
 import api from '../../api'
+import LanguageSwitcher from '../../shared/LanguageSwitcher'
 
 export default function AdminLogin() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [totpCode, setTotpCode] = useState('')
@@ -23,9 +26,9 @@ export default function AdminLogin() {
     } catch (err) {
       if (err.message.includes('TOTP')) {
         setShowTotp(true)
-        setError('Enter TOTP code')
+        setError(t('auth.enterTotpCode'))
       } else {
-        setError(err.message || 'Login failed')
+        setError(err.message || t('auth.loginFailed'))
       }
     } finally {
       setLoading(false)
@@ -35,12 +38,16 @@ export default function AdminLogin() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-600 to-purple-700 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
+        <div className="absolute top-4 right-4">
+          <LanguageSwitcher />
+        </div>
+
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
             <Globe className="w-8 h-8 text-primary-600" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">ProxyGate</h1>
-          <p className="text-gray-500 mt-1">Admin Panel</p>
+          <p className="text-gray-500 mt-1">{t('admin.panel')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -52,7 +59,7 @@ export default function AdminLogin() {
           )}
 
           <div>
-            <label className="label">Username</label>
+            <label className="label">{t('auth.username')}</label>
             <input
               type="text"
               className="input"
@@ -64,7 +71,7 @@ export default function AdminLogin() {
           </div>
 
           <div>
-            <label className="label">Password</label>
+            <label className="label">{t('auth.password')}</label>
             <input
               type="password"
               className="input"
@@ -76,7 +83,7 @@ export default function AdminLogin() {
 
           {showTotp && (
             <div>
-              <label className="label">TOTP Code</label>
+              <label className="label">{t('auth.totpCode')}</label>
               <input
                 type="text"
                 className="input"
@@ -93,7 +100,7 @@ export default function AdminLogin() {
             disabled={loading}
             className="btn btn-primary w-full py-3"
           >
-            {loading ? 'Signing in...' : 'Sign In'}
+            {loading ? t('auth.signingIn') : t('auth.login')}
           </button>
         </form>
       </div>

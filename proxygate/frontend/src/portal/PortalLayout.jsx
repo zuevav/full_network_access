@@ -1,17 +1,20 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Home, Smartphone, Globe, CreditCard, Settings, LogOut } from 'lucide-react'
 import api from '../api'
-
-const navItems = [
-  { path: '/my', icon: Home, label: 'Главная', exact: true },
-  { path: '/my/devices', icon: Smartphone, label: 'Устройства' },
-  { path: '/my/domains', icon: Globe, label: 'Мои сайты' },
-  { path: '/my/payments', icon: CreditCard, label: 'Платежи' },
-  { path: '/my/settings', icon: Settings, label: 'Настройки' },
-]
+import LanguageSwitcher from '../shared/LanguageSwitcher'
 
 export default function PortalLayout() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
+
+  const navItems = [
+    { path: '/my', icon: Home, label: t('portal.home'), exact: true },
+    { path: '/my/devices', icon: Smartphone, label: t('portal.devices') },
+    { path: '/my/domains', icon: Globe, label: t('portal.domains') },
+    { path: '/my/payments', icon: CreditCard, label: t('portal.payments') },
+    { path: '/my/settings', icon: Settings, label: t('portal.settings') },
+  ]
 
   const handleLogout = () => {
     api.clientLogout()
@@ -28,13 +31,16 @@ export default function PortalLayout() {
             </div>
             <span className="font-bold text-gray-900">ProxyGate</span>
           </div>
-          <button
-            onClick={handleLogout}
-            className="text-gray-500 hover:text-gray-700 flex items-center gap-1 text-sm"
-          >
-            <LogOut className="w-4 h-4" />
-            Выйти
-          </button>
+          <div className="flex items-center gap-2">
+            <LanguageSwitcher />
+            <button
+              onClick={handleLogout}
+              className="text-gray-500 hover:text-gray-700 flex items-center gap-1 text-sm"
+            >
+              <LogOut className="w-4 h-4" />
+              {t('auth.logout')}
+            </button>
+          </div>
         </div>
       </header>
 

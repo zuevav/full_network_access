@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { Globe, AlertCircle } from 'lucide-react'
 import api from '../../api'
+import LanguageSwitcher from '../../shared/LanguageSwitcher'
 
 export default function PortalLogin() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -19,7 +22,7 @@ export default function PortalLogin() {
       await api.clientLogin(username, password)
       navigate('/my')
     } catch (err) {
-      setError(err.message || 'Неверный логин или пароль')
+      setError(err.message || t('auth.loginFailed'))
     } finally {
       setLoading(false)
     }
@@ -27,13 +30,17 @@ export default function PortalLogin() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary-600 to-purple-700 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-8 relative">
+        <div className="absolute top-4 right-4">
+          <LanguageSwitcher />
+        </div>
+
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
             <Globe className="w-8 h-8 text-primary-600" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">ProxyGate</h1>
-          <p className="text-gray-500 mt-1">Личный кабинет</p>
+          <p className="text-gray-500 mt-1">{t('portal.title')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -45,7 +52,7 @@ export default function PortalLogin() {
           )}
 
           <div>
-            <label className="label">Логин</label>
+            <label className="label">{t('auth.username')}</label>
             <input
               type="text"
               className="input"
@@ -58,7 +65,7 @@ export default function PortalLogin() {
           </div>
 
           <div>
-            <label className="label">Пароль</label>
+            <label className="label">{t('auth.password')}</label>
             <input
               type="password"
               className="input"
@@ -73,13 +80,9 @@ export default function PortalLogin() {
             disabled={loading}
             className="btn btn-primary w-full py-3"
           >
-            {loading ? 'Вход...' : 'Войти'}
+            {loading ? t('auth.signingIn') : t('auth.login')}
           </button>
         </form>
-
-        <p className="text-center text-sm text-gray-500 mt-6">
-          Забыли пароль? Обратитесь к администратору.
-        </p>
       </div>
     </div>
   )

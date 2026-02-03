@@ -2,15 +2,18 @@
 set -e
 
 #===============================================================================
-# ProxyGate Auto-Installer v1.2
+# ProxyGate Auto-Installer v1.3
 # Полная автоматическая установка VPN/Proxy системы
 # Поддержка: Ubuntu 22.04 LTS, 24.04 LTS
 #
-# Исправления v1.2:
+# Исправления v1.3:
 # - Фикс pydantic версии (2.9.2 для совместимости с aiogram)
 # - Фикс bcrypt версии (4.0.1 для совместимости с passlib)
 # - Добавлен asyncpg для PostgreSQL
+# - Добавлен email-validator (требуется для pydantic EmailStr)
 # - Улучшен поиск директории проекта
+# - HTTP по умолчанию, SSL настраивается после установки
+# - Исправлено создание symlink для nginx
 #===============================================================================
 
 RED='\033[0;31m'
@@ -691,6 +694,12 @@ fix_requirements() {
         log_info "Добавлен bcrypt==4.0.1"
     fi
 
+    # Добавляем email-validator (требуется pydantic для EmailStr)
+    if ! grep -q "email-validator" "$req_file" 2>/dev/null; then
+        echo "email-validator==2.1.0" >> "$req_file"
+        log_info "Добавлен email-validator==2.1.0"
+    fi
+
     log_success "requirements.txt проверен"
 }
 
@@ -715,9 +724,12 @@ setup_python_env() {
     # Устанавливаем зависимости
     pip install -r requirements.txt
 
-    # Принудительно устанавливаем правильную версию bcrypt
+    # Принудительно устанавливаем правильные версии
     # (passlib 1.7.4 несовместим с bcrypt 5.x)
     pip install bcrypt==4.0.1
+
+    # email-validator требуется для pydantic EmailStr
+    pip install email-validator==2.1.0
 
     deactivate
 

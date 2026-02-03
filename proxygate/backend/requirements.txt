@@ -15,6 +15,7 @@ aiosqlite==0.20.0
 # Pydantic (ВАЖНО: aiogram требует <2.10)
 pydantic==2.9.2
 pydantic-settings==2.6.0
+email-validator==2.1.0
 
 # Security (ВАЖНО: bcrypt 4.0.1 для совместимости с passlib)
 python-jose[cryptography]==3.3.0

@@ -1,4 +1,5 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import {
   LayoutDashboard,
   Users,
@@ -10,18 +11,20 @@ import {
   Shield
 } from 'lucide-react'
 import api from '../api'
-
-const navItems = [
-  { path: '/admin', icon: LayoutDashboard, label: 'Dashboard', exact: true },
-  { path: '/admin/clients', icon: Users, label: 'Clients' },
-  { path: '/admin/templates', icon: FileText, label: 'Templates' },
-  { path: '/admin/domain-requests', icon: MessageSquare, label: 'Requests' },
-  { path: '/admin/security', icon: Shield, label: 'Security' },
-  { path: '/admin/settings', icon: Settings, label: 'Settings' },
-]
+import LanguageSwitcher from '../shared/LanguageSwitcher'
 
 export default function AdminLayout() {
   const navigate = useNavigate()
+  const { t } = useTranslation()
+
+  const navItems = [
+    { path: '/admin', icon: LayoutDashboard, label: t('admin.dashboard'), exact: true },
+    { path: '/admin/clients', icon: Users, label: t('admin.clients') },
+    { path: '/admin/templates', icon: FileText, label: t('admin.templates') },
+    { path: '/admin/domain-requests', icon: MessageSquare, label: t('admin.requests') },
+    { path: '/admin/security', icon: Shield, label: t('admin.security') },
+    { path: '/admin/settings', icon: Settings, label: t('admin.settings') },
+  ]
 
   const handleLogout = () => {
     api.adminLogout()
@@ -32,11 +35,14 @@ export default function AdminLayout() {
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-gray-200 flex flex-col">
         <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <Globe className="w-8 h-8 text-primary-600" />
-            <span className="text-xl font-bold text-gray-900">ProxyGate</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Globe className="w-8 h-8 text-primary-600" />
+              <span className="text-xl font-bold text-gray-900">ProxyGate</span>
+            </div>
+            <LanguageSwitcher />
           </div>
-          <p className="text-sm text-gray-500 mt-1">Admin Panel</p>
+          <p className="text-sm text-gray-500 mt-1">{t('admin.panel')}</p>
         </div>
 
         <nav className="flex-1 p-4">
@@ -68,7 +74,7 @@ export default function AdminLayout() {
             className="flex items-center gap-3 px-3 py-2 w-full text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
           >
             <LogOut className="w-5 h-5" />
-            <span>Logout</span>
+            <span>{t('auth.logout')}</span>
           </button>
         </div>
       </aside>
