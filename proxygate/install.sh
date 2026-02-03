@@ -2,9 +2,14 @@
 set -e
 
 #===============================================================================
-# ProxyGate Auto-Installer v1.4
+# ProxyGate Auto-Installer v1.5
 # Полная автоматическая установка VPN/Proxy системы
 # Поддержка: Ubuntu 22.04 LTS, 24.04 LTS
+#
+# Исправления v1.5:
+# - Добавлены certbot и rsync в базовые пакеты
+# - certbot нужен для веб-управления SSL сертификатами
+# - rsync нужен для системы обновлений
 #
 # Исправления v1.4:
 # - Добавлен git safe.directory для работы обновлений от root
@@ -310,7 +315,9 @@ install_base_packages() {
         libssl-dev \
         libffi-dev \
         openssl \
-        cron
+        cron \
+        rsync \
+        certbot
 
     log_success "Базовые пакеты установлены"
 }
