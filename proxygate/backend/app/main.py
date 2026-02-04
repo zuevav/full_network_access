@@ -6,6 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
 from app.database import init_db, close_db
 from app.api import api_router
+from app.api.system import get_app_version
 from app.middleware.security import SecurityMiddleware
 
 
@@ -22,7 +23,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="ProxyGate",
     description="VPN/Proxy Access Management System",
-    version="2.0.0",
+    version=get_app_version(),
     lifespan=lifespan
 )
 
@@ -45,7 +46,7 @@ app.include_router(api_router, prefix="/api")
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "ok", "version": "2.0.0"}
+    return {"status": "ok", "version": get_app_version()}
 
 
 @app.get("/")
@@ -53,6 +54,6 @@ async def root():
     """Root endpoint."""
     return {
         "name": "ProxyGate API",
-        "version": "2.0.0",
+        "version": get_app_version(),
         "docs": "/docs"
     }
