@@ -18,27 +18,15 @@ import {
 } from 'lucide-react'
 import api from '../../api'
 
-// Platform configuration
-const PLATFORMS = [
-  { id: 'ios', name: 'iPhone', icon: '📱', vpnProfile: '/api/portal/profiles/ios' },
-  { id: 'android', name: 'Android', icon: '🤖', vpnProfile: '/api/portal/profiles/android' },
-  { id: 'windows', name: 'Windows', icon: '🪟', vpnProfile: '/api/portal/profiles/windows' },
-  { id: 'macos', name: 'macOS', icon: '🍏', vpnProfile: '/api/portal/profiles/macos' },
-]
-
 // Modal for choosing VPN or Proxy
-function ConnectionTypeModal({ isOpen, onClose, platform, profileInfo, t }) {
+function ConnectionTypeModal({ isOpen, onClose, platform, profileInfo, t, downloadBase }) {
   if (!isOpen || !platform) return null
 
   const hasVpn = !!profileInfo?.vpn
   const hasProxy = !!profileInfo?.proxy
 
-  const handleClick = (e) => {
-    if (hasModal && onClick) {
-      e.preventDefault()
-      onClick()
-    }
-  }
+  // Build VPN profile URL using public endpoint
+  const vpnProfileUrl = `${downloadBase}/${platform.id}`
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -59,7 +47,7 @@ function ConnectionTypeModal({ isOpen, onClose, platform, profileInfo, t }) {
         <div className="space-y-3">
           {hasVpn && (
             <a
-              href={platform.vpnProfile}
+              href={vpnProfileUrl}
               className="flex items-center gap-4 p-4 bg-green-50 border-2 border-green-200 rounded-xl hover:border-green-400 transition-colors"
               onClick={onClose}
             >
@@ -87,7 +75,7 @@ function ConnectionTypeModal({ isOpen, onClose, platform, profileInfo, t }) {
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <a
-                  href="/api/portal/profiles/pac"
+                  href={`${downloadBase}/pac`}
                   className="btn btn-secondary btn-sm text-center"
                   onClick={onClose}
                 >
@@ -95,7 +83,7 @@ function ConnectionTypeModal({ isOpen, onClose, platform, profileInfo, t }) {
                   PAC
                 </a>
                 <a
-                  href="/api/portal/profiles/proxy-setup"
+                  href={`${downloadBase}/proxy-setup`}
                   className="btn btn-secondary btn-sm text-center"
                   onClick={onClose}
                 >
@@ -117,6 +105,14 @@ function ConnectionTypeModal({ isOpen, onClose, platform, profileInfo, t }) {
     </div>
   )
 }
+
+// Platform configuration
+const PLATFORMS = [
+  { id: 'ios', name: 'iPhone', icon: '📱' },
+  { id: 'android', name: 'Android', icon: '🤖' },
+  { id: 'windows', name: 'Windows', icon: '🪟' },
+  { id: 'macos', name: 'macOS', icon: '🍏' },
+]
 
 export default function PortalDevices() {
   const { t } = useTranslation()
@@ -146,6 +142,10 @@ export default function PortalDevices() {
   const hasVpn = !!profileInfo?.vpn
   const hasProxy = !!profileInfo?.proxy
   const hasBoth = hasVpn && hasProxy
+
+  // Use public download URLs with access_token (no auth headers needed for direct links)
+  const accessToken = profileInfo?.access_token
+  const downloadBase = accessToken ? `/api/download/${accessToken}` : '/api/portal/profiles'
 
   if (isLoading) {
     return (
@@ -252,8 +252,8 @@ export default function PortalDevices() {
                   // Show modal to choose
                   setSelectedPlatform(platform)
                 } else if (hasVpn) {
-                  // Direct VPN download
-                  window.location.href = platform.vpnProfile
+                  // Direct VPN download using public URL
+                  window.location.href = `${downloadBase}/${platform.id}`
                 } else if (hasProxy) {
                   // Show modal for proxy options
                   setSelectedPlatform(platform)
@@ -318,14 +318,14 @@ export default function PortalDevices() {
             <h3 className="text-sm font-medium text-gray-700">{t('portalDevices.proxySetupOptions')}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <a
-                href="/api/portal/profiles/pac"
+                href={`${downloadBase}/pac`}
                 className="btn btn-secondary flex items-center justify-center gap-2"
               >
                 <Download className="w-4 h-4" />
                 {t('portalDevices.downloadPac')}
               </a>
               <a
-                href="/api/portal/profiles/proxy-setup"
+                href={`${downloadBase}/proxy-setup`}
                 className="btn btn-secondary flex items-center justify-center gap-2"
               >
                 <Monitor className="w-4 h-4" />
@@ -392,6 +392,7 @@ export default function PortalDevices() {
         platform={selectedPlatform}
         profileInfo={profileInfo}
         t={t}
+        downloadBase={downloadBase}
       />
     </div>
   )
