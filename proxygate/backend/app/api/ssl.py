@@ -457,3 +457,135 @@ async def get_ssl_log(admin: CurrentAdmin):
         "is_processing": status_data.get("is_processing", False),
         "log": status_data.get("log", [])
     }
+
+
+@router.post("/enable-https")
+async def enable_https(admin: CurrentAdmin):
+    """Enable HTTPS by updating nginx configuration (certificate must already exist)."""
+    settings = load_ssl_settings()
+
+    if not settings or not settings.get("domain"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="SSL not configured. Set domain first."
+        )
+
+    domain = settings["domain"]
+    cert_exists, _ = check_certificate_exists(domain)
+
+    if not cert_exists:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Certificate not found. Obtain certificate first."
+        )
+
+    try:
+        # Generate nginx SSL config
+        nginx_ssl_config = f'''server {{
+    listen 80;
+    listen [::]:80;
+    server_name {domain};
+
+    location /.well-known/acme-challenge/ {{
+        root /var/www/proxygate;
+    }}
+
+    location / {{
+        return 301 https://$server_name$request_uri;
+    }}
+}}
+
+server {{
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name {domain};
+
+    ssl_certificate /etc/letsencrypt/live/{domain}/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/{domain}/privkey.pem;
+    ssl_session_timeout 1d;
+    ssl_session_cache shared:SSL:50m;
+    ssl_session_tickets off;
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+
+    add_header Strict-Transport-Security "max-age=63072000" always;
+
+    root /var/www/proxygate;
+    index index.html;
+
+    # API proxy
+    location /api {{
+        proxy_pass http://127.0.0.1:8000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }}
+
+    # SPA routing
+    location / {{
+        try_files $uri $uri/ /index.html;
+    }}
+}}
+'''
+
+        # Backup existing config
+        if NGINX_CONFIG_PATH.exists():
+            backup_path = NGINX_CONFIG_PATH.with_suffix('.bak')
+            subprocess.run(["/usr/bin/cp", str(NGINX_CONFIG_PATH), str(backup_path)], capture_output=True)
+
+        # Write new config
+        with open(NGINX_CONFIG_PATH, 'w') as f:
+            f.write(nginx_ssl_config)
+
+        # Test nginx configuration
+        result = subprocess.run(
+            ["/usr/sbin/nginx", "-t"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            # Restore backup on failure
+            backup_path = NGINX_CONFIG_PATH.with_suffix('.bak')
+            if backup_path.exists():
+                subprocess.run(["/usr/bin/cp", str(backup_path), str(NGINX_CONFIG_PATH)], capture_output=True)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Nginx config test failed: {result.stderr}"
+            )
+
+        # Reload nginx
+        result = subprocess.run(
+            ["/usr/bin/systemctl", "reload", "nginx"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to reload nginx: {result.stderr}"
+            )
+
+        return {
+            "success": True,
+            "message": f"HTTPS enabled! Site now available at https://{domain}",
+            "https_url": f"https://{domain}"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to enable HTTPS: {str(e)}"
+        )
