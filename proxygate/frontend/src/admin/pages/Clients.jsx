@@ -12,7 +12,7 @@ import {
 } from 'lucide-react'
 import api from '../../api'
 
-function NewClientModal({ isOpen, onClose, onSuccess }) {
+function NewClientModal({ isOpen, onClose, onSuccess, t }) {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [phone, setPhone] = useState('')
@@ -45,7 +45,7 @@ function NewClientModal({ isOpen, onClose, onSuccess }) {
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
       <div className="bg-white rounded-xl w-full max-w-md p-6 m-4">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">New Client</h2>
+          <h2 className="text-xl font-semibold">{t('clients.newClient')}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="w-5 h-5" />
           </button>
@@ -57,7 +57,7 @@ function NewClientModal({ isOpen, onClose, onSuccess }) {
           )}
 
           <div>
-            <label className="label">Name *</label>
+            <label className="label">{t('clients.name')} *</label>
             <input
               type="text"
               className="input"
@@ -68,7 +68,7 @@ function NewClientModal({ isOpen, onClose, onSuccess }) {
           </div>
 
           <div>
-            <label className="label">Email</label>
+            <label className="label">{t('clients.email')}</label>
             <input
               type="email"
               className="input"
@@ -78,7 +78,7 @@ function NewClientModal({ isOpen, onClose, onSuccess }) {
           </div>
 
           <div>
-            <label className="label">Phone</label>
+            <label className="label">{t('clients.phone')}</label>
             <input
               type="text"
               className="input"
@@ -88,24 +88,24 @@ function NewClientModal({ isOpen, onClose, onSuccess }) {
           </div>
 
           <div>
-            <label className="label">Service Type</label>
+            <label className="label">{t('clients.serviceType')}</label>
             <select
               className="input"
               value={serviceType}
               onChange={(e) => setServiceType(e.target.value)}
             >
-              <option value="both">VPN + Proxy</option>
-              <option value="vpn">VPN Only</option>
-              <option value="proxy">Proxy Only</option>
+              <option value="both">{t('clients.vpnAndProxy')}</option>
+              <option value="vpn">{t('clients.vpnOnly')}</option>
+              <option value="proxy">{t('clients.proxyOnly')}</option>
             </select>
           </div>
 
           <div className="flex gap-3">
             <button type="button" onClick={onClose} className="btn btn-secondary flex-1">
-              Cancel
+              {t('common.cancel')}
             </button>
             <button type="submit" disabled={loading} className="btn btn-primary flex-1">
-              {loading ? 'Creating...' : 'Create'}
+              {loading ? t('clients.creating') : t('clients.create')}
             </button>
           </div>
         </form>
@@ -133,13 +133,13 @@ export default function Clients() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Clients</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('clients.title')}</h1>
         <button
           onClick={() => setShowModal(true)}
           className="btn btn-primary flex items-center gap-2"
         >
           <Plus className="w-5 h-5" />
-          New Client
+          {t('clients.newClient')}
         </button>
       </div>
 
@@ -175,11 +175,11 @@ export default function Clients() {
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
-              <th className="text-left p-4 font-medium text-gray-600">Name</th>
-              <th className="text-left p-4 font-medium text-gray-600">Status</th>
-              <th className="text-left p-4 font-medium text-gray-600">Service</th>
-              <th className="text-left p-4 font-medium text-gray-600">Domains</th>
-              <th className="text-left p-4 font-medium text-gray-600">Valid Until</th>
+              <th className="text-left p-4 font-medium text-gray-600">{t('clients.name')}</th>
+              <th className="text-left p-4 font-medium text-gray-600">{t('common.status')}</th>
+              <th className="text-left p-4 font-medium text-gray-600">{t('clients.service')}</th>
+              <th className="text-left p-4 font-medium text-gray-600">{t('clients.domains')}</th>
+              <th className="text-left p-4 font-medium text-gray-600">{t('clients.validUntil')}</th>
               <th className="p-4"></th>
             </tr>
           </thead>
@@ -187,13 +187,13 @@ export default function Clients() {
             {isLoading ? (
               <tr>
                 <td colSpan={6} className="p-8 text-center text-gray-500">
-                  Loading...
+                  {t('common.loading')}
                 </td>
               </tr>
             ) : data?.items?.length === 0 ? (
               <tr>
                 <td colSpan={6} className="p-8 text-center text-gray-500">
-                  No clients found
+                  {t('clients.noClients')}
                 </td>
               </tr>
             ) : (
@@ -211,12 +211,12 @@ export default function Clients() {
                     {client.is_active ? (
                       <span className="inline-flex items-center gap-1 text-green-600">
                         <CheckCircle className="w-4 h-4" />
-                        Active
+                        {t('common.active')}
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 text-red-600">
                         <XCircle className="w-4 h-4" />
-                        Inactive
+                        {t('common.inactive')}
                       </span>
                     )}
                   </td>
@@ -228,7 +228,7 @@ export default function Clients() {
                   <td className="p-4 text-gray-600">{client.domains_count}</td>
                   <td className="p-4 text-gray-600">
                     {client.valid_until
-                      ? new Date(client.valid_until).toLocaleDateString('ru')
+                      ? new Date(client.valid_until).toLocaleDateString()
                       : '-'
                     }
                   </td>
@@ -251,6 +251,7 @@ export default function Clients() {
         isOpen={showModal}
         onClose={() => setShowModal(false)}
         onSuccess={handleSuccess}
+        t={t}
       />
     </div>
   )

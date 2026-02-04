@@ -1,9 +1,10 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { CheckCircle, XCircle, Clock, X } from 'lucide-react'
 import api from '../../api'
 
-function ActionModal({ isOpen, onClose, request, action, onSuccess }) {
+function ActionModal({ isOpen, onClose, request, action, onSuccess, t }) {
   const [comment, setComment] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -33,7 +34,7 @@ function ActionModal({ isOpen, onClose, request, action, onSuccess }) {
       <div className="bg-white rounded-xl w-full max-w-md p-6 m-4">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">
-            {action === 'approve' ? 'Approve Request' : 'Reject Request'}
+            {action === 'approve' ? t('domainRequests.approveRequest') : t('domainRequests.rejectRequest')}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="w-5 h-5" />
@@ -41,11 +42,11 @@ function ActionModal({ isOpen, onClose, request, action, onSuccess }) {
         </div>
 
         <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-          <p className="text-sm text-gray-500">Domain</p>
+          <p className="text-sm text-gray-500">{t('domainRequests.domain')}</p>
           <p className="font-medium">{request?.domain}</p>
           {request?.reason && (
             <>
-              <p className="text-sm text-gray-500 mt-2">Reason</p>
+              <p className="text-sm text-gray-500 mt-2">{t('domainRequests.reason')}</p>
               <p className="text-gray-700">{request.reason}</p>
             </>
           )}
@@ -54,27 +55,27 @@ function ActionModal({ isOpen, onClose, request, action, onSuccess }) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="label">
-              Comment {action === 'reject' && '*'}
+              {t('domainRequests.comment')} {action === 'reject' && '*'}
             </label>
             <textarea
               className="input min-h-[100px]"
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder={action === 'approve' ? 'Optional comment' : 'Reason for rejection'}
+              placeholder={action === 'approve' ? t('domainRequests.optionalComment') : t('domainRequests.rejectReason')}
               required={action === 'reject'}
             />
           </div>
 
           <div className="flex gap-3">
             <button type="button" onClick={onClose} className="btn btn-secondary flex-1">
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={loading}
               className={`btn flex-1 ${action === 'approve' ? 'btn-primary' : 'btn-danger'}`}
             >
-              {loading ? 'Processing...' : action === 'approve' ? 'Approve' : 'Reject'}
+              {loading ? t('domainRequests.processing') : action === 'approve' ? t('domainRequests.approve') : t('domainRequests.reject')}
             </button>
           </div>
         </form>
@@ -84,6 +85,7 @@ function ActionModal({ isOpen, onClose, request, action, onSuccess }) {
 }
 
 export default function DomainRequests() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [filter, setFilter] = useState('pending')
   const [showModal, setShowModal] = useState(false)
@@ -118,10 +120,23 @@ export default function DomainRequests() {
     }
   }
 
+  const getStatusLabel = (status) => {
+    switch (status) {
+      case 'pending':
+        return t('domainRequests.pending')
+      case 'approved':
+        return t('domainRequests.approved')
+      case 'rejected':
+        return t('domainRequests.rejected')
+      default:
+        return status
+    }
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Domain Requests</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('domainRequests.title')}</h1>
       </div>
 
       {/* Filter tabs */}
@@ -136,7 +151,7 @@ export default function DomainRequests() {
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            {status === '' ? 'All' : status.charAt(0).toUpperCase() + status.slice(1)}
+            {status === '' ? t('common.all') : getStatusLabel(status)}
           </button>
         ))}
       </div>
@@ -146,11 +161,11 @@ export default function DomainRequests() {
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
-              <th className="text-left p-4 font-medium text-gray-600">Client</th>
-              <th className="text-left p-4 font-medium text-gray-600">Domain</th>
-              <th className="text-left p-4 font-medium text-gray-600">Reason</th>
-              <th className="text-left p-4 font-medium text-gray-600">Status</th>
-              <th className="text-left p-4 font-medium text-gray-600">Date</th>
+              <th className="text-left p-4 font-medium text-gray-600">{t('domainRequests.clientName')}</th>
+              <th className="text-left p-4 font-medium text-gray-600">{t('domainRequests.domain')}</th>
+              <th className="text-left p-4 font-medium text-gray-600">{t('domainRequests.reason')}</th>
+              <th className="text-left p-4 font-medium text-gray-600">{t('domainRequests.status')}</th>
+              <th className="text-left p-4 font-medium text-gray-600">{t('common.date')}</th>
               <th className="p-4"></th>
             </tr>
           </thead>
@@ -158,13 +173,13 @@ export default function DomainRequests() {
             {isLoading ? (
               <tr>
                 <td colSpan={6} className="p-8 text-center text-gray-500">
-                  Loading...
+                  {t('common.loading')}
                 </td>
               </tr>
             ) : requests?.length === 0 ? (
               <tr>
                 <td colSpan={6} className="p-8 text-center text-gray-500">
-                  No requests found
+                  {t('domainRequests.noRequests')}
                 </td>
               </tr>
             ) : (
@@ -178,11 +193,11 @@ export default function DomainRequests() {
                   <td className="p-4">
                     <span className="inline-flex items-center gap-1">
                       {getStatusIcon(request.status)}
-                      {request.status}
+                      {getStatusLabel(request.status)}
                     </span>
                   </td>
                   <td className="p-4 text-gray-500">
-                    {new Date(request.created_at).toLocaleDateString('ru')}
+                    {new Date(request.created_at).toLocaleDateString()}
                   </td>
                   <td className="p-4">
                     {request.status === 'pending' && (
@@ -190,14 +205,14 @@ export default function DomainRequests() {
                         <button
                           onClick={() => handleAction(request, 'approve')}
                           className="p-2 text-green-600 hover:bg-green-50 rounded"
-                          title="Approve"
+                          title={t('domainRequests.approve')}
                         >
                           <CheckCircle className="w-5 h-5" />
                         </button>
                         <button
                           onClick={() => handleAction(request, 'reject')}
                           className="p-2 text-red-600 hover:bg-red-50 rounded"
-                          title="Reject"
+                          title={t('domainRequests.reject')}
                         >
                           <XCircle className="w-5 h-5" />
                         </button>
@@ -222,6 +237,7 @@ export default function DomainRequests() {
         request={selectedRequest}
         action={action}
         onSuccess={handleSuccess}
+        t={t}
       />
     </div>
   )

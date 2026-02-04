@@ -96,7 +96,17 @@
     "copyCode": "Копировать код",
     "expiresIn": "Истекает через {{days}} дней",
     "expired": "Истек",
-    "addDomainPlaceholder": "Добавить домен (например example.com)"
+    "addDomainPlaceholder": "Добавить домен (например example.com)",
+    "newClient": "Новый клиент",
+    "name": "Имя",
+    "phone": "Телефон",
+    "serviceType": "Тип услуги",
+    "vpnAndProxy": "VPN + Прокси",
+    "vpnOnly": "Только VPN",
+    "proxyOnly": "Только прокси",
+    "creating": "Создание...",
+    "create": "Создать",
+    "service": "Услуга"
   },
   "templates": {
     "title": "Шаблоны доменов",
@@ -123,7 +133,15 @@
     "reject": "Отклонить",
     "noRequests": "Нет заявок на домены",
     "requestApproved": "Заявка одобрена",
-    "requestRejected": "Заявка отклонена"
+    "requestRejected": "Заявка отклонена",
+    "approveRequest": "Одобрить заявку",
+    "rejectRequest": "Отклонить заявку",
+    "reason": "Причина",
+    "comment": "Комментарий",
+    "optionalComment": "Комментарий (необязательно)",
+    "rejectReason": "Причина отклонения",
+    "processing": "Обработка...",
+    "status": "Статус"
   },
   "security": {
     "title": "Безопасность",
@@ -364,7 +382,18 @@
     "tokenHint": "Токену нужны права 'repo'",
     "createToken": "Создать токен",
     "configured": "Настроено",
-    "notConfigured": "Не настроено"
+    "notConfigured": "Не настроено",
+    "systemStatus": "Статус системы",
+    "unknown": "Неизвестно",
+    "serviceRestarting": "Сервис перезагружается...",
+    "updateFailed": "Ошибка обновления",
+    "updateLog": "Журнал обновления",
+    "reconnecting": "Переподключение к серверу...",
+    "startingUpdate": "Запуск обновления...",
+    "serviceRestartingWait": "Сервис перезагружается... Пожалуйста, подождите.",
+    "updateSuccess": "Обновление успешно завершено. Обновите страницу для просмотра новой версии.",
+    "confirmUpdate": "Вы уверены, что хотите обновить? Система будет перезагружена.",
+    "githubApiActive": "GitHub API активен"
   },
   "errors": {
     "networkError": "Ошибка сети. Проверьте подключение.",

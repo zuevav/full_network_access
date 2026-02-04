@@ -60,13 +60,13 @@ function SettingsCard({ onSettingsSaved }) {
     <div className="card p-6">
       <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
         <Github className="w-5 h-5" />
-        GitHub {t('settings.title')}
+        {t('updates.githubSettings')}
       </h3>
 
       {settings?.configured && (
         <div className="mb-4 p-3 bg-green-50 text-green-700 rounded-lg flex items-center gap-2">
           <CheckCircle className="w-4 h-4" />
-          <span>GitHub API {t('common.active')}</span>
+          <span>{t('updates.githubApiActive')}</span>
         </div>
       )}
 
@@ -81,7 +81,7 @@ function SettingsCard({ onSettingsSaved }) {
         )}
 
         <div>
-          <label className="label">GitHub Personal Access Token</label>
+          <label className="label">{t('updates.githubToken')}</label>
           <div className="relative">
             <input
               type={showToken ? 'text' : 'password'}
@@ -99,12 +99,12 @@ function SettingsCard({ onSettingsSaved }) {
             </button>
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            Token needs 'repo' scope. <a href="https://github.com/settings/tokens" target="_blank" rel="noopener" className="text-primary-600 hover:underline">Create token</a>
+            {t('updates.tokenHint')}. <a href="https://github.com/settings/tokens" target="_blank" rel="noopener" className="text-primary-600 hover:underline">{t('updates.createToken')}</a>
           </p>
         </div>
 
         <div>
-          <label className="label">Repository</label>
+          <label className="label">{t('updates.repository')}</label>
           <input
             type="text"
             className="input"
@@ -115,7 +115,7 @@ function SettingsCard({ onSettingsSaved }) {
         </div>
 
         <div>
-          <label className="label">Branch</label>
+          <label className="label">{t('updates.branch')}</label>
           <input
             type="text"
             className="input"
@@ -194,7 +194,7 @@ function UpdateStatusCard({ onCheckUpdates }) {
   }
 
   const handleApplyUpdates = () => {
-    if (confirm('Are you sure you want to update? The system will restart.')) {
+    if (confirm(t('updates.confirmUpdate'))) {
       applyMutation.mutate()
     }
   }
@@ -205,20 +205,20 @@ function UpdateStatusCard({ onCheckUpdates }) {
       <div className="card p-6">
         <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <GitBranch className="w-5 h-5" />
-          System Status
+          {t('updates.systemStatus')}
         </h3>
 
         <div className="space-y-3">
           <div className="flex justify-between items-center">
-            <span className="text-gray-500">Current Version</span>
+            <span className="text-gray-500">{t('updates.currentVersion')}</span>
             <code className="px-2 py-1 bg-gray-100 rounded text-sm">
-              {status?.current_commit || 'Unknown'}
+              {status?.current_commit || t('updates.unknown')}
             </code>
           </div>
 
           {status?.last_check && (
             <div className="flex justify-between items-center">
-              <span className="text-gray-500">Last Check</span>
+              <span className="text-gray-500">{t('updates.lastCheck')}</span>
               <span className="text-sm text-gray-700">
                 {new Date(status.last_check).toLocaleString()}
               </span>
@@ -227,7 +227,7 @@ function UpdateStatusCard({ onCheckUpdates }) {
 
           {status?.last_update && (
             <div className="flex justify-between items-center">
-              <span className="text-gray-500">Last Update</span>
+              <span className="text-gray-500">{t('updates.lastUpdate')}</span>
               <span className="text-sm text-gray-700">
                 {new Date(status.last_update).toLocaleString()}
               </span>
@@ -246,7 +246,7 @@ function UpdateStatusCard({ onCheckUpdates }) {
             ) : (
               <RefreshCw className="w-4 h-4 mr-2" />
             )}
-            Check for Updates
+            {t('updates.checkForUpdates')}
           </button>
         </div>
 
@@ -265,12 +265,12 @@ function UpdateStatusCard({ onCheckUpdates }) {
             {updateCheck.has_updates ? (
               <span className="flex items-center gap-2 text-primary-600">
                 <Download className="w-5 h-5" />
-                Updates Available
+                {t('updates.updatesAvailable')}
               </span>
             ) : (
               <span className="flex items-center gap-2 text-green-600">
                 <CheckCircle className="w-5 h-5" />
-                System Up to Date
+                {t('updates.systemUpToDate')}
               </span>
             )}
           </h3>
@@ -278,12 +278,12 @@ function UpdateStatusCard({ onCheckUpdates }) {
           {updateCheck.has_updates && (
             <>
               <p className="text-gray-600 mb-4">
-                You are <strong>{updateCheck.commits_behind}</strong> commit(s) behind.
+                {t('updates.commitsBehind', { count: updateCheck.commits_behind })}
               </p>
 
               {updateCheck.recent_commits?.length > 0 && (
                 <div className="mb-4">
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Recent Changes:</h4>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">{t('updates.recentChanges')}:</h4>
                   <ul className="space-y-2">
                     {updateCheck.recent_commits.map((commit) => (
                       <li key={commit.sha} className="text-sm border-l-2 border-gray-200 pl-3">
@@ -311,7 +311,7 @@ function UpdateStatusCard({ onCheckUpdates }) {
                 ) : (
                   <Download className="w-4 h-4 mr-2" />
                 )}
-                Apply Updates
+                {t('updates.applyUpdates')}
               </button>
             </>
           )}
@@ -341,27 +341,27 @@ function UpdateStatusCard({ onCheckUpdates }) {
             {status?.is_updating ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Update In Progress
+                {t('updates.updateInProgress')}
               </>
             ) : statusError && updateStarted ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                Service Restarting...
+                {t('updates.serviceRestarting')}
               </>
             ) : status?.update_log?.some(l => l.includes('ERROR')) ? (
               <>
                 <AlertCircle className="w-5 h-5" />
-                Update Failed
+                {t('updates.updateFailed')}
               </>
             ) : status?.update_log?.some(l => l.includes('COMPLETE')) ? (
               <>
                 <CheckCircle className="w-5 h-5" />
-                Update Complete
+                {t('updates.updateComplete')}
               </>
             ) : (
               <>
                 <Clock className="w-5 h-5" />
-                Update Log
+                {t('updates.updateLog')}
               </>
             )}
           </h3>
@@ -380,23 +380,23 @@ function UpdateStatusCard({ onCheckUpdates }) {
                 </div>
               ))
             ) : statusError && updateStarted ? (
-              <div className="text-yellow-400">Reconnecting to server...</div>
+              <div className="text-yellow-400">{t('updates.reconnecting')}</div>
             ) : (
-              <div>Starting update...</div>
+              <div>{t('updates.startingUpdate')}</div>
             )}
           </div>
 
           {status?.is_updating ? (
             <p className="text-sm text-gray-500 mt-4">
-              Please wait. Do not close this page.
+              {t('updates.pleaseWait')}
             </p>
           ) : statusError && updateStarted ? (
             <p className="text-sm text-yellow-600 mt-4">
-              Service is restarting... Please wait.
+              {t('updates.serviceRestartingWait')}
             </p>
           ) : status?.update_log?.some(l => l.includes('COMPLETE')) ? (
             <p className="text-sm text-green-600 mt-4">
-              Update completed successfully. Refresh the page to see the new version.
+              {t('updates.updateSuccess')}
             </p>
           ) : null}
         </div>
@@ -415,7 +415,7 @@ export default function Updates() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">System Updates</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('updates.title')}</h1>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
