@@ -165,7 +165,14 @@
     "allowedIps": "Password-free Access (by IP)",
     "allowedIpsPlaceholder": "192.168.1.100\n10.0.0.0/24",
     "allowedIpsHint": "IP addresses that can use proxy without authentication (office IPs). One per line.",
-    "noAllowedIps": "Password authentication for all IPs"
+    "noAllowedIps": "Password authentication for all IPs",
+    "analyzing": "Analyzing...",
+    "relatedDomainsFound": "Related domains found",
+    "relatedDomainsDescription": "Domain {{domain}} uses additional domains. Would you like to add them too?",
+    "redirectDomains": "Redirects",
+    "resourceDomains": "Resources (CDN, API)",
+    "addWithSelected": "Add selected",
+    "addOnlyOriginal": "Only original"
   },
   "templates": {
     "title": "Domain Templates",
