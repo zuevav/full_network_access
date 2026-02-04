@@ -162,19 +162,19 @@ async def client_connect_page(
 
         <div class="section-title">Быстрое скачивание</div>
         <div class="download-grid">
-            <a href="/download/{access_token}/ios" class="download-btn">
+            <a href="/api/download/{access_token}/ios" class="download-btn">
                 <span class="download-icon">📱</span>
                 <span>iPhone</span>
             </a>
-            <a href="/download/{access_token}/android" class="download-btn">
+            <a href="/api/download/{access_token}/android" class="download-btn">
                 <span class="download-icon">🤖</span>
                 <span>Android</span>
             </a>
-            <a href="/download/{access_token}/windows" class="download-btn">
+            <a href="/api/download/{access_token}/windows" class="download-btn">
                 <span class="download-icon">🪟</span>
                 <span>Windows</span>
             </a>
-            <a href="/download/{access_token}/macos" class="download-btn">
+            <a href="/api/download/{access_token}/macos" class="download-btn">
                 <span class="download-icon">🍏</span>
                 <span>macOS</span>
             </a>
@@ -186,7 +186,7 @@ async def client_connect_page(
             <p>Адрес: <code>{proxy_host}:{http_port}</code></p>
             <p>Логин: <code>{client.proxy_account.username}</code></p>
             <p>Пароль: <code>{client.proxy_account.password_plain}</code></p>
-            <p><a href="/download/{access_token}/pac">⬇ Скачать PAC-файл</a></p>
+            <p><a href="/api/download/{access_token}/pac">⬇ Скачать PAC-файл</a></p>
         </div>
         '''}
 

@@ -332,6 +332,8 @@
     "proxyDescription": "Если VPN не подходит, настройте прокси в браузере или системе.",
     "downloadPac": "Скачать PAC-файл",
     "pacDescription": "PAC автоматически направляет нужные сайты через прокси",
+    "noServicesTitle": "Сервисы не настроены",
+    "noServicesDescription": "Обратитесь к администратору для настройки VPN или Proxy доступа.",
     "devices": {
       "iphone": {
         "title": "iPhone / iPad",
