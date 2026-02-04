@@ -59,7 +59,8 @@ async def get_profile_info(
     return PortalProfileInfoResponse(
         vpn=vpn_info,
         proxy=proxy_info,
-        pac_url=pac_url
+        pac_url=pac_url,
+        access_token=client.access_token
     )
 
 

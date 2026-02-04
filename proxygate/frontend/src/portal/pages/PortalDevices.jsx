@@ -20,8 +20,11 @@ import {
 import api from '../../api'
 
 // Modal for iOS profile type selection
-function IOSProfileModal({ isOpen, onClose, t }) {
+function IOSProfileModal({ isOpen, onClose, t, accessToken }) {
   if (!isOpen) return null
+
+  // Use public download URLs with access_token (no auth headers needed)
+  const baseUrl = accessToken ? `/api/download/${accessToken}/ios` : '/api/portal/profiles/ios'
 
   const options = [
     {
@@ -29,7 +32,7 @@ function IOSProfileModal({ isOpen, onClose, t }) {
       icon: <Zap className="w-6 h-6 text-yellow-500" />,
       title: t('portalDevices.iosOptions.ondemand.title', 'VPN по требованию'),
       description: t('portalDevices.iosOptions.ondemand.description', 'Подключается автоматически только при открытии нужных сайтов. Экономит батарею.'),
-      url: '/api/portal/profiles/ios?mode=ondemand',
+      url: `${baseUrl}?mode=ondemand`,
       recommended: true
     },
     {
@@ -37,14 +40,14 @@ function IOSProfileModal({ isOpen, onClose, t }) {
       icon: <Shield className="w-6 h-6 text-green-500" />,
       title: t('portalDevices.iosOptions.always.title', 'VPN всегда включён'),
       description: t('portalDevices.iosOptions.always.description', 'Постоянное подключение. Только трафик к нужным сайтам идёт через VPN.'),
-      url: '/api/portal/profiles/ios?mode=always'
+      url: `${baseUrl}?mode=always`
     },
     {
       id: 'full',
       icon: <Globe className="w-6 h-6 text-blue-500" />,
       title: t('portalDevices.iosOptions.full.title', 'Полный VPN'),
       description: t('portalDevices.iosOptions.full.description', 'Весь трафик через VPN. Максимальная защита, но больше расход батареи.'),
-      url: '/api/portal/profiles/ios?mode=full'
+      url: `${baseUrl}?mode=full`
     }
   ]
 
@@ -187,12 +190,16 @@ export default function PortalDevices() {
     return Array.isArray(result) ? result : []
   }
 
+  // Use public download URLs with access_token (no auth headers needed for direct links)
+  const accessToken = profileInfo?.access_token
+  const downloadBase = accessToken ? `/api/download/${accessToken}` : '/api/portal/profiles'
+
   const devices = [
     {
       icon: Smartphone,
       title: safeT('portalDevices.devices.iphone.title', 'iPhone / iPad'),
       description: safeT('portalDevices.devices.iphone.description', 'Automatic setup'),
-      profileUrl: '/api/portal/profiles/ios',
+      profileUrl: `${downloadBase}/ios`,
       instructions: safeArrayT('portalDevices.devices.iphone.instructions'),
       hasModal: true,
       onClick: () => setShowIOSModal(true),
@@ -201,21 +208,21 @@ export default function PortalDevices() {
       icon: <span className="text-2xl">🤖</span>,
       title: safeT('portalDevices.devices.android.title', 'Android'),
       description: safeT('portalDevices.devices.android.description', 'Requires strongSwan app'),
-      profileUrl: '/api/portal/profiles/android',
+      profileUrl: `${downloadBase}/android`,
       instructions: safeArrayT('portalDevices.devices.android.instructions'),
     },
     {
       icon: Monitor,
       title: safeT('portalDevices.devices.windows.title', 'Windows 10/11'),
       description: safeT('portalDevices.devices.windows.description', 'Automatic setup'),
-      profileUrl: '/api/portal/profiles/windows',
+      profileUrl: `${downloadBase}/windows`,
       instructions: safeArrayT('portalDevices.devices.windows.instructions'),
     },
     {
       icon: <span className="text-2xl">🍏</span>,
       title: safeT('portalDevices.devices.macos.title', 'macOS'),
       description: safeT('portalDevices.devices.macos.description', 'Profile for Mac'),
-      profileUrl: '/api/portal/profiles/macos',
+      profileUrl: `${downloadBase}/macos`,
       instructions: safeArrayT('portalDevices.devices.macos.instructions'),
       hasModal: true,
       onClick: () => setShowIOSModal(true),
@@ -420,14 +427,14 @@ export default function PortalDevices() {
             <h3 className="text-sm font-medium text-gray-700">{t('portalDevices.proxySetupOptions')}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <a
-                href="/api/portal/profiles/pac"
+                href={`${downloadBase}/pac`}
                 className="btn btn-secondary flex items-center justify-center gap-2"
               >
                 <Download className="w-4 h-4" />
                 {t('portalDevices.downloadPac')}
               </a>
               <a
-                href="/api/portal/profiles/proxy-setup"
+                href={`${downloadBase}/proxy-setup`}
                 className="btn btn-secondary flex items-center justify-center gap-2"
               >
                 <Monitor className="w-4 h-4" />
@@ -446,6 +453,7 @@ export default function PortalDevices() {
         isOpen={showIOSModal}
         onClose={() => setShowIOSModal(false)}
         t={t}
+        accessToken={accessToken}
       />
     </div>
   )

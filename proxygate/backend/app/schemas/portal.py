@@ -81,6 +81,7 @@ class PortalProfileInfoResponse(BaseModel):
     vpn: Optional[VpnInfo]
     proxy: Optional[ProxyInfo]
     pac_url: Optional[str]
+    access_token: Optional[str]  # For public download links
 
 
 class ChangePasswordRequest(BaseModel):

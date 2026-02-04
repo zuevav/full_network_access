@@ -505,3 +505,125 @@ async def get_pac_file(
         content=content,
         media_type="application/x-ns-proxy-autoconfig"
     )
+
+
+@router.get("/download/{access_token}/proxy-setup")
+async def download_proxy_setup_public(
+    access_token: str,
+    db: DBSession
+):
+    """Download Windows proxy setup PowerShell script by access token."""
+    result = await db.execute(
+        select(Client)
+        .options(selectinload(Client.proxy_account))
+        .where(Client.access_token == access_token)
+    )
+    client = result.scalar_one_or_none()
+
+    if client is None or client.proxy_account is None:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    domain = get_configured_domain()
+    http_port, _ = get_configured_ports()
+    pac_url = f"https://{domain}/pac/{client.access_token}"
+
+    script = f'''# ZETIT FNA - Windows Proxy Setup Script
+# Run as Administrator
+
+param(
+    [switch]$UsePAC,
+    [switch]$UseManual,
+    [switch]$Disable
+)
+
+$ErrorActionPreference = "Stop"
+
+# Proxy settings
+$ProxyServer = "{domain}:{http_port}"
+$PacUrl = "{pac_url}"
+$Username = "{client.proxy_account.username}"
+
+Write-Host "ZETIT FNA - Proxy Setup" -ForegroundColor Cyan
+Write-Host "========================" -ForegroundColor Cyan
+Write-Host ""
+
+if ($Disable) {{
+    Write-Host "Disabling proxy..." -ForegroundColor Yellow
+
+    # Disable proxy in registry
+    Set-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" -Name ProxyEnable -Value 0
+    Set-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" -Name AutoConfigURL -Value ""
+
+    # Refresh Internet settings
+    $signature = @"
+[DllImport("wininet.dll", SetLastError = true, CharSet=CharSet.Auto)]
+public static extern bool InternetSetOption(IntPtr hInternet, int dwOption, IntPtr lpBuffer, int dwBufferLength);
+"@
+    $type = Add-Type -MemberDefinition $signature -Name WinInet -Namespace Win32API -PassThru
+    $INTERNET_OPTION_SETTINGS_CHANGED = 39
+    $INTERNET_OPTION_REFRESH = 37
+    [Win32API.WinInet]::InternetSetOption([IntPtr]::Zero, $INTERNET_OPTION_SETTINGS_CHANGED, [IntPtr]::Zero, 0) | Out-Null
+    [Win32API.WinInet]::InternetSetOption([IntPtr]::Zero, $INTERNET_OPTION_REFRESH, [IntPtr]::Zero, 0) | Out-Null
+
+    Write-Host "Proxy disabled successfully!" -ForegroundColor Green
+    exit 0
+}}
+
+if ($UsePAC -or (-not $UseManual)) {{
+    Write-Host "Configuring PAC (Automatic Configuration)..." -ForegroundColor Yellow
+    Write-Host "PAC URL: $PacUrl" -ForegroundColor Gray
+
+    # Set PAC URL
+    Set-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" -Name AutoConfigURL -Value $PacUrl
+    Set-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" -Name ProxyEnable -Value 0
+
+    Write-Host ""
+    Write-Host "PAC configured successfully!" -ForegroundColor Green
+    Write-Host "Only sites from your domain list will use proxy." -ForegroundColor Gray
+}}
+
+if ($UseManual) {{
+    Write-Host "Configuring manual proxy..." -ForegroundColor Yellow
+    Write-Host "Proxy Server: $ProxyServer" -ForegroundColor Gray
+
+    # Set manual proxy
+    Set-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" -Name ProxyServer -Value $ProxyServer
+    Set-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" -Name ProxyEnable -Value 1
+    Set-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" -Name AutoConfigURL -Value ""
+
+    Write-Host ""
+    Write-Host "Manual proxy configured!" -ForegroundColor Green
+    Write-Host "ALL traffic will go through proxy." -ForegroundColor Yellow
+}}
+
+# Refresh Internet settings
+$signature = @"
+[DllImport("wininet.dll", SetLastError = true, CharSet=CharSet.Auto)]
+public static extern bool InternetSetOption(IntPtr hInternet, int dwOption, IntPtr lpBuffer, int dwBufferLength);
+"@
+$type = Add-Type -MemberDefinition $signature -Name WinInet -Namespace Win32API -PassThru
+$INTERNET_OPTION_SETTINGS_CHANGED = 39
+$INTERNET_OPTION_REFRESH = 37
+[Win32API.WinInet]::InternetSetOption([IntPtr]::Zero, $INTERNET_OPTION_SETTINGS_CHANGED, [IntPtr]::Zero, 0) | Out-Null
+[Win32API.WinInet]::InternetSetOption([IntPtr]::Zero, $INTERNET_OPTION_REFRESH, [IntPtr]::Zero, 0) | Out-Null
+
+Write-Host ""
+Write-Host "Your credentials:" -ForegroundColor Cyan
+Write-Host "  Username: $Username" -ForegroundColor White
+Write-Host "  Password: (same as VPN)" -ForegroundColor White
+Write-Host ""
+Write-Host "Note: Browser will ask for credentials on first connection." -ForegroundColor Gray
+Write-Host ""
+Write-Host "Usage:" -ForegroundColor Cyan
+Write-Host "  .\\proxy-setup.ps1           - Configure PAC (recommended)" -ForegroundColor Gray
+Write-Host "  .\\proxy-setup.ps1 -UseManual - Configure manual proxy for ALL traffic" -ForegroundColor Gray
+Write-Host "  .\\proxy-setup.ps1 -Disable   - Disable proxy" -ForegroundColor Gray
+'''
+
+    return Response(
+        content=script,
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "Content-Disposition": 'attachment; filename="zetit-fna-proxy-setup.ps1"'
+        }
+    )
