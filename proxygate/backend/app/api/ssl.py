@@ -208,6 +208,31 @@ async def run_certbot_process(domain: str, email: str):
 
         add_log("Certificate obtained successfully!")
 
+        # Step 2.5: Link certificates for strongSwan VPN
+        add_log("Linking certificates for VPN...")
+        try:
+            swanctl_x509 = Path("/etc/swanctl/x509")
+            swanctl_private = Path("/etc/swanctl/private")
+            swanctl_x509.mkdir(parents=True, exist_ok=True)
+            swanctl_private.mkdir(parents=True, exist_ok=True)
+
+            cert_link = swanctl_x509 / "fullchain.pem"
+            key_link = swanctl_private / "privkey.pem"
+            le_cert = Path(f"/etc/letsencrypt/live/{domain}/fullchain.pem")
+            le_key = Path(f"/etc/letsencrypt/live/{domain}/privkey.pem")
+
+            # Remove old links and create new ones
+            if cert_link.exists() or cert_link.is_symlink():
+                cert_link.unlink()
+            if key_link.exists() or key_link.is_symlink():
+                key_link.unlink()
+
+            cert_link.symlink_to(le_cert)
+            key_link.symlink_to(le_key)
+            add_log("VPN certificates linked successfully")
+        except Exception as e:
+            add_log(f"WARNING: Failed to link VPN certificates: {e}")
+
         # Step 3: Update nginx configuration for SSL
         add_log("Updating nginx configuration for SSL...")
 
@@ -309,9 +334,9 @@ server {{
         else:
             add_log("Nginx reloaded successfully")
 
-        # Step 6: Setup auto-renewal cron
+        # Step 6: Setup auto-renewal cron (also reloads strongSwan for VPN)
         add_log("Setting up auto-renewal...")
-        cron_job = "0 12 * * * /usr/bin/certbot renew --quiet && /usr/bin/systemctl reload nginx"
+        cron_job = "0 12 * * * /usr/bin/certbot renew --quiet && /usr/bin/systemctl reload nginx && /usr/sbin/swanctl --load-all 2>/dev/null || true"
         result = subprocess.run(
             ["bash", "-c", f'(crontab -l 2>/dev/null | grep -v certbot; echo "{cron_job}") | crontab -'],
             capture_output=True,
@@ -405,6 +430,24 @@ async def run_certbot_renew_process(domain: str):
             add_log(f"WARNING: Nginx reload had issues: {result.stderr}")
         else:
             add_log("Nginx reloaded successfully")
+
+        # Reload strongSwan VPN configuration
+        add_log("Reloading VPN configuration...")
+        try:
+            result = subprocess.run(
+                ["/usr/sbin/swanctl", "--load-all"],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            if result.returncode == 0:
+                add_log("VPN configuration reloaded successfully")
+            else:
+                add_log(f"WARNING: VPN reload had issues: {result.stderr}")
+        except FileNotFoundError:
+            add_log("NOTE: swanctl not found - VPN may need manual restart")
+        except Exception as e:
+            add_log(f"WARNING: Failed to reload VPN: {e}")
 
         add_log("SSL RENEWAL COMPLETE!")
 

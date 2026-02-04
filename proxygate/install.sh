@@ -469,7 +469,7 @@ install_nginx() {
 install_strongswan() {
     log_info "Установка strongSwan..."
 
-    apt-get install -y strongswan strongswan-pki libcharon-extra-plugins libcharon-extauth-plugins
+    apt-get install -y strongswan strongswan-pki strongswan-swanctl libcharon-extra-plugins libcharon-extauth-plugins
 
     mkdir -p /etc/swanctl/conf.d
     mkdir -p /etc/swanctl/x509
@@ -975,9 +975,14 @@ install_letsencrypt() {
 
     # Пробуем получить сертификат
     if certbot --nginx -d "$DOMAIN" --non-interactive --agree-tos --email "$ADMIN_EMAIL" --redirect; then
-        # Настраиваем автопродление
-        (crontab -l 2>/dev/null | grep -v certbot; echo "0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'") | crontab -
-        log_success "Let's Encrypt SSL установлен"
+        # Линкуем сертификаты для strongSwan VPN
+        log_info "Линкуем SSL сертификаты для VPN..."
+        ln -sf /etc/letsencrypt/live/${DOMAIN}/fullchain.pem /etc/swanctl/x509/fullchain.pem
+        ln -sf /etc/letsencrypt/live/${DOMAIN}/privkey.pem /etc/swanctl/private/privkey.pem
+
+        # Настраиваем автопродление с обновлением swanctl симлинков
+        (crontab -l 2>/dev/null | grep -v certbot; echo "0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx && swanctl --load-all 2>/dev/null || true'") | crontab -
+        log_success "Let's Encrypt SSL установлен и связан с VPN"
     else
         log_warn "Не удалось получить SSL сертификат."
         log_warn "Проверьте что DNS запись для $DOMAIN указывает на $SERVER_IP"
