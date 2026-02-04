@@ -218,12 +218,15 @@ fi
 # 8. Check NAT rules
 echo ""
 echo "[8/10] Checking NAT rules..."
-NAT_RULES=$(iptables -t nat -L POSTROUTING -n 2>/dev/null | grep -c MASQUERADE || echo "0")
-if [ "$NAT_RULES" -gt 0 ]; then
+NAT_RULES=$(iptables -t nat -L POSTROUTING -n 2>/dev/null | grep -c MASQUERADE 2>/dev/null || true)
+NAT_RULES=${NAT_RULES:-0}
+NAT_RULES=$(echo "$NAT_RULES" | tr -d '[:space:]')
+if [ "$NAT_RULES" -gt 0 ] 2>/dev/null; then
     check 0 "MASQUERADE rules found ($NAT_RULES)"
 else
     check 1 "No MASQUERADE rules"
     info "VPN clients won't be able to access the internet"
+    info "Run: iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o eth0 -j MASQUERADE"
 fi
 
 # 9. Check listening ports
