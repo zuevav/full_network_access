@@ -82,11 +82,21 @@ if [ -n "$DOMAIN" ] && [ -d "/etc/letsencrypt/live/$DOMAIN" ]; then
         echo -e "${GREEN}[OK]${NC} fullchain.pem существует"
     fi
 
+    # Приватный ключ - копируем (symlink не работает из-за прав Let's Encrypt)
     if [ ! -f /etc/swanctl/private/privkey.pem ]; then
-        ln -sf "/etc/letsencrypt/live/$DOMAIN/privkey.pem" /etc/swanctl/private/privkey.pem
-        echo -e "${YELLOW}[FIX]${NC} Создан symlink для privkey.pem"
+        cp "/etc/letsencrypt/live/$DOMAIN/privkey.pem" /etc/swanctl/private/privkey.pem
+        chmod 600 /etc/swanctl/private/privkey.pem
+        echo -e "${YELLOW}[FIX]${NC} Скопирован privkey.pem"
     else
-        echo -e "${GREEN}[OK]${NC} privkey.pem существует"
+        # Проверяем, может это symlink который не работает
+        if [ -L /etc/swanctl/private/privkey.pem ]; then
+            rm /etc/swanctl/private/privkey.pem
+            cp "/etc/letsencrypt/live/$DOMAIN/privkey.pem" /etc/swanctl/private/privkey.pem
+            chmod 600 /etc/swanctl/private/privkey.pem
+            echo -e "${YELLOW}[FIX]${NC} Заменён symlink на копию privkey.pem"
+        else
+            echo -e "${GREEN}[OK]${NC} privkey.pem существует"
+        fi
     fi
 
     if [ ! -f /etc/swanctl/x509ca/chain.pem ]; then
