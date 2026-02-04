@@ -4,9 +4,20 @@ from sqlalchemy.orm import selectinload
 
 from app.api.deps import DBSession, CurrentAdmin
 from app.models import Client, ProxyAccount
-from app.schemas.proxy import ProxyCredentialsResponse
+from app.schemas.proxy import ProxyCredentialsResponse, ProxyAllowedIpsUpdate
 from app.utils.security import generate_password, get_password_hash
-from app.config import settings
+from app.api.system import get_configured_domain, get_configured_ports
+
+
+def get_proxy_host() -> str:
+    """Get the host for proxy connections - domain if configured, otherwise IP."""
+    domain = get_configured_domain()
+    # If domain is set (not localhost or empty), use it
+    if domain and domain != "localhost":
+        return domain
+    # Fallback to IP
+    from app.api.system import get_configured_server_ip
+    return get_configured_server_ip()
 
 
 router = APIRouter()
@@ -32,14 +43,23 @@ async def get_proxy_credentials(
     if client.proxy_account is None:
         raise HTTPException(status_code=404, detail="Proxy not configured for this client")
 
+    domain = get_configured_domain()
+    proxy_host = get_proxy_host()
+    http_port, socks_port = get_configured_ports()
+
+    allowed_ips_list = None
+    if client.proxy_account.allowed_ips:
+        allowed_ips_list = [ip.strip() for ip in client.proxy_account.allowed_ips.split(',') if ip.strip()]
+
     return ProxyCredentialsResponse(
         username=client.proxy_account.username,
         password=client.proxy_account.password_plain,
-        http_host=settings.vps_public_ip,
-        http_port=settings.proxy_http_port,
-        socks_host=settings.vps_public_ip,
-        socks_port=settings.proxy_socks_port,
-        pac_url=f"https://{settings.vps_domain}/pac/{client.access_token}"
+        http_host=proxy_host,
+        http_port=http_port,
+        socks_host=proxy_host,
+        socks_port=socks_port,
+        pac_url=f"https://{domain}/pac/{client.access_token}",
+        allowed_ips=allowed_ips_list
     )
 
 
@@ -69,15 +89,53 @@ async def reset_proxy_password(
 
     await db.commit()
 
+    domain = get_configured_domain()
+    proxy_host = get_proxy_host()
+    http_port, socks_port = get_configured_ports()
+
+    allowed_ips_list = None
+    if client.proxy_account.allowed_ips:
+        allowed_ips_list = [ip.strip() for ip in client.proxy_account.allowed_ips.split(',') if ip.strip()]
+
     return ProxyCredentialsResponse(
         username=client.proxy_account.username,
         password=new_password,
-        http_host=settings.vps_public_ip,
-        http_port=settings.proxy_http_port,
-        socks_host=settings.vps_public_ip,
-        socks_port=settings.proxy_socks_port,
-        pac_url=f"https://{settings.vps_domain}/pac/{client.access_token}"
+        http_host=proxy_host,
+        http_port=http_port,
+        socks_host=proxy_host,
+        socks_port=socks_port,
+        pac_url=f"https://{domain}/pac/{client.access_token}",
+        allowed_ips=allowed_ips_list
     )
+
+
+@router.put("/{client_id}/proxy/allowed-ips")
+async def update_allowed_ips(
+    client_id: int,
+    request: ProxyAllowedIpsUpdate,
+    db: DBSession,
+    admin: CurrentAdmin
+):
+    """Update allowed IPs for proxy (no auth required from these IPs)."""
+    result = await db.execute(
+        select(Client)
+        .options(selectinload(Client.proxy_account))
+        .where(Client.id == client_id)
+    )
+    client = result.scalar_one_or_none()
+
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    if client.proxy_account is None:
+        raise HTTPException(status_code=404, detail="Proxy not configured for this client")
+
+    # Store as comma-separated string
+    client.proxy_account.allowed_ips = ','.join(request.allowed_ips) if request.allowed_ips else None
+
+    await db.commit()
+
+    return {"success": True, "allowed_ips": request.allowed_ips}
 
 
 @router.get("/{client_id}/proxy/pac")
@@ -93,4 +151,5 @@ async def get_pac_file(
     if client is None:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    return {"pac_url": f"https://{settings.vps_domain}/pac/{client.access_token}"}
+    domain = get_configured_domain()
+    return {"pac_url": f"https://{domain}/pac/{client.access_token}"}

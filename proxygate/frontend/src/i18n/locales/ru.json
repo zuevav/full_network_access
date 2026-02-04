@@ -161,7 +161,11 @@
     "giveSubscription": "Выдать подписку",
     "optional": "необязательно",
     "addDomainPlaceholder": "example.com",
-    "deleteConfirm": "Вы уверены, что хотите удалить этого клиента?"
+    "deleteConfirm": "Вы уверены, что хотите удалить этого клиента?",
+    "allowedIps": "Доступ без пароля (по IP)",
+    "allowedIpsPlaceholder": "192.168.1.100\n10.0.0.0/24",
+    "allowedIpsHint": "IP-адреса, с которых прокси работает без авторизации (офисные IP). По одному на строку.",
+    "noAllowedIps": "Авторизация по паролю для всех IP"
   },
   "templates": {
     "title": "Шаблоны доменов",
@@ -369,7 +373,18 @@
       }
     },
     "strongswanAndroid": "strongSwan для Android",
-    "freeInPlayStore": "Бесплатно в Play Store"
+    "freeInPlayStore": "Бесплатно в Play Store",
+    "yourCredentials": "Ваши учётные данные",
+    "sameCredentialsNote": "Один логин и пароль для всех сервисов",
+    "usedFor": "Используется для:",
+    "vpnConnection": "Подключения к VPN",
+    "proxyConnection": "Авторизации в прокси",
+    "downloadProxySetup": "Скрипт настройки прокси",
+    "vpnSection": "VPN — полный доступ к сети",
+    "vpnSectionDescription": "Весь трафик с устройства идёт через защищённый VPN-туннель",
+    "vpnServer": "Сервер VPN",
+    "proxySection": "Прокси — для браузера",
+    "proxySetupOptions": "Варианты настройки"
   },
   "portalDomains": {
     "title": "Ваши домены",

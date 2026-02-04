@@ -7,7 +7,7 @@ from app.api.deps import DBSession, CurrentAdmin
 from app.models import Client, VpnConfig
 from app.schemas.vpn import VpnCredentialsResponse, VpnRoutesResponse
 from app.utils.security import generate_password
-from app.config import settings
+from app.api.system import get_configured_domain
 
 
 router = APIRouter()
@@ -33,11 +33,12 @@ async def get_vpn_credentials(
     if client.vpn_config is None:
         raise HTTPException(status_code=404, detail="VPN not configured for this client")
 
+    domain = get_configured_domain()
     return VpnCredentialsResponse(
         username=client.vpn_config.username,
         password=client.vpn_config.password,
-        server=settings.vps_domain,
-        server_id=settings.ikev2_server_id
+        server=domain,
+        server_id=domain
     )
 
 
@@ -66,11 +67,12 @@ async def reset_vpn_password(
 
     await db.commit()
 
+    domain = get_configured_domain()
     return VpnCredentialsResponse(
         username=client.vpn_config.username,
         password=new_password,
-        server=settings.vps_domain,
-        server_id=settings.ikev2_server_id
+        server=domain,
+        server_id=domain
     )
 
 

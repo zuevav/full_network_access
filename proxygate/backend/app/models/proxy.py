@@ -1,5 +1,5 @@
-from typing import TYPE_CHECKING
-from sqlalchemy import String, ForeignKey
+from typing import TYPE_CHECKING, Optional
+from sqlalchemy import String, ForeignKey, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -17,5 +17,7 @@ class ProxyAccount(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     password_plain: Mapped[str] = mapped_column(String(64))  # For admin display
     is_active: Mapped[bool] = mapped_column(default=True)
+    # IP addresses that can access proxy without authentication (comma-separated)
+    allowed_ips: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     client: Mapped["Client"] = relationship(back_populates="proxy_account")
