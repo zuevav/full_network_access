@@ -96,7 +96,17 @@
     "copyCode": "Copy Code",
     "expiresIn": "Expires in {{days}} days",
     "expired": "Expired",
-    "addDomainPlaceholder": "Add domain (e.g. example.com)"
+    "addDomainPlaceholder": "Add domain (e.g. example.com)",
+    "newClient": "New Client",
+    "name": "Name",
+    "phone": "Phone",
+    "serviceType": "Service Type",
+    "vpnAndProxy": "VPN + Proxy",
+    "vpnOnly": "VPN Only",
+    "proxyOnly": "Proxy Only",
+    "creating": "Creating...",
+    "create": "Create",
+    "service": "Service"
   },
   "templates": {
     "title": "Domain Templates",
@@ -123,7 +133,15 @@
     "reject": "Reject",
     "noRequests": "No domain requests",
     "requestApproved": "Request approved",
-    "requestRejected": "Request rejected"
+    "requestRejected": "Request rejected",
+    "approveRequest": "Approve Request",
+    "rejectRequest": "Reject Request",
+    "reason": "Reason",
+    "comment": "Comment",
+    "optionalComment": "Optional comment",
+    "rejectReason": "Reason for rejection",
+    "processing": "Processing...",
+    "status": "Status"
   },
   "security": {
     "title": "Security",
@@ -364,7 +382,18 @@
     "tokenHint": "Token needs 'repo' scope",
     "createToken": "Create token",
     "configured": "Configured",
-    "notConfigured": "Not configured"
+    "notConfigured": "Not configured",
+    "systemStatus": "System Status",
+    "unknown": "Unknown",
+    "serviceRestarting": "Service Restarting...",
+    "updateFailed": "Update Failed",
+    "updateLog": "Update Log",
+    "reconnecting": "Reconnecting to server...",
+    "startingUpdate": "Starting update...",
+    "serviceRestartingWait": "Service is restarting... Please wait.",
+    "updateSuccess": "Update completed successfully. Refresh the page to see the new version.",
+    "confirmUpdate": "Are you sure you want to update? The system will restart.",
+    "githubApiActive": "GitHub API active"
   },
   "errors": {
     "networkError": "Network error. Please check your connection.",
