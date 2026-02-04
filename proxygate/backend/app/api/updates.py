@@ -457,6 +457,16 @@ async def run_update_process():
         add_log("Building frontend...")
         frontend_dir = DEPLOY_DIR / "frontend"
 
+        # Remove old dist folder to avoid permission issues
+        old_dist = frontend_dir / "dist"
+        if old_dist.exists():
+            subprocess.run(
+                ["/usr/bin/rm", "-rf", str(old_dist)],
+                capture_output=True,
+                timeout=30
+            )
+            add_log("Removed old dist folder")
+
         result = subprocess.run(
             ["/usr/bin/npm", "install"],
             cwd=frontend_dir,
