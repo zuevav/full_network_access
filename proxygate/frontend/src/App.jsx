@@ -14,6 +14,7 @@ import Updates from './admin/pages/Updates'
 
 // Portal pages
 import PortalLogin from './portal/pages/PortalLogin'
+import PortalAutoLogin from './portal/pages/PortalAutoLogin'
 import PortalLayout from './portal/PortalLayout'
 import PortalHome from './portal/pages/PortalHome'
 import PortalDevices from './portal/pages/PortalDevices'
@@ -72,6 +73,7 @@ function App() {
 
         {/* Portal (client) routes */}
         <Route path="/my/login" element={<PortalLogin />} />
+        <Route path="/my/link/:token" element={<PortalAutoLogin />} />
         <Route
           path="/my"
           element={

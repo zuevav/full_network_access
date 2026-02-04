@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -16,6 +16,134 @@ import {
   User
 } from 'lucide-react'
 import api from '../../api'
+
+// Fullscreen update overlay component
+function UpdateOverlay({ isVisible, onComplete }) {
+  const { t } = useTranslation()
+  const [progress, setProgress] = useState(0)
+  const [stage, setStage] = useState('pulling') // pulling, installing, restarting, checking
+  const [dots, setDots] = useState('')
+  const checkIntervalRef = useRef(null)
+  const progressIntervalRef = useRef(null)
+
+  const stages = {
+    pulling: { text: t('updates.stagePulling'), duration: 15 },
+    installing: { text: t('updates.stageInstalling'), duration: 20 },
+    restarting: { text: t('updates.stageRestarting'), duration: 25 },
+    checking: { text: t('updates.stageChecking'), duration: 10 }
+  }
+
+  const totalDuration = Object.values(stages).reduce((sum, s) => sum + s.duration, 0)
+
+  useEffect(() => {
+    if (!isVisible) {
+      setProgress(0)
+      setStage('pulling')
+      return
+    }
+
+    // Animate dots
+    const dotsInterval = setInterval(() => {
+      setDots(d => d.length >= 3 ? '' : d + '.')
+    }, 500)
+
+    // Progress simulation
+    let elapsed = 0
+    progressIntervalRef.current = setInterval(() => {
+      elapsed += 1
+      const newProgress = Math.min(95, (elapsed / totalDuration) * 100)
+      setProgress(newProgress)
+
+      // Update stage based on elapsed time
+      if (elapsed < stages.pulling.duration) {
+        setStage('pulling')
+      } else if (elapsed < stages.pulling.duration + stages.installing.duration) {
+        setStage('installing')
+      } else if (elapsed < stages.pulling.duration + stages.installing.duration + stages.restarting.duration) {
+        setStage('restarting')
+      } else {
+        setStage('checking')
+      }
+    }, 1000)
+
+    // Start checking server availability after 20 seconds
+    const startCheckingAfter = 20000
+    setTimeout(() => {
+      checkIntervalRef.current = setInterval(async () => {
+        try {
+          const response = await fetch('/api/admin/system/version')
+          if (response.ok) {
+            // Server is back!
+            clearInterval(checkIntervalRef.current)
+            clearInterval(progressIntervalRef.current)
+            setProgress(100)
+            setStage('complete')
+            setTimeout(() => {
+              window.location.reload()
+            }, 1500)
+          }
+        } catch (e) {
+          // Server still restarting, continue checking
+        }
+      }, 2000)
+    }, startCheckingAfter)
+
+    return () => {
+      clearInterval(dotsInterval)
+      clearInterval(progressIntervalRef.current)
+      clearInterval(checkIntervalRef.current)
+    }
+  }, [isVisible, t, totalDuration])
+
+  if (!isVisible) return null
+
+  return (
+    <div className="fixed inset-0 bg-gradient-to-br from-primary-600 to-purple-700 flex items-center justify-center z-50">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 m-4">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-primary-100 rounded-full mb-6">
+            {stage === 'complete' ? (
+              <CheckCircle className="w-10 h-10 text-green-600" />
+            ) : (
+              <Loader2 className="w-10 h-10 text-primary-600 animate-spin" />
+            )}
+          </div>
+
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            {stage === 'complete' ? t('updates.updateComplete') : t('updates.updateInProgress')}
+          </h2>
+
+          <p className="text-gray-500 mb-6">
+            {stage === 'complete'
+              ? t('updates.reloadingPage')
+              : stages[stage]?.text + dots
+            }
+          </p>
+
+          {/* Progress bar */}
+          <div className="w-full bg-gray-200 rounded-full h-3 mb-4 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-1000 ${
+                stage === 'complete' ? 'bg-green-500' : 'bg-primary-600'
+              }`}
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+
+          <p className="text-sm text-gray-400">
+            {Math.round(progress)}%
+          </p>
+
+          {stage !== 'complete' && (
+            <p className="text-xs text-gray-400 mt-4">
+              {t('updates.pleaseWait')}
+            </p>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function SettingsCard({ onSettingsSaved }) {
   const { t } = useTranslation()
@@ -142,11 +270,14 @@ function UpdateStatusCard({ onCheckUpdates }) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [updateStarted, setUpdateStarted] = useState(false)
+  const [showOverlay, setShowOverlay] = useState(false)
 
   const { data: status, refetch: refetchStatus, isError: statusError } = useQuery({
     queryKey: ['updateStatus'],
     queryFn: () => api.getUpdateStatus(),
     refetchInterval: (query) => {
+      // Don't poll if overlay is shown (handled by overlay itself)
+      if (showOverlay) return false
       // Poll every 2s when updating or update was just started
       const data = query.state.data
       if (data?.is_updating || updateStarted) return 2000
@@ -175,12 +306,12 @@ function UpdateStatusCard({ onCheckUpdates }) {
   const applyMutation = useMutation({
     mutationFn: () => api.applyUpdates(),
     onSuccess: () => {
-      // Mark update as started to enable polling
+      // Show fullscreen overlay
+      setShowOverlay(true)
+      // Mark update as started
       setUpdateStarted(true)
       // Clear the update check to hide "Updates Available" section
       queryClient.setQueryData(['updateCheck'], null)
-      // Refetch status to show the update log
-      refetchStatus()
     }
   })
 
@@ -201,6 +332,9 @@ function UpdateStatusCard({ onCheckUpdates }) {
 
   return (
     <div className="space-y-6">
+      {/* Update Overlay */}
+      <UpdateOverlay isVisible={showOverlay} />
+
       {/* Current Status */}
       <div className="card p-6">
         <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">

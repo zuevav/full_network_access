@@ -43,7 +43,9 @@
     "loginFailed": "Login failed",
     "accessCode": "Access Code",
     "enterAccessCode": "Enter your access code",
-    "invalidCode": "Invalid access code"
+    "invalidCode": "Invalid access code",
+    "error": "Authorization Error",
+    "goToLogin": "Go to Login Page"
   },
   "admin": {
     "panel": "Admin Panel",
@@ -452,7 +454,12 @@
     "serviceRestartingWait": "Service is restarting... Please wait.",
     "updateSuccess": "Update completed successfully. Refresh the page to see the new version.",
     "confirmUpdate": "Are you sure you want to update? The system will restart.",
-    "githubApiActive": "GitHub API active"
+    "githubApiActive": "GitHub API active",
+    "stagePulling": "Downloading updates",
+    "stageInstalling": "Installing updates",
+    "stageRestarting": "Restarting services",
+    "stageChecking": "Checking availability",
+    "reloadingPage": "Reloading page..."
   },
   "errors": {
     "networkError": "Network error. Please check your connection.",

@@ -326,6 +326,14 @@ class ApiClient {
     return data
   }
 
+  async clientLoginByLink(accessToken) {
+    const data = await this.request(`/portal/auth/link/${accessToken}`, {
+      method: 'POST',
+    }, 'client')
+    this.setToken('client', data.access_token)
+    return data
+  }
+
   async getPortalMe() {
     return this.request('/portal/me', {}, 'client')
   }
