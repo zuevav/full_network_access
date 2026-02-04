@@ -334,50 +334,61 @@
     "proxyDescription": "If VPN doesn't suit you, configure proxy in your browser or system.",
     "downloadPac": "Download PAC file",
     "pacDescription": "PAC file automatically routes necessary sites through proxy",
+    "noServicesTitle": "Services not configured",
+    "noServicesDescription": "Contact administrator to set up VPN or Proxy access.",
     "devices": {
       "iphone": {
         "title": "iPhone / iPad",
         "description": "Automatic setup - no app installation required!",
         "instructions": [
-          "Tap 'Download Profile' button (in Safari)",
-          "Open 'Settings'",
-          "'Profile Downloaded' will appear at the top",
-          "Tap 'Install'",
-          "Done! VPN will connect automatically"
+          "Tap 'Download Profile' (opens in Safari)",
+          "Message 'Profile Downloaded' appears — tap 'Close'",
+          "Open the 'Settings' app",
+          "At the top you'll see 'Profile Downloaded' — tap on it",
+          "Tap 'Install' in the top right corner",
+          "Enter your device passcode if requested",
+          "Tap 'Install' again to confirm",
+          "Tap 'Done'",
+          "VPN is now in Settings → VPN — toggle the switch to connect"
         ]
       },
       "android": {
         "title": "Android",
         "description": "Requires strongSwan app (free)",
         "instructions": [
-          "Install strongSwan from Play Store",
-          "Download .sswan profile",
-          "Open the file in strongSwan",
-          "Tap 'Import'",
-          "Connect to VPN"
+          "Install strongSwan VPN Client from Play Store",
+          "Tap 'Download Profile' — .sswan file will download",
+          "Open the downloaded .sswan file",
+          "strongSwan app will open automatically",
+          "Tap 'IMPORT VPN PROFILE'",
+          "Enter your password (shown above on the page)",
+          "Tap on 'ZETIT FNA' profile to connect"
         ]
       },
       "windows": {
         "title": "Windows 10/11",
         "description": "Automatic setup - run the script",
         "instructions": [
-          "Download .ps1 file",
-          "Right-click → 'Run as Administrator'",
+          "Tap 'Download Profile' — .ps1 file will download",
+          "Find the file in your Downloads folder",
+          "Right-click on file → 'Run with PowerShell'",
+          "If warning appears — click 'Run'",
           "Wait for the script to complete",
-          "Open Settings → Network → VPN",
-          "Click 'ZETIT FNA' → Connect",
-          "Enter password (first time only)"
+          "Open Settings → Network & Internet → VPN",
+          "Click 'ZETIT FNA' → 'Connect'",
+          "Enter password on first connection (shown above on the page)"
         ]
       },
       "macos": {
         "title": "macOS",
         "description": "Profile for Mac",
         "instructions": [
-          "Download .mobileconfig profile",
-          "Double-click the file",
-          "Open System Preferences → Profiles",
-          "Install ZETIT FNA profile",
-          "VPN will appear in menu bar"
+          "Tap 'Download Profile' — .mobileconfig file will download",
+          "Double-click the downloaded file",
+          "Open System Preferences → Privacy & Security → Profiles",
+          "Click on 'ZETIT FNA' profile → 'Install'",
+          "Enter your Mac administrator password",
+          "VPN will appear in System Preferences → VPN or in menu bar"
         ]
       }
     },

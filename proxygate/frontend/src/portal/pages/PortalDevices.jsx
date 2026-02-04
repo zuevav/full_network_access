@@ -33,6 +33,13 @@ function ConnectionTypeModal({ isOpen, onClose, platform, profileInfo, t }) {
   const hasVpn = !!profileInfo?.vpn
   const hasProxy = !!profileInfo?.proxy
 
+  const handleClick = (e) => {
+    if (hasModal && onClick) {
+      e.preventDefault()
+      onClick()
+    }
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl w-full max-w-sm p-6">
@@ -148,6 +155,16 @@ export default function PortalDevices() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-500">{t('common.error')}: {error.message}</p>
+      </div>
+    )
+  }
+
+  const hasAnyService = profileInfo?.vpn || profileInfo?.proxy
+
   return (
     <div className="space-y-6 pb-20 md:pb-0">
       <div>
@@ -156,6 +173,19 @@ export default function PortalDevices() {
           {t('portalDevices.subtitle')}
         </p>
       </div>
+
+      {/* No services configured message */}
+      {!hasAnyService && (
+        <div className="card p-6 text-center">
+          <span className="text-4xl mb-4 block">⚠️</span>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            {t('portalDevices.noServicesTitle', 'Сервисы не настроены')}
+          </h2>
+          <p className="text-gray-500">
+            {t('portalDevices.noServicesDescription', 'Обратитесь к администратору для настройки VPN или Proxy доступа.')}
+          </p>
+        </div>
+      )}
 
       {/* Unified credentials section */}
       {(hasVpn || hasProxy) && (

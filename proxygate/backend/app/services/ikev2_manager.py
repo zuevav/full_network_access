@@ -3,6 +3,7 @@ from typing import List, Dict, Optional
 from dataclasses import dataclass
 
 from app.config import settings
+from app.api.system import get_configured_domain
 
 
 @dataclass
@@ -32,6 +33,9 @@ class IKEv2Manager:
 
         One shared connection for all clients.
         """
+        # Use configured domain for server identity (must match client profiles)
+        server_id = get_configured_domain()
+
         return f'''# ProxyGate strongSwan configuration
 # Auto-generated - DO NOT EDIT MANUALLY
 
@@ -49,7 +53,7 @@ connections {{
         local {{
             auth = pubkey
             certs = fullchain.pem
-            id = {settings.ikev2_server_id}
+            id = {server_id}
         }}
 
         remote {{

@@ -96,9 +96,10 @@ async def download_windows_profile(
 @router.get("/ios")
 async def download_ios_profile(
     client: CurrentClient,
-    db: DBSession
+    db: DBSession,
+    mode: str = "ondemand"  # ondemand, always, full
 ):
-    """Download iOS .mobileconfig."""
+    """Download iOS .mobileconfig with different VPN modes."""
     result = await db.execute(
         select(Client)
         .options(
@@ -112,13 +113,14 @@ async def download_ios_profile(
     if client.vpn_config is None:
         return Response(content="VPN not configured", status_code=400)
 
-    content = profile_generator.generate_ios_mobileconfig(client)
+    content = profile_generator.generate_ios_mobileconfig(client, mode=mode)
 
+    mode_suffix = f"-{mode}" if mode != "ondemand" else ""
     return Response(
         content=content,
         media_type="application/x-apple-aspen-config",
         headers={
-            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}.mobileconfig"'
+            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}{mode_suffix}.mobileconfig"'
         }
     )
 
