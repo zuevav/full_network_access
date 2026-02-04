@@ -190,7 +190,9 @@
     "more": "ещё",
     "templateCreated": "Шаблон успешно создан",
     "templateUpdated": "Шаблон успешно обновлен",
-    "templateDeleted": "Шаблон успешно удален"
+    "templateDeleted": "Шаблон успешно удален",
+    "addDomainWithAnalysis": "Добавить домен с анализом",
+    "analyze": "Анализ"
   },
   "domainRequests": {
     "title": "Заявки на домены",

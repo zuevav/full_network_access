@@ -190,7 +190,9 @@
     "more": "more",
     "templateCreated": "Template created successfully",
     "templateUpdated": "Template updated successfully",
-    "templateDeleted": "Template deleted successfully"
+    "templateDeleted": "Template deleted successfully",
+    "addDomainWithAnalysis": "Add domain with analysis",
+    "analyze": "Analyze"
   },
   "domainRequests": {
     "title": "Domain Requests",
