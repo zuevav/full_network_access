@@ -1,6 +1,4 @@
 from contextlib import asynccontextmanager
-from pathlib import Path
-import shutil
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,23 +9,10 @@ from app.api import api_router
 from app.middleware.security import SecurityMiddleware
 
 
-def sync_version_file():
-    """Sync VERSION file from code directory to root on startup."""
-    code_version = Path("/opt/proxygate/proxygate/VERSION")
-    root_version = Path("/opt/proxygate/VERSION")
-
-    if code_version.exists():
-        try:
-            shutil.copy2(code_version, root_version)
-        except Exception:
-            pass  # Silent fail - not critical
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     # Startup
-    sync_version_file()
     await init_db()
     yield
     # Shutdown
