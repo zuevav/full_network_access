@@ -21,10 +21,17 @@ apt update && apt upgrade -y
 echo "[2/10] Installing packages..."
 apt install -y \
     strongswan strongswan-pki libcharon-extra-plugins libstrongswan-extra-plugins \
+    charon-systemd \
     nginx certbot python3-certbot-nginx \
     python3-pip python3-venv \
     git curl ufw fail2ban \
     build-essential
+
+# Disable old strongswan-starter, enable charon-systemd (swanctl)
+systemctl disable strongswan-starter 2>/dev/null || true
+systemctl stop strongswan-starter 2>/dev/null || true
+systemctl enable strongswan
+systemctl start strongswan
 
 # 3. Configure firewall
 echo "[3/10] Configuring firewall..."
@@ -176,7 +183,7 @@ mkdir -p /etc/letsencrypt/renewal-hooks/post
 cat > /etc/letsencrypt/renewal-hooks/post/strongswan.sh << 'EOF'
 #!/bin/bash
 swanctl --load-creds
-systemctl reload strongswan-starter
+systemctl reload strongswan
 EOF
 chmod +x /etc/letsencrypt/renewal-hooks/post/strongswan.sh
 
@@ -218,7 +225,7 @@ echo "6. Initialize database: python scripts/init_db.py"
 echo "7. Build frontend: cd frontend && npm install && npm run build"
 echo "8. Copy nginx config: cp nginx/proxygate.conf /etc/nginx/sites-available/ && ln -s /etc/nginx/sites-available/proxygate.conf /etc/nginx/sites-enabled/"
 echo "9. Start services:"
-echo "   systemctl restart strongswan-starter"
+echo "   systemctl restart strongswan"
 echo "   swanctl --load-all"
 echo "   systemctl start proxygate"
 echo "   systemctl restart nginx"
