@@ -46,15 +46,34 @@ ufw allow 3128/tcp        # HTTP Proxy
 ufw allow 1080/tcp        # SOCKS5
 ufw --force enable
 
-# 4. Enable IP forwarding
+# 4. Enable IP forwarding (CRITICAL for VPN!)
 echo "[4/10] Enabling IP forwarding..."
+
+# Remove any existing settings to avoid duplicates/conflicts
+sed -i '/net.ipv4.ip_forward/d' /etc/sysctl.conf
+sed -i '/net.ipv6.conf.all.forwarding/d' /etc/sysctl.conf
+sed -i '/net.ipv4.conf.all.accept_redirects/d' /etc/sysctl.conf
+sed -i '/net.ipv4.conf.all.send_redirects/d' /etc/sysctl.conf
+
+# Add IP forwarding settings
 cat >> /etc/sysctl.conf << 'EOF'
+
+# ProxyGate VPN - IP Forwarding (required for VPN to work!)
 net.ipv4.ip_forward=1
 net.ipv6.conf.all.forwarding=1
 net.ipv4.conf.all.accept_redirects=0
 net.ipv4.conf.all.send_redirects=0
 EOF
+
+# Apply settings
 sysctl -p
+
+# Verify IP forwarding is enabled
+if [ "$(cat /proc/sys/net/ipv4/ip_forward)" != "1" ]; then
+    echo "WARNING: IP forwarding failed to enable! Trying direct method..."
+    sysctl -w net.ipv4.ip_forward=1
+fi
+echo "IP forwarding status: $(cat /proc/sys/net/ipv4/ip_forward) (should be 1)"
 
 # 5. Configure iptables for NAT
 echo "[5/10] Configuring NAT..."
