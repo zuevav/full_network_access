@@ -327,11 +327,8 @@ async def check_for_updates(admin: CurrentAdmin):
 async def run_update_process():
     """Background task to run the update process."""
     status_data = load_update_status()
-    status_data["is_updating"] = True
-    status_data["update_log"] = []
-    save_update_status(status_data)
-
-    log = []
+    # is_updating is already set by /apply endpoint
+    log = status_data.get("update_log", [])
 
     def add_log(message: str):
         log.append(f"[{datetime.now().strftime('%H:%M:%S')}] {message}")
@@ -525,6 +522,12 @@ async def apply_updates(background_tasks: BackgroundTasks, admin: CurrentAdmin):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="GitHub settings not configured"
         )
+
+    # Set is_updating BEFORE starting background task
+    # so frontend sees the state immediately on next poll
+    status_data["is_updating"] = True
+    status_data["update_log"] = ["Starting update..."]
+    save_update_status(status_data)
 
     background_tasks.add_task(run_update_process)
 
