@@ -382,11 +382,16 @@ async def download_ios_public(
     content = profile_generator.generate_ios_mobileconfig(client, mode=mode)
     mode_suffix = f"-{mode}" if mode != "ondemand" else ""
 
+    # iOS Safari requires explicit Content-Length and cache headers
     return Response(
         content=content,
         media_type="application/x-apple-aspen-config",
         headers={
-            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}{mode_suffix}.mobileconfig"'
+            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}{mode_suffix}.mobileconfig"',
+            "Content-Length": str(len(content)),
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
         }
     )
 
@@ -418,11 +423,16 @@ async def download_macos_public(
     content = profile_generator.generate_macos_mobileconfig(client, mode=mode)
     mode_suffix = f"-{mode}" if mode != "ondemand" else ""
 
+    # Explicit headers for Safari compatibility
     return Response(
         content=content,
         media_type="application/x-apple-aspen-config",
         headers={
-            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}-macos{mode_suffix}.mobileconfig"'
+            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}-macos{mode_suffix}.mobileconfig"',
+            "Content-Length": str(len(content)),
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0"
         }
     )
 
