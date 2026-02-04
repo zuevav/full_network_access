@@ -16,7 +16,11 @@ import {
   Settings,
   Smartphone,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Search,
+  Loader,
+  X,
+  Check
 } from 'lucide-react'
 import api from '../../api'
 
@@ -388,6 +392,11 @@ function DomainsTab({ client, t }) {
   const queryClient = useQueryClient()
   const [newDomain, setNewDomain] = useState('')
   const [expandedGroups, setExpandedGroups] = useState({})
+  // Domain suggestions state
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const [suggestions, setSuggestions] = useState(null)
+  const [selectedSuggestions, setSelectedSuggestions] = useState(new Set())
+  const [pendingDomain, setPendingDomain] = useState('')
 
   const { data: domains, isLoading } = useQuery({
     queryKey: ['client-domains', client.id],
@@ -404,7 +413,28 @@ function DomainsTab({ client, t }) {
     onSuccess: () => {
       queryClient.invalidateQueries(['client-domains', client.id])
       setNewDomain('')
+      setShowSuggestions(false)
+      setSuggestions(null)
+      setPendingDomain('')
     },
+  })
+
+  const analyzeMutation = useMutation({
+    mutationFn: (domain) => api.analyzeDomain(domain),
+    onSuccess: (data) => {
+      if (data.suggested && data.suggested.length > 0) {
+        setSuggestions(data)
+        setSelectedSuggestions(new Set(data.suggested))
+        setShowSuggestions(true)
+      } else {
+        // No suggestions, add domain directly
+        addMutation.mutate([pendingDomain])
+      }
+    },
+    onError: () => {
+      // On error, just add the domain
+      addMutation.mutate([pendingDomain])
+    }
   })
 
   const deleteMutation = useMutation({
@@ -420,8 +450,31 @@ function DomainsTab({ client, t }) {
   const handleAddDomain = (e) => {
     e.preventDefault()
     if (newDomain.trim()) {
-      addMutation.mutate([newDomain.trim()])
+      const domain = newDomain.trim()
+      setPendingDomain(domain)
+      analyzeMutation.mutate(domain)
     }
+  }
+
+  const handleAddWithSuggestions = () => {
+    const domainsToAdd = [pendingDomain, ...Array.from(selectedSuggestions)]
+    addMutation.mutate(domainsToAdd)
+  }
+
+  const handleAddWithoutSuggestions = () => {
+    addMutation.mutate([pendingDomain])
+  }
+
+  const toggleSuggestion = (domain) => {
+    setSelectedSuggestions(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(domain)) {
+        newSet.delete(domain)
+      } else {
+        newSet.add(domain)
+      }
+      return newSet
+    })
   }
 
   const toggleGroup = (groupName) => {
@@ -432,7 +485,6 @@ function DomainsTab({ client, t }) {
   const groupedDomains = () => {
     if (!domains || !templates) return { groups: [], manual: [] }
 
-    const domainMap = new Map(domains.map(d => [d.domain, d]))
     const usedDomains = new Set()
     const groups = []
 
@@ -473,13 +525,114 @@ function DomainsTab({ client, t }) {
               placeholder={t('clients.addDomainPlaceholder')}
               value={newDomain}
               onChange={(e) => setNewDomain(e.target.value)}
+              disabled={analyzeMutation.isPending}
             />
-            <button type="submit" className="btn btn-primary flex items-center gap-2">
-              <Plus className="w-4 h-4" />
-              {t('common.add')}
+            <button
+              type="submit"
+              className="btn btn-primary flex items-center gap-2"
+              disabled={analyzeMutation.isPending || !newDomain.trim()}
+            >
+              {analyzeMutation.isPending ? (
+                <Loader className="w-4 h-4 animate-spin" />
+              ) : (
+                <Search className="w-4 h-4" />
+              )}
+              {analyzeMutation.isPending ? t('clients.analyzing') : t('common.add')}
             </button>
           </form>
         </div>
+
+        {/* Domain Suggestions Dialog */}
+        {showSuggestions && suggestions && (
+          <div className="card p-4 border-2 border-blue-200 bg-blue-50/50">
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+                  <Search className="w-5 h-5 text-blue-600" />
+                  {t('clients.relatedDomainsFound')}
+                </h4>
+                <p className="text-sm text-gray-600 mt-1">
+                  {t('clients.relatedDomainsDescription', { domain: suggestions.original_domain })}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowSuggestions(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Redirects */}
+            {suggestions.redirects?.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs text-gray-500 uppercase mb-1">{t('clients.redirectDomains')}</p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestions.redirects.map(domain => (
+                    <button
+                      key={domain}
+                      onClick={() => toggleSuggestion(domain)}
+                      className={`px-2 py-1 rounded text-sm font-mono flex items-center gap-1 transition-colors ${
+                        selectedSuggestions.has(domain)
+                          ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                          : 'bg-gray-100 text-gray-500 border border-gray-200'
+                      }`}
+                    >
+                      {selectedSuggestions.has(domain) && <Check className="w-3 h-3" />}
+                      {domain}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Resources */}
+            {suggestions.resources?.length > 0 && (
+              <div className="mb-3">
+                <p className="text-xs text-gray-500 uppercase mb-1">{t('clients.resourceDomains')}</p>
+                <div className="flex flex-wrap gap-2">
+                  {suggestions.resources.map(domain => (
+                    <button
+                      key={domain}
+                      onClick={() => toggleSuggestion(domain)}
+                      className={`px-2 py-1 rounded text-sm font-mono flex items-center gap-1 transition-colors ${
+                        selectedSuggestions.has(domain)
+                          ? 'bg-green-100 text-green-700 border border-green-300'
+                          : 'bg-gray-100 text-gray-500 border border-gray-200'
+                      }`}
+                    >
+                      {selectedSuggestions.has(domain) && <Check className="w-3 h-3" />}
+                      {domain}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-2 mt-4 pt-3 border-t border-blue-200">
+              <button
+                onClick={handleAddWithSuggestions}
+                disabled={addMutation.isPending}
+                className="btn btn-primary flex-1"
+              >
+                {addMutation.isPending ? (
+                  <Loader className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Plus className="w-4 h-4 mr-2" />
+                )}
+                {t('clients.addWithSelected')} ({1 + selectedSuggestions.size})
+              </button>
+              <button
+                onClick={handleAddWithoutSuggestions}
+                disabled={addMutation.isPending}
+                className="btn btn-secondary"
+              >
+                {t('clients.addOnlyOriginal')}
+              </button>
+            </div>
+          </div>
+        )}
 
         {isLoading ? (
           <p className="p-4 text-center text-gray-500">{t('common.loading')}</p>

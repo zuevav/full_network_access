@@ -165,7 +165,14 @@
     "allowedIps": "Доступ без пароля (по IP)",
     "allowedIpsPlaceholder": "192.168.1.100\n10.0.0.0/24",
     "allowedIpsHint": "IP-адреса, с которых прокси работает без авторизации (офисные IP). По одному на строку.",
-    "noAllowedIps": "Авторизация по паролю для всех IP"
+    "noAllowedIps": "Авторизация по паролю для всех IP",
+    "analyzing": "Анализ...",
+    "relatedDomainsFound": "Найдены связанные домены",
+    "relatedDomainsDescription": "Домен {{domain}} использует дополнительные домены. Добавить их тоже?",
+    "redirectDomains": "Редиректы",
+    "resourceDomains": "Ресурсы (CDN, API)",
+    "addWithSelected": "Добавить выбранные",
+    "addOnlyOriginal": "Только оригинал"
   },
   "templates": {
     "title": "Шаблоны доменов",
@@ -183,7 +190,9 @@
     "more": "ещё",
     "templateCreated": "Шаблон успешно создан",
     "templateUpdated": "Шаблон успешно обновлен",
-    "templateDeleted": "Шаблон успешно удален"
+    "templateDeleted": "Шаблон успешно удален",
+    "addDomainWithAnalysis": "Добавить домен с анализом",
+    "analyze": "Анализ"
   },
   "domainRequests": {
     "title": "Заявки на домены",
@@ -401,26 +410,11 @@
     "vpnServer": "Сервер VPN",
     "proxySection": "Прокси — для браузера",
     "proxySetupOptions": "Варианты настройки",
-    "iosModal": {
-      "title": "Выберите режим VPN",
-      "subtitle": "Как должен работать VPN на вашем устройстве?"
-    },
-    "iosOptions": {
-      "recommended": "Рекомендуется",
-      "hint": "После скачивания откройте Настройки для установки профиля",
-      "ondemand": {
-        "title": "Авто (по доменам)",
-        "description": "VPN включается автоматически только при обращении к вашим рабочим сайтам. Остальной трафик идёт напрямую."
-      },
-      "always": {
-        "title": "Всегда (Split-туннель)",
-        "description": "VPN всегда включён, но только трафик к рабочим сайтам идёт через VPN. Остальное — напрямую."
-      },
-      "full": {
-        "title": "Всегда (Весь трафик)",
-        "description": "VPN всегда включён, ВЕСЬ трафик идёт через VPN. Максимальная защита, но выше расход батареи."
-      }
-    }
+    "quickDownload": "Быстрое скачивание",
+    "chooseConnectionType": "Выберите тип подключения:",
+    "vpnTypeDescription": "Весь трафик через VPN",
+    "proxyTypeDescription": "Только в браузере",
+    "setup": "Настройка"
   },
   "portalDomains": {
     "title": "Ваши домены",
