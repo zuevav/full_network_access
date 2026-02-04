@@ -41,7 +41,7 @@ async def download_windows_profile(
         content=content,
         media_type="text/plain; charset=utf-8",
         headers={
-            "Content-Disposition": f'attachment; filename="proxygate-{client.vpn_config.username}.ps1"'
+            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}.ps1"'
         }
     )
 
@@ -75,7 +75,7 @@ async def download_ios_profile(
         content=content,
         media_type="application/x-apple-aspen-config",
         headers={
-            "Content-Disposition": f'attachment; filename="proxygate-{client.vpn_config.username}.mobileconfig"'
+            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}.mobileconfig"'
         }
     )
 
@@ -109,7 +109,7 @@ async def download_macos_profile(
         content=content,
         media_type="application/x-apple-aspen-config",
         headers={
-            "Content-Disposition": f'attachment; filename="proxygate-{client.vpn_config.username}-macos.mobileconfig"'
+            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}-macos.mobileconfig"'
         }
     )
 
@@ -143,6 +143,6 @@ async def download_android_profile(
         content=content,
         media_type="application/vnd.strongswan.profile",
         headers={
-            "Content-Disposition": f'attachment; filename="proxygate-{client.vpn_config.username}.sswan"'
+            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}.sswan"'
         }
     )

@@ -43,7 +43,9 @@
     "loginFailed": "Ошибка входа",
     "accessCode": "Код доступа",
     "enterAccessCode": "Введите код доступа",
-    "invalidCode": "Неверный код доступа"
+    "invalidCode": "Неверный код доступа",
+    "error": "Ошибка авторизации",
+    "goToLogin": "Перейти на страницу входа"
   },
   "admin": {
     "panel": "Панель администратора",
@@ -452,7 +454,12 @@
     "serviceRestartingWait": "Сервис перезагружается... Пожалуйста, подождите.",
     "updateSuccess": "Обновление успешно завершено. Обновите страницу для просмотра новой версии.",
     "confirmUpdate": "Вы уверены, что хотите обновить? Система будет перезагружена.",
-    "githubApiActive": "GitHub API активен"
+    "githubApiActive": "GitHub API активен",
+    "stagePulling": "Загрузка обновлений",
+    "stageInstalling": "Установка обновлений",
+    "stageRestarting": "Перезапуск сервисов",
+    "stageChecking": "Проверка доступности",
+    "reloadingPage": "Перезагрузка страницы..."
   },
   "errors": {
     "networkError": "Ошибка сети. Проверьте подключение.",

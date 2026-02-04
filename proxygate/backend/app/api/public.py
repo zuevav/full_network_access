@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import DBSession
 from app.models import Client
 from app.services.profile_generator import ProfileGenerator
-from app.config import settings
+from app.api.system import get_configured_server_ip, get_configured_ports
 
 
 router = APIRouter()
@@ -43,13 +43,17 @@ async def client_connect_page(
         if latest.valid_until >= date.today():
             status_emoji = "🟢"
 
+    # Get proxy settings
+    server_ip = get_configured_server_ip()
+    http_port, _ = get_configured_ports()
+
     html = f"""
 <!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ProxyGate VPN</title>
+    <title>ZETIT FNA</title>
     <style>
         * {{ margin: 0; padding: 0; box-sizing: border-box; }}
         body {{
@@ -72,6 +76,7 @@ async def client_connect_page(
         }}
         .logo {{ font-size: 32px; margin-bottom: 8px; }}
         h1 {{ font-size: 24px; color: #333; }}
+        .subtitle {{ font-size: 12px; color: #888; margin-top: 4px; }}
         .status {{
             background: #f5f5f5;
             border-radius: 12px;
@@ -141,7 +146,8 @@ async def client_connect_page(
     <div class="container">
         <div class="header">
             <div class="logo">🔐</div>
-            <h1>ProxyGate VPN</h1>
+            <h1>ZETIT FNA</h1>
+            <div class="subtitle">Full Network Access</div>
         </div>
 
         <div class="status">
@@ -151,7 +157,7 @@ async def client_connect_page(
             </div>
         </div>
 
-        <a href="/my/login" class="portal-btn">🔑 Войти в личный кабинет</a>
+        <a href="/my/link/{access_token}" class="portal-btn">🔑 Личный кабинет</a>
 
         <div class="section-title">Быстрое скачивание</div>
         <div class="download-grid">
@@ -176,7 +182,7 @@ async def client_connect_page(
         {"" if not client.proxy_account else f'''
         <div class="section-title">Прокси</div>
         <div class="proxy-info">
-            <p>Адрес: <code>{settings.vps_public_ip}:{settings.proxy_http_port}</code></p>
+            <p>Адрес: <code>{server_ip}:{http_port}</code></p>
             <p>Логин: <code>{client.proxy_account.username}</code></p>
             <p>Пароль: <code>{client.proxy_account.password_plain}</code></p>
             <p><a href="/download/{access_token}/pac">⬇ Скачать PAC-файл</a></p>
@@ -218,7 +224,7 @@ async def download_windows_public(
         content=content,
         media_type="text/plain; charset=utf-8",
         headers={
-            "Content-Disposition": f'attachment; filename="proxygate-{client.vpn_config.username}.ps1"'
+            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}.ps1"'
         }
     )
 
@@ -248,7 +254,7 @@ async def download_ios_public(
         content=content,
         media_type="application/x-apple-aspen-config",
         headers={
-            "Content-Disposition": f'attachment; filename="proxygate-{client.vpn_config.username}.mobileconfig"'
+            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}.mobileconfig"'
         }
     )
 
@@ -278,7 +284,7 @@ async def download_macos_public(
         content=content,
         media_type="application/x-apple-aspen-config",
         headers={
-            "Content-Disposition": f'attachment; filename="proxygate-{client.vpn_config.username}-macos.mobileconfig"'
+            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}-macos.mobileconfig"'
         }
     )
 
@@ -308,7 +314,7 @@ async def download_android_public(
         content=content,
         media_type="application/vnd.strongswan.profile",
         headers={
-            "Content-Disposition": f'attachment; filename="proxygate-{client.vpn_config.username}.sswan"'
+            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}.sswan"'
         }
     )
 
@@ -335,7 +341,7 @@ async def download_pac_public(
         content=content,
         media_type="application/x-ns-proxy-autoconfig",
         headers={
-            "Content-Disposition": 'attachment; filename="proxygate.pac"'
+            "Content-Disposition": 'attachment; filename="zetit-fna.pac"'
         }
     )
 

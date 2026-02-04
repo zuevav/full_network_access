@@ -73,3 +73,35 @@ async def refresh_client_token(db: DBSession):
         status_code=status.HTTP_501_NOT_IMPLEMENTED,
         detail="Please login again"
     )
+
+
+@router.post("/link/{access_token}", response_model=TokenResponse)
+async def login_by_link(access_token: str, db: DBSession):
+    """Login by unique client link (no password required)."""
+    result = await db.execute(
+        select(Client).where(Client.access_token == access_token)
+    )
+    client = result.scalar_one_or_none()
+
+    if client is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Link not found",
+        )
+
+    if not client.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is disabled",
+        )
+
+    jwt_token = create_access_token(
+        data={"sub": str(client.id)},
+        token_type="client"
+    )
+
+    return TokenResponse(
+        access_token=jwt_token,
+        token_type="client",
+        expires_in=settings.jwt_refresh_token_expire_days * 24 * 60 * 60
+    )
