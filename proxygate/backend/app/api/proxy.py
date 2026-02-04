@@ -127,6 +127,8 @@ async def update_allowed_ips(
     admin: CurrentAdmin
 ):
     """Update allowed IPs for proxy (no auth required from these IPs)."""
+    from sqlalchemy import text
+
     result = await db.execute(
         select(Client)
         .options(selectinload(Client.proxy_account))
@@ -140,13 +142,18 @@ async def update_allowed_ips(
     if client.proxy_account is None:
         raise HTTPException(status_code=404, detail="Proxy not configured for this client")
 
-    # Store as comma-separated string (only if column exists)
+    # Use raw SQL to update allowed_ips (bypasses deferred column issues)
     try:
-        client.proxy_account.allowed_ips = ','.join(request.allowed_ips) if request.allowed_ips else None
+        allowed_ips_str = ','.join(request.allowed_ips) if request.allowed_ips else None
+        await db.execute(
+            text("UPDATE proxy_accounts SET allowed_ips = :ips WHERE id = :id"),
+            {"ips": allowed_ips_str, "id": client.proxy_account.id}
+        )
         await db.commit()
         return {"success": True, "allowed_ips": request.allowed_ips}
     except Exception as e:
-        raise HTTPException(status_code=500, detail="allowed_ips column not available. Please run database migration.")
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to update allowed_ips: {str(e)}")
 
 
 @router.get("/{client_id}/proxy/pac")
