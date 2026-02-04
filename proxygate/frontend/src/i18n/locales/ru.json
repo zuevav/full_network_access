@@ -95,7 +95,8 @@
     "regenerateCode": "Перегенерировать код",
     "copyCode": "Копировать код",
     "expiresIn": "Истекает через {{days}} дней",
-    "expired": "Истек"
+    "expired": "Истек",
+    "addDomainPlaceholder": "Добавить домен (например example.com)"
   },
   "templates": {
     "title": "Шаблоны доменов",
@@ -144,7 +145,15 @@
     "scanQrCode": "Отсканируйте QR-код в приложении аутентификации",
     "enterCode": "Введите код из приложения аутентификации",
     "twoFaEnabled": "2FA успешно включена",
-    "twoFaDisabled": "2FA успешно отключена"
+    "twoFaDisabled": "2FA успешно отключена",
+    "blockIp": "Заблокировать IP",
+    "reason": "Причина",
+    "reasonPlaceholder": "Причина блокировки",
+    "permanentBlock": "Постоянная блокировка",
+    "durationMinutes": "Длительность (минут)",
+    "block": "Заблокировать",
+    "showHistory": "Показать историю",
+    "hideHistory": "Скрыть историю"
   },
   "settings": {
     "title": "Настройки",
@@ -296,7 +305,13 @@
     "noRequests": "Нет заявок на домены",
     "requestSubmitted": "Заявка на домен отправлена",
     "availableTemplates": "Быстрое добавление из шаблонов",
-    "addFromTemplate": "Добавить все домены из этого шаблона"
+    "addFromTemplate": "Добавить все домены из этого шаблона",
+    "reasonLabel": "Зачем нужен (необязательно)",
+    "reasonPlaceholder": "Для работы с клиентами",
+    "request": "Запросить",
+    "domain": "Домен",
+    "submit": "Отправить",
+    "requestHelpText": "Отправьте запрос администратору на добавление нового сайта."
   },
   "portalPayments": {
     "title": "История платежей",

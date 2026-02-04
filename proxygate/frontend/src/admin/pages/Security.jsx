@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import api from '../../api';
 
 export default function Security() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState(null);
   const [blockedIPs, setBlockedIPs] = useState([]);
   const [failedAttempts, setFailedAttempts] = useState([]);
@@ -329,7 +331,7 @@ export default function Security() {
             <h3 className="text-lg font-semibold mb-4">Заблокировать IP-адрес</h3>
             <form onSubmit={handleBlockIP} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700">IP-адрес</label>
+                <label className="block text-sm font-medium text-gray-700">{t('security.ipAddress')}</label>
                 <input
                   type="text"
                   value={blockForm.ip_address}
@@ -340,12 +342,12 @@ export default function Security() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">Причина</label>
+                <label className="block text-sm font-medium text-gray-700">{t('security.reason')}</label>
                 <input
                   type="text"
                   value={blockForm.reason}
                   onChange={(e) => setBlockForm({ ...blockForm, reason: e.target.value })}
-                  placeholder="Причина блокировки"
+                  placeholder={t('security.reasonPlaceholder')}
                   className="mt-1 block w-full border rounded-md px-3 py-2"
                   required
                 />
@@ -358,12 +360,12 @@ export default function Security() {
                     onChange={(e) => setBlockForm({ ...blockForm, is_permanent: e.target.checked })}
                     className="rounded"
                   />
-                  <span className="text-sm text-gray-700">Постоянная блокировка</span>
+                  <span className="text-sm text-gray-700">{t('security.permanentBlock')}</span>
                 </label>
               </div>
               {!blockForm.is_permanent && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Длительность (минут)</label>
+                  <label className="block text-sm font-medium text-gray-700">{t('security.durationMinutes')}</label>
                   <input
                     type="number"
                     value={blockForm.duration_minutes}

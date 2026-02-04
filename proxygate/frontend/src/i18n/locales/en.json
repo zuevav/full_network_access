@@ -95,7 +95,8 @@
     "regenerateCode": "Regenerate Code",
     "copyCode": "Copy Code",
     "expiresIn": "Expires in {{days}} days",
-    "expired": "Expired"
+    "expired": "Expired",
+    "addDomainPlaceholder": "Add domain (e.g. example.com)"
   },
   "templates": {
     "title": "Domain Templates",
@@ -144,7 +145,15 @@
     "scanQrCode": "Scan this QR code with your authenticator app",
     "enterCode": "Enter the code from your authenticator app",
     "twoFaEnabled": "2FA enabled successfully",
-    "twoFaDisabled": "2FA disabled successfully"
+    "twoFaDisabled": "2FA disabled successfully",
+    "blockIp": "Block IP",
+    "reason": "Reason",
+    "reasonPlaceholder": "Block reason",
+    "permanentBlock": "Permanent block",
+    "durationMinutes": "Duration (minutes)",
+    "block": "Block",
+    "showHistory": "Show history",
+    "hideHistory": "Hide history"
   },
   "settings": {
     "title": "Settings",
@@ -296,7 +305,13 @@
     "noRequests": "No domain requests",
     "requestSubmitted": "Domain request submitted",
     "availableTemplates": "Quick Add from Templates",
-    "addFromTemplate": "Add all domains from this template"
+    "addFromTemplate": "Add all domains from this template",
+    "reasonLabel": "Why needed (optional)",
+    "reasonPlaceholder": "For working with clients",
+    "request": "Request",
+    "domain": "Domain",
+    "submit": "Submit",
+    "requestHelpText": "Send a request to the administrator to add a new site."
   },
   "portalPayments": {
     "title": "Payment History",
