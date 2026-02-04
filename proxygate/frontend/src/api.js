@@ -140,6 +140,13 @@ class ApiClient {
     })
   }
 
+  async analyzeDomain(domain) {
+    return this.request('/admin/clients/analyze', {
+      method: 'POST',
+      body: JSON.stringify({ domain }),
+    })
+  }
+
   async getVpnCredentials(clientId) {
     return this.request(`/admin/clients/${clientId}/vpn/credentials`)
   }

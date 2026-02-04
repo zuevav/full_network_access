@@ -165,7 +165,14 @@
     "allowedIps": "Доступ без пароля (по IP)",
     "allowedIpsPlaceholder": "192.168.1.100\n10.0.0.0/24",
     "allowedIpsHint": "IP-адреса, с которых прокси работает без авторизации (офисные IP). По одному на строку.",
-    "noAllowedIps": "Авторизация по паролю для всех IP"
+    "noAllowedIps": "Авторизация по паролю для всех IP",
+    "analyzing": "Анализ...",
+    "relatedDomainsFound": "Найдены связанные домены",
+    "relatedDomainsDescription": "Домен {{domain}} использует дополнительные домены. Добавить их тоже?",
+    "redirectDomains": "Редиректы",
+    "resourceDomains": "Ресурсы (CDN, API)",
+    "addWithSelected": "Добавить выбранные",
+    "addOnlyOriginal": "Только оригинал"
   },
   "templates": {
     "title": "Шаблоны доменов",

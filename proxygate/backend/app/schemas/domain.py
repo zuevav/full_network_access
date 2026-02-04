@@ -47,3 +47,15 @@ class DomainTemplateResponse(BaseModel):
 
 class ApplyTemplateRequest(BaseModel):
     template_id: int
+
+
+class DomainAnalyzeRequest(BaseModel):
+    domain: str = Field(..., min_length=1)
+
+
+class DomainAnalyzeResponse(BaseModel):
+    original_domain: str
+    redirects: List[str] = Field(default_factory=list, description="Domains from redirects")
+    resources: List[str] = Field(default_factory=list, description="Domains from page resources")
+    suggested: List[str] = Field(default_factory=list, description="All suggested domains to add")
+    error: Optional[str] = None
