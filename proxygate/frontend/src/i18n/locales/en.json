@@ -223,7 +223,8 @@
     "certificateActive": "SSL Certificate is active",
     "certificateRenewed": "Certificate renewed successfully",
     "expiresOn": "Expires",
-    "goToHttps": "Go to HTTPS"
+    "goToHttps": "Enable HTTPS",
+    "httpsEnabled": "HTTPS enabled! Redirecting..."
   },
   "portal": {
     "title": "Client Portal",

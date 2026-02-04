@@ -212,6 +212,21 @@ export default function Settings() {
     }
   }
 
+  const handleEnableHTTPS = async () => {
+    try {
+      const result = await api.enableHTTPS()
+      showMessage(result.message)
+      // Redirect to HTTPS after short delay
+      if (result.https_url) {
+        setTimeout(() => {
+          window.location.href = result.https_url + '/admin/settings'
+        }, 2000)
+      }
+    } catch (error) {
+      showMessage(error.message, 'error')
+    }
+  }
+
   const handleSaveProfile = async () => {
     setProfileSaving(true)
     try {
@@ -518,13 +533,13 @@ export default function Settings() {
                     </p>
                   )}
                   {window.location.protocol === 'http:' && sslSettings.domain && (
-                    <a
-                      href={`https://${sslSettings.domain}/admin`}
+                    <button
+                      onClick={handleEnableHTTPS}
                       className="mt-2 inline-flex items-center gap-2 text-sm text-primary-600 hover:text-primary-700 font-medium"
                     >
                       <ExternalLink className="w-4 h-4" />
                       {t('ssl.goToHttps')}
-                    </a>
+                    </button>
                   )}
                 </div>
               )}

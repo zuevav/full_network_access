@@ -272,6 +272,10 @@ class ApiClient {
     return this.request('/admin/ssl/log')
   }
 
+  async enableHTTPS() {
+    return this.request('/admin/ssl/enable-https', { method: 'POST' })
+  }
+
   // System Settings API methods
   async getVersion() {
     const response = await fetch(`${this.baseUrl}/admin/system/version`)
