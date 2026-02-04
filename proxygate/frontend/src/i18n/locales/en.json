@@ -276,7 +276,12 @@
     "about": "About ZETIT FNA",
     "version": "Version",
     "system": "System",
-    "features": "Features"
+    "features": "Features",
+    "vpnConfig": "VPN Configuration",
+    "vpnConfigDescription": "Synchronize VPN server configuration with current client credentials. This updates the strongSwan configuration and reloads the VPN service.",
+    "syncVpn": "Sync VPN Configuration",
+    "vpnNeedsDomain": "Please configure domain in system settings first.",
+    "vpnActiveClients": "Active clients: {{count}}"
   },
   "ssl": {
     "title": "SSL / Let's Encrypt",
