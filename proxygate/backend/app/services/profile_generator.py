@@ -30,6 +30,16 @@ class ProfileGenerator:
 
         return list(set(routes))
 
+    def _get_client_domains(self, client: "Client") -> list[str]:
+        """Get list of active domains for a client (for VPN On Demand)."""
+        domains = []
+        for d in client.domains:
+            if d.is_active:
+                # Add domain and wildcard subdomain
+                domains.append(d.domain)
+                domains.append(f"*.{d.domain}")
+        return domains
+
     def generate_windows_ps1(self, client: "Client") -> str:
         """Generate Windows PowerShell script for VPN setup."""
         routes = self._get_client_routes(client)
@@ -113,8 +123,9 @@ Read-Host "Press Enter to exit"
         return script
 
     def generate_ios_mobileconfig(self, client: "Client") -> bytes:
-        """Generate iOS .mobileconfig profile."""
+        """Generate iOS .mobileconfig profile with VPN On Demand by domains."""
         routes = self._get_client_routes(client)
+        client_domains = self._get_client_domains(client)
         domain = get_configured_domain()
 
         profile_uuid = str(uuid.uuid4()).upper()
@@ -122,6 +133,11 @@ Read-Host "Press Enter to exit"
 
         routes_xml = "\n".join([
             self._cidr_to_route_dict(route) for route in routes
+        ])
+
+        # Generate domain match list for VPN On Demand
+        domains_xml = "\n".join([
+            f"                        <string>{d}</string>" for d in client_domains
         ])
 
         config = f'''<?xml version="1.0" encoding="UTF-8"?>
@@ -204,7 +220,22 @@ Read-Host "Press Enter to exit"
             <array>
                 <dict>
                     <key>Action</key>
-                    <string>Connect</string>
+                    <string>EvaluateConnection</string>
+                    <key>ActionParameters</key>
+                    <array>
+                        <dict>
+                            <key>Domains</key>
+                            <array>
+{domains_xml}
+                            </array>
+                            <key>DomainAction</key>
+                            <string>ConnectIfNeeded</string>
+                        </dict>
+                    </array>
+                </dict>
+                <dict>
+                    <key>Action</key>
+                    <string>Disconnect</string>
                 </dict>
             </array>
         </dict>
