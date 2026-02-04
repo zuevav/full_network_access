@@ -65,8 +65,15 @@ async def create_payment(
     db: DBSession,
     admin: CurrentAdmin
 ):
-    """Create a new payment for a client."""
-    result = await db.execute(select(Client).where(Client.id == client_id))
+    """Create a new payment/subscription for a client."""
+    result = await db.execute(
+        select(Client)
+        .options(
+            selectinload(Client.vpn_config),
+            selectinload(Client.proxy_account)
+        )
+        .where(Client.id == client_id)
+    )
     client = result.scalar_one_or_none()
 
     if client is None:
@@ -83,6 +90,14 @@ async def create_payment(
     )
 
     db.add(payment)
+
+    # Activate client and their services when subscription is given
+    client.is_active = True
+    if client.vpn_config:
+        client.vpn_config.is_active = True
+    if client.proxy_account:
+        client.proxy_account.is_active = True
+
     await db.commit()
     await db.refresh(payment)
 

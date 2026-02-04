@@ -82,7 +82,7 @@ class PaymentChecker:
         if client.telegram_id:
             await notifier.notify_client(
                 client.telegram_id,
-                f"<b>ProxyGate VPN</b>\n\n"
+                f"<b>ZETIT FNA</b>\n\n"
                 f"{client.name}, ваша подписка истекла.\n"
                 f"Доступ временно приостановлен.\n\n"
                 f"Для продления обратитесь к администратору."

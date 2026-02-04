@@ -7,7 +7,7 @@ from app.api.deps import DBSession, CurrentClient
 from app.models import Client
 from app.schemas.portal import PortalProfileInfoResponse, VpnInfo, ProxyInfo
 from app.services.profile_generator import ProfileGenerator
-from app.config import settings
+from app.api.system import get_configured_domain, get_configured_server_ip, get_configured_ports
 
 
 router = APIRouter()
@@ -30,10 +30,15 @@ async def get_profile_info(
     )
     client = result.scalar_one()
 
+    # Get configured settings
+    domain = get_configured_domain()
+    server_ip = get_configured_server_ip()
+    http_port, socks_port = get_configured_ports()
+
     vpn_info = None
     if client.vpn_config:
         vpn_info = VpnInfo(
-            server=settings.vps_domain,
+            server=domain,
             username=client.vpn_config.username,
             password=client.vpn_config.password
         )
@@ -41,16 +46,16 @@ async def get_profile_info(
     proxy_info = None
     if client.proxy_account:
         proxy_info = ProxyInfo(
-            host=settings.vps_public_ip,
-            http_port=settings.proxy_http_port,
-            socks_port=settings.proxy_socks_port,
+            host=server_ip,
+            http_port=http_port,
+            socks_port=socks_port,
             username=client.proxy_account.username,
             password=client.proxy_account.password_plain
         )
 
     pac_url = None
     if client.proxy_account:
-        pac_url = f"https://{settings.vps_domain}/pac/{client.access_token}"
+        pac_url = f"https://{domain}/pac/{client.access_token}"
 
     return PortalProfileInfoResponse(
         vpn=vpn_info,
