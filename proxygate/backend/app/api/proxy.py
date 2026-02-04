@@ -20,6 +20,13 @@ def get_proxy_host() -> str:
     return get_configured_server_ip()
 
 
+def parse_allowed_ips(allowed_ips_str: str | None) -> list[str] | None:
+    """Parse comma-separated IP list into a list."""
+    if not allowed_ips_str:
+        return None
+    return [ip.strip() for ip in allowed_ips_str.split(',') if ip.strip()]
+
+
 router = APIRouter()
 
 
@@ -47,15 +54,6 @@ async def get_proxy_credentials(
     proxy_host = get_proxy_host()
     http_port, socks_port = get_configured_ports()
 
-    # Use getattr to safely access allowed_ips (may not exist if migration not applied)
-    allowed_ips_list = None
-    try:
-        allowed_ips_raw = getattr(client.proxy_account, 'allowed_ips', None)
-        if allowed_ips_raw:
-            allowed_ips_list = [ip.strip() for ip in allowed_ips_raw.split(',') if ip.strip()]
-    except Exception:
-        pass
-
     return ProxyCredentialsResponse(
         username=client.proxy_account.username,
         password=client.proxy_account.password_plain,
@@ -64,7 +62,7 @@ async def get_proxy_credentials(
         socks_host=proxy_host,
         socks_port=socks_port,
         pac_url=f"https://{domain}/pac/{client.access_token}",
-        allowed_ips=allowed_ips_list
+        allowed_ips=parse_allowed_ips(client.proxy_account.allowed_ips)
     )
 
 
@@ -98,15 +96,6 @@ async def reset_proxy_password(
     proxy_host = get_proxy_host()
     http_port, socks_port = get_configured_ports()
 
-    # Use getattr to safely access allowed_ips (may not exist if migration not applied)
-    allowed_ips_list = None
-    try:
-        allowed_ips_raw = getattr(client.proxy_account, 'allowed_ips', None)
-        if allowed_ips_raw:
-            allowed_ips_list = [ip.strip() for ip in allowed_ips_raw.split(',') if ip.strip()]
-    except Exception:
-        pass
-
     return ProxyCredentialsResponse(
         username=client.proxy_account.username,
         password=new_password,
@@ -115,7 +104,7 @@ async def reset_proxy_password(
         socks_host=proxy_host,
         socks_port=socks_port,
         pac_url=f"https://{domain}/pac/{client.access_token}",
-        allowed_ips=allowed_ips_list
+        allowed_ips=parse_allowed_ips(client.proxy_account.allowed_ips)
     )
 
 
@@ -140,13 +129,14 @@ async def update_allowed_ips(
     if client.proxy_account is None:
         raise HTTPException(status_code=404, detail="Proxy not configured for this client")
 
-    # Store as comma-separated string (only if column exists)
-    try:
-        client.proxy_account.allowed_ips = ','.join(request.allowed_ips) if request.allowed_ips else None
-        await db.commit()
-        return {"success": True, "allowed_ips": request.allowed_ips}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="allowed_ips column not available. Please run database migration.")
+    # Update allowed_ips via ORM
+    allowed_ips_str = ','.join(request.allowed_ips) if request.allowed_ips else None
+    client.proxy_account.allowed_ips = allowed_ips_str
+
+    await db.commit()
+    await db.refresh(client.proxy_account)
+
+    return {"success": True, "allowed_ips": parse_allowed_ips(client.proxy_account.allowed_ips)}
 
 
 @router.get("/{client_id}/proxy/pac")

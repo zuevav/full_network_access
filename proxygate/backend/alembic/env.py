@@ -1,4 +1,5 @@
 import asyncio
+import os
 from logging.config import fileConfig
 
 from sqlalchemy import pool
@@ -13,6 +14,10 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+# Load environment variables from .env file
+from dotenv import load_dotenv
+load_dotenv(Path(__file__).parent.parent / '.env')
+
 from app.database import Base
 from app.models import *  # noqa: F401, F403
 
@@ -24,9 +29,25 @@ if config.config_file_name is not None:
 target_metadata = Base.metadata
 
 
+def get_database_url() -> str:
+    """Get database URL from environment variable.
+
+    IMPORTANT: This project uses PostgreSQL, not SQLite!
+    The DATABASE_URL should be in format:
+    postgresql+asyncpg://user:password@localhost/dbname
+    """
+    url = os.getenv('DATABASE_URL')
+    if not url:
+        raise RuntimeError(
+            "DATABASE_URL environment variable is not set!\n"
+            "Make sure .env file exists with DATABASE_URL=postgresql+asyncpg://..."
+        )
+    return url
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
-    url = config.get_main_option("sqlalchemy.url")
+    url = get_database_url()
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -46,9 +67,16 @@ def do_run_migrations(connection: Connection) -> None:
 
 
 async def run_async_migrations() -> None:
-    """Run migrations in 'online' mode with async engine."""
+    """Run migrations in 'online' mode with async engine.
+
+    Uses DATABASE_URL from environment instead of alembic.ini
+    """
+    # Create config dict with database URL from environment
+    configuration = config.get_section(config.config_ini_section, {})
+    configuration['sqlalchemy.url'] = get_database_url()
+
     connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
