@@ -17,6 +17,8 @@ import api from '../../api'
 
 function DeviceCard({ icon: Icon, title, description, profileUrl, instructions, t }) {
   const [expanded, setExpanded] = useState(false)
+  // Ensure instructions is always an array
+  const instructionsList = Array.isArray(instructions) ? instructions : []
 
   return (
     <div className="card">
@@ -39,17 +41,19 @@ function DeviceCard({ icon: Icon, title, description, profileUrl, instructions, 
           {t('portalDevices.downloadProfile')}
         </a>
 
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="w-full mt-3 text-sm text-gray-500 flex items-center justify-center gap-1 hover:text-gray-700"
-        >
-          {t('portalDevices.howToInstall')}
-          {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-        </button>
+        {instructionsList.length > 0 && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="w-full mt-3 text-sm text-gray-500 flex items-center justify-center gap-1 hover:text-gray-700"
+          >
+            {t('portalDevices.howToInstall')}
+            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+        )}
 
-        {expanded && (
+        {expanded && instructionsList.length > 0 && (
           <ol className="mt-3 text-sm text-gray-600 space-y-2 pl-5 list-decimal">
-            {instructions.map((step, idx) => (
+            {instructionsList.map((step, idx) => (
               <li key={idx}>{step}</li>
             ))}
           </ol>
@@ -64,9 +68,11 @@ export default function PortalDevices() {
   const [showPassword, setShowPassword] = useState(false)
   const [copied, setCopied] = useState('')
 
-  const { data: profileInfo, isLoading } = useQuery({
+  const { data: profileInfo, isLoading, error } = useQuery({
     queryKey: ['portal-profiles'],
     queryFn: () => api.getPortalProfiles(),
+    retry: 1,
+    staleTime: 60000,
   })
 
   const copyToClipboard = (text, field) => {
@@ -105,6 +111,14 @@ export default function PortalDevices() {
       instructions: t('portalDevices.devices.macos.instructions', { returnObjects: true }),
     },
   ]
+
+  if (isLoading) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-500">{t('common.loading')}</p>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6 pb-20 md:pb-0">

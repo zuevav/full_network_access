@@ -29,7 +29,10 @@ export default function PortalLayout() {
             <div className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center">
               <Globe className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-gray-900">ProxyGate</span>
+            <div>
+              <span className="font-bold text-gray-900">ZETIT FNA</span>
+              <p className="text-xs text-gray-400 leading-none">Full Network Access</p>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <LanguageSwitcher />

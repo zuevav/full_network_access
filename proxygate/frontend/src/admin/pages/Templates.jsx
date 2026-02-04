@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Plus, Edit, Trash2, X } from 'lucide-react'
 import api from '../../api'
 
-function TemplateModal({ isOpen, onClose, template, onSuccess }) {
+function TemplateModal({ isOpen, onClose, template, onSuccess, t }) {
   const [name, setName] = useState('')
   const [icon, setIcon] = useState('')
   const [description, setDescription] = useState('')
@@ -51,7 +52,7 @@ function TemplateModal({ isOpen, onClose, template, onSuccess }) {
       <div className="bg-white rounded-xl w-full max-w-lg p-6 m-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold">
-            {template ? 'Edit Template' : 'New Template'}
+            {template ? t('templates.editTemplate') : t('templates.newTemplate')}
           </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="w-5 h-5" />
@@ -65,7 +66,7 @@ function TemplateModal({ isOpen, onClose, template, onSuccess }) {
 
           <div className="grid grid-cols-4 gap-4">
             <div>
-              <label className="label">Icon</label>
+              <label className="label">{t('templates.icon')}</label>
               <input
                 type="text"
                 className="input text-center text-2xl"
@@ -76,7 +77,7 @@ function TemplateModal({ isOpen, onClose, template, onSuccess }) {
               />
             </div>
             <div className="col-span-3">
-              <label className="label">Name *</label>
+              <label className="label">{t('templates.templateName')} *</label>
               <input
                 type="text"
                 className="input"
@@ -88,7 +89,7 @@ function TemplateModal({ isOpen, onClose, template, onSuccess }) {
           </div>
 
           <div>
-            <label className="label">Description</label>
+            <label className="label">{t('templates.description')}</label>
             <input
               type="text"
               className="input"
@@ -98,7 +99,7 @@ function TemplateModal({ isOpen, onClose, template, onSuccess }) {
           </div>
 
           <div>
-            <label className="label">Domains (one per line) *</label>
+            <label className="label">{t('templates.domainsOnePerLine')} *</label>
             <textarea
               className="input min-h-[200px] font-mono text-sm"
               value={domainsText}
@@ -110,10 +111,10 @@ function TemplateModal({ isOpen, onClose, template, onSuccess }) {
 
           <div className="flex gap-3">
             <button type="button" onClick={onClose} className="btn btn-secondary flex-1">
-              Cancel
+              {t('common.cancel')}
             </button>
             <button type="submit" disabled={loading} className="btn btn-primary flex-1">
-              {loading ? 'Saving...' : 'Save'}
+              {loading ? t('common.saving') : t('common.save')}
             </button>
           </div>
         </form>
@@ -123,6 +124,7 @@ function TemplateModal({ isOpen, onClose, template, onSuccess }) {
 }
 
 export default function Templates() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [showModal, setShowModal] = useState(false)
   const [editTemplate, setEditTemplate] = useState(null)
@@ -154,20 +156,20 @@ export default function Templates() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Domain Templates</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('templates.title')}</h1>
         <button onClick={handleNew} className="btn btn-primary flex items-center gap-2">
           <Plus className="w-5 h-5" />
-          New Template
+          {t('templates.newTemplate')}
         </button>
       </div>
 
       {isLoading ? (
-        <div className="text-center py-12">Loading...</div>
+        <div className="text-center py-12">{t('common.loading')}</div>
       ) : templates?.length === 0 ? (
         <div className="card p-12 text-center">
-          <p className="text-gray-500 mb-4">No templates yet</p>
+          <p className="text-gray-500 mb-4">{t('templates.noTemplates')}</p>
           <button onClick={handleNew} className="btn btn-primary">
-            Create First Template
+            {t('templates.createFirst')}
           </button>
         </div>
       ) : (
@@ -180,7 +182,7 @@ export default function Templates() {
                   <div>
                     <h3 className="font-semibold text-gray-900">{template.name}</h3>
                     <p className="text-sm text-gray-500">
-                      {template.domains.length} domains
+                      {template.domains.length} {t('clients.domainsCount')}
                     </p>
                   </div>
                 </div>
@@ -193,7 +195,7 @@ export default function Templates() {
                   </button>
                   <button
                     onClick={() => {
-                      if (confirm('Delete this template?')) {
+                      if (confirm(t('templates.deleteConfirm'))) {
                         deleteMutation.mutate(template.id)
                       }
                     }}
@@ -217,7 +219,7 @@ export default function Templates() {
                 ))}
                 {template.domains.length > 5 && (
                   <span className="px-2 py-1 text-xs text-gray-500">
-                    +{template.domains.length - 5} more
+                    +{template.domains.length - 5} {t('templates.more')}
                   </span>
                 )}
               </div>
@@ -231,6 +233,7 @@ export default function Templates() {
         onClose={() => setShowModal(false)}
         template={editTemplate}
         onSuccess={handleSuccess}
+        t={t}
       />
     </div>
   )

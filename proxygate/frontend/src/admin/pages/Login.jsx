@@ -46,8 +46,9 @@ export default function AdminLogin() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-100 rounded-full mb-4">
             <Globe className="w-8 h-8 text-primary-600" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">ProxyGate</h1>
-          <p className="text-gray-500 mt-1">{t('admin.panel')}</p>
+          <h1 className="text-2xl font-bold text-gray-900">ZETIT FNA</h1>
+          <p className="text-xs text-gray-400 mb-1">Full Network Access</p>
+          <p className="text-gray-500">{t('admin.panel')}</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

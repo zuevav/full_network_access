@@ -2,6 +2,7 @@
   "common": {
     "loading": "Loading...",
     "save": "Save",
+    "saving": "Saving...",
     "cancel": "Cancel",
     "delete": "Delete",
     "edit": "Edit",
@@ -130,6 +131,7 @@
     "exactDomainOnly": "Exact domain only",
     "applyTemplate": "Apply Template",
     "domainsCount": "domains",
+    "manuallyAdded": "Manually Added",
     "paymentHistory": "Payment History",
     "addPayment": "Add Payment",
     "amount": "Amount",
@@ -144,17 +146,35 @@
     "dangerZone": "Danger Zone",
     "deleteWarning": "Deleting a client will remove all their data including VPN config, proxy account, domains, and payment history.",
     "deleteClient": "Delete Client",
-    "clientNotFound": "Client not found"
+    "clientNotFound": "Client not found",
+    "addSubscription": "Add Subscription",
+    "subscriptionDuration": "Subscription Duration",
+    "duration1Month": "1 month",
+    "duration2Months": "2 months",
+    "duration3Months": "3 months",
+    "duration4Months": "4 months",
+    "duration6Months": "6 months",
+    "duration1Year": "1 year",
+    "duration2Years": "2 years",
+    "giveSubscription": "Give Subscription",
+    "optional": "optional",
+    "addDomainPlaceholder": "example.com",
+    "deleteConfirm": "Are you sure you want to delete this client?"
   },
   "templates": {
     "title": "Domain Templates",
     "addTemplate": "Add Template",
+    "newTemplate": "New Template",
     "editTemplate": "Edit Template",
-    "templateName": "Template Name",
+    "templateName": "Name",
     "icon": "Icon",
+    "description": "Description",
+    "domainsOnePerLine": "Domains (one per line)",
     "domainsCount": "{{count}} domains",
     "noTemplates": "No templates found",
-    "deleteConfirm": "Are you sure you want to delete this template?",
+    "createFirst": "Create First Template",
+    "deleteConfirm": "Delete this template?",
+    "more": "more",
     "templateCreated": "Template created successfully",
     "templateUpdated": "Template updated successfully",
     "templateDeleted": "Template deleted successfully"
@@ -247,7 +267,7 @@
     "uptime": "Uptime",
     "memory": "Memory",
     "disk": "Disk",
-    "about": "About ProxyGate",
+    "about": "About ZETIT FNA",
     "version": "Version",
     "system": "System",
     "features": "Features"
@@ -330,7 +350,7 @@
           "Right-click → 'Run as Administrator'",
           "Wait for the script to complete",
           "Open Settings → Network → VPN",
-          "Click 'ProxyGate VPN' → Connect",
+          "Click 'ZETIT FNA' → Connect",
           "Enter password (first time only)"
         ]
       },
@@ -341,7 +361,7 @@
           "Download .mobileconfig profile",
           "Double-click the file",
           "Open System Preferences → Profiles",
-          "Install ProxyGate profile",
+          "Install ZETIT FNA profile",
           "VPN will appear in menu bar"
         ]
       }
