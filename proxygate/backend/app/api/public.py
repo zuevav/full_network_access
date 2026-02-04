@@ -120,9 +120,88 @@ async def client_connect_page(
             border-radius: 12px;
             text-decoration: none;
             color: #333;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: inherit;
         }}
         .download-btn:hover {{ background: #e8e8e8; }}
         .download-icon {{ font-size: 24px; margin-bottom: 8px; }}
+        /* Modal styles */
+        .modal-overlay {{
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }}
+        .modal-overlay.active {{ display: flex; }}
+        .modal {{
+            background: white;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 400px;
+            max-height: 90vh;
+            overflow: auto;
+        }}
+        .modal-header {{
+            padding: 16px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }}
+        .modal-title {{ font-size: 18px; font-weight: 600; color: #333; }}
+        .modal-subtitle {{ font-size: 14px; color: #888; margin-top: 4px; }}
+        .modal-close {{
+            background: none;
+            border: none;
+            font-size: 24px;
+            color: #888;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }}
+        .modal-body {{ padding: 16px; }}
+        .modal-option {{
+            display: block;
+            padding: 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            text-decoration: none;
+            color: #333;
+            position: relative;
+        }}
+        .modal-option:hover {{ border-color: #667eea; background: #f8f9ff; }}
+        .modal-option-icon {{ font-size: 24px; margin-bottom: 8px; }}
+        .modal-option-title {{ font-weight: 600; margin-bottom: 4px; }}
+        .modal-option-desc {{ font-size: 13px; color: #666; }}
+        .modal-badge {{
+            position: absolute;
+            top: -8px;
+            right: 12px;
+            background: #fbbf24;
+            color: #78350f;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 10px;
+        }}
+        .modal-footer {{
+            padding: 12px 16px;
+            background: #f5f5f5;
+            border-radius: 0 0 16px 16px;
+            text-align: center;
+            font-size: 12px;
+            color: #888;
+        }}
         .proxy-info {{
             background: #f5f5f5;
             border-radius: 12px;
@@ -162,10 +241,10 @@ async def client_connect_page(
 
         <div class="section-title">Быстрое скачивание</div>
         <div class="download-grid">
-            <a href="/api/download/{access_token}/ios" class="download-btn">
+            <button onclick="showModal()" class="download-btn">
                 <span class="download-icon">📱</span>
                 <span>iPhone</span>
-            </a>
+            </button>
             <a href="/api/download/{access_token}/android" class="download-btn">
                 <span class="download-icon">🤖</span>
                 <span>Android</span>
@@ -174,10 +253,10 @@ async def client_connect_page(
                 <span class="download-icon">🪟</span>
                 <span>Windows</span>
             </a>
-            <a href="/api/download/{access_token}/macos" class="download-btn">
+            <button onclick="showModal()" class="download-btn">
                 <span class="download-icon">🍏</span>
                 <span>macOS</span>
-            </a>
+            </button>
         </div>
 
         {"" if not client.proxy_account else f'''
@@ -194,6 +273,51 @@ async def client_connect_page(
             Вопросы? Обратитесь к администратору
         </div>
     </div>
+
+    <!-- iOS/macOS VPN Mode Selection Modal -->
+    <div id="vpnModal" class="modal-overlay" onclick="hideModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-title">Выберите режим VPN</div>
+                    <div class="modal-subtitle">Как должен работать VPN?</div>
+                </div>
+                <button class="modal-close" onclick="hideModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <a href="/api/download/{access_token}/ios?mode=ondemand" class="modal-option">
+                    <span class="modal-badge">Рекомендуем</span>
+                    <div class="modal-option-icon">⚡</div>
+                    <div class="modal-option-title">Авто (по доменам)</div>
+                    <div class="modal-option-desc">VPN включается только при открытии нужных сайтов. Экономит батарею.</div>
+                </a>
+                <a href="/api/download/{access_token}/ios?mode=always" class="modal-option">
+                    <div class="modal-option-icon">🛡️</div>
+                    <div class="modal-option-title">Всегда (Split-туннель)</div>
+                    <div class="modal-option-desc">VPN всегда включён, но только рабочий трафик идёт через VPN.</div>
+                </a>
+                <a href="/api/download/{access_token}/ios?mode=full" class="modal-option">
+                    <div class="modal-option-icon">🌐</div>
+                    <div class="modal-option-title">Всегда (Весь трафик)</div>
+                    <div class="modal-option-desc">Весь трафик через VPN. Максимальная защита.</div>
+                </a>
+            </div>
+            <div class="modal-footer">
+                После скачивания откройте Настройки для установки профиля
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showModal() {{
+            document.getElementById('vpnModal').classList.add('active');
+        }}
+        function hideModal(event) {{
+            if (!event || event.target === event.currentTarget) {{
+                document.getElementById('vpnModal').classList.remove('active');
+            }}
+        }}
+    </script>
 </body>
 </html>
 """
@@ -233,9 +357,10 @@ async def download_windows_public(
 @router.get("/download/{access_token}/ios")
 async def download_ios_public(
     access_token: str,
-    db: DBSession
+    db: DBSession,
+    mode: str = "ondemand"
 ):
-    """Download iOS profile by access token."""
+    """Download iOS profile by access token with VPN mode selection."""
     result = await db.execute(
         select(Client)
         .options(
@@ -249,13 +374,18 @@ async def download_ios_public(
     if client is None or client.vpn_config is None:
         raise HTTPException(status_code=404, detail="Not found")
 
-    content = profile_generator.generate_ios_mobileconfig(client)
+    # Validate mode
+    if mode not in ("ondemand", "always", "full"):
+        mode = "ondemand"
+
+    content = profile_generator.generate_ios_mobileconfig(client, mode=mode)
+    mode_suffix = f"-{mode}" if mode != "ondemand" else ""
 
     return Response(
         content=content,
         media_type="application/x-apple-aspen-config",
         headers={
-            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}.mobileconfig"'
+            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}{mode_suffix}.mobileconfig"'
         }
     )
 
@@ -263,9 +393,10 @@ async def download_ios_public(
 @router.get("/download/{access_token}/macos")
 async def download_macos_public(
     access_token: str,
-    db: DBSession
+    db: DBSession,
+    mode: str = "ondemand"
 ):
-    """Download macOS profile by access token."""
+    """Download macOS profile by access token with VPN mode selection."""
     result = await db.execute(
         select(Client)
         .options(
@@ -279,13 +410,18 @@ async def download_macos_public(
     if client is None or client.vpn_config is None:
         raise HTTPException(status_code=404, detail="Not found")
 
-    content = profile_generator.generate_macos_mobileconfig(client)
+    # Validate mode
+    if mode not in ("ondemand", "always", "full"):
+        mode = "ondemand"
+
+    content = profile_generator.generate_macos_mobileconfig(client, mode=mode)
+    mode_suffix = f"-{mode}" if mode != "ondemand" else ""
 
     return Response(
         content=content,
         media_type="application/x-apple-aspen-config",
         headers={
-            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}-macos.mobileconfig"'
+            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}-macos{mode_suffix}.mobileconfig"'
         }
     )
 
