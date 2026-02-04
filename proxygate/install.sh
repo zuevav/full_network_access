@@ -2,9 +2,14 @@
 set -e
 
 #===============================================================================
-# ProxyGate Auto-Installer v1.5
+# ProxyGate Auto-Installer v1.6
 # Полная автоматическая установка VPN/Proxy системы
 # Поддержка: Ubuntu 22.04 LTS, 24.04 LTS
+#
+# Исправления v1.6:
+# - Расширен PATH в systemd сервисе для npm/node
+# - Добавлен override.conf для гарантии правильного PATH при обновлениях
+# - Исправлена проблема "node not found" при веб-обновлениях
 #
 # Исправления v1.5:
 # - Добавлены certbot и rsync в базовые пакеты
@@ -850,7 +855,7 @@ Type=simple
 User=root
 Group=root
 WorkingDirectory=${INSTALL_DIR}/backend
-Environment="PATH=/usr/bin:/usr/local/bin:${INSTALL_DIR}/backend/venv/bin"
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:${INSTALL_DIR}/backend/venv/bin"
 EnvironmentFile=${INSTALL_DIR}/.env
 ExecStart=${INSTALL_DIR}/backend/venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
 Restart=always
@@ -858,6 +863,13 @@ RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
+EOF
+
+    # Создаём override файл для гарантии правильного PATH (для npm/node при обновлениях)
+    mkdir -p /etc/systemd/system/proxygate.service.d
+    cat > /etc/systemd/system/proxygate.service.d/override.conf << EOF
+[Service]
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 EOF
 
     systemctl daemon-reload
