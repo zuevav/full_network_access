@@ -35,8 +35,7 @@ class ProfileGenerator:
         domains = []
         for d in client.domains:
             if d.is_active:
-                # Add domain and wildcard subdomain
-                domains.append(d.domain)
+                # Use wildcard only - covers base domain and all subdomains
                 domains.append(f"*.{d.domain}")
         return domains
 
