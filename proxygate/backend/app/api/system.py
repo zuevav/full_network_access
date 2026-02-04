@@ -82,6 +82,27 @@ def load_system_settings() -> dict:
     return defaults
 
 
+def get_configured_domain() -> str:
+    """Get the configured domain from system settings."""
+    settings = load_system_settings()
+    return settings.get("domain", "") or "localhost"
+
+
+def get_configured_server_ip() -> str:
+    """Get the configured server IP from system settings."""
+    settings = load_system_settings()
+    return settings.get("server_ip", "") or get_server_ip() or "127.0.0.1"
+
+
+def get_configured_ports() -> tuple:
+    """Get HTTP and SOCKS proxy ports from system settings."""
+    settings = load_system_settings()
+    return (
+        settings.get("http_proxy_port", 3128),
+        settings.get("socks_proxy_port", 1080)
+    )
+
+
 def save_system_settings(data: dict):
     """Save system settings."""
     SYSTEM_SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)

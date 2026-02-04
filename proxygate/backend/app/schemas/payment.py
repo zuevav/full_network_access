@@ -4,7 +4,7 @@ from datetime import datetime, date
 
 
 class PaymentCreate(BaseModel):
-    amount: float = Field(..., gt=0)
+    amount: float = Field(default=0, ge=0)
     currency: str = Field(default="RUB", max_length=3)
     valid_from: date
     valid_until: date
