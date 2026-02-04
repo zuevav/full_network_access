@@ -285,25 +285,26 @@ async def client_connect_page(
                 <button class="modal-close" onclick="hideModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <a href="/api/download/{access_token}/ios?mode=ondemand" class="modal-option">
+                <a href="/api/download/{access_token}/ios?mode=ondemand" class="modal-option" onclick="setTimeout(hideModal, 500)">
                     <span class="modal-badge">Рекомендуем</span>
                     <div class="modal-option-icon">⚡</div>
                     <div class="modal-option-title">Авто (по доменам)</div>
                     <div class="modal-option-desc">VPN включается только при открытии нужных сайтов. Экономит батарею.</div>
                 </a>
-                <a href="/api/download/{access_token}/ios?mode=always" class="modal-option">
+                <a href="/api/download/{access_token}/ios?mode=always" class="modal-option" onclick="setTimeout(hideModal, 500)">
                     <div class="modal-option-icon">🛡️</div>
                     <div class="modal-option-title">Всегда (Split-туннель)</div>
                     <div class="modal-option-desc">VPN всегда включён, но только рабочий трафик идёт через VPN.</div>
                 </a>
-                <a href="/api/download/{access_token}/ios?mode=full" class="modal-option">
+                <a href="/api/download/{access_token}/ios?mode=full" class="modal-option" onclick="setTimeout(hideModal, 500)">
                     <div class="modal-option-icon">🌐</div>
                     <div class="modal-option-title">Всегда (Весь трафик)</div>
                     <div class="modal-option-desc">Весь трафик через VPN. Максимальная защита.</div>
                 </a>
             </div>
             <div class="modal-footer">
-                После скачивания откройте Настройки для установки профиля
+                После нажатия появится уведомление "Профиль загружен".<br>
+                Затем: Настройки → Загруженный профиль → Установить
             </div>
         </div>
     </div>
