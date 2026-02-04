@@ -393,7 +393,12 @@
     "vpnSectionDescription": "Весь трафик с устройства идёт через защищённый VPN-туннель",
     "vpnServer": "Сервер VPN",
     "proxySection": "Прокси — для браузера",
-    "proxySetupOptions": "Варианты настройки"
+    "proxySetupOptions": "Варианты настройки",
+    "quickDownload": "Быстрое скачивание",
+    "chooseConnectionType": "Выберите тип подключения:",
+    "vpnTypeDescription": "Весь трафик через VPN",
+    "proxyTypeDescription": "Только в браузере",
+    "setup": "Настройка"
   },
   "portalDomains": {
     "title": "Ваши домены",

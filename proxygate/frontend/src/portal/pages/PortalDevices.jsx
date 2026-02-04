@@ -11,53 +11,101 @@ import {
   Copy,
   Eye,
   EyeOff,
-  ExternalLink
+  ExternalLink,
+  X,
+  Shield,
+  Globe
 } from 'lucide-react'
 import api from '../../api'
 
-function DeviceCard({ icon: Icon, title, description, profileUrl, instructions, t }) {
-  const [expanded, setExpanded] = useState(false)
-  // Ensure instructions is always an array
-  const instructionsList = Array.isArray(instructions) ? instructions : []
+// Platform configuration
+const PLATFORMS = [
+  { id: 'ios', name: 'iPhone', icon: '📱', vpnProfile: '/api/portal/profiles/ios' },
+  { id: 'android', name: 'Android', icon: '🤖', vpnProfile: '/api/portal/profiles/android' },
+  { id: 'windows', name: 'Windows', icon: '🪟', vpnProfile: '/api/portal/profiles/windows' },
+  { id: 'macos', name: 'macOS', icon: '🍏', vpnProfile: '/api/portal/profiles/macos' },
+]
+
+// Modal for choosing VPN or Proxy
+function ConnectionTypeModal({ isOpen, onClose, platform, profileInfo, t }) {
+  if (!isOpen || !platform) return null
+
+  const hasVpn = !!profileInfo?.vpn
+  const hasProxy = !!profileInfo?.proxy
 
   return (
-    <div className="card">
-      <div className="p-4 sm:p-6">
-        <div className="flex items-start gap-4">
-          <div className="p-3 bg-primary-50 rounded-xl">
-            {typeof Icon === 'function' ? <Icon className="w-6 h-6 text-primary-600" /> : Icon}
-          </div>
-          <div className="flex-1">
-            <h3 className="font-semibold text-gray-900">{title}</h3>
-            <p className="text-sm text-gray-500 mt-1">{description}</p>
-          </div>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl w-full max-w-sm p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">
+            {platform.icon} {platform.name}
+          </h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
-        <a
-          href={profileUrl}
-          className="btn btn-primary w-full mt-4 flex items-center justify-center gap-2"
+        <p className="text-sm text-gray-600 mb-4">
+          {t('portalDevices.chooseConnectionType')}
+        </p>
+
+        <div className="space-y-3">
+          {hasVpn && (
+            <a
+              href={platform.vpnProfile}
+              className="flex items-center gap-4 p-4 bg-green-50 border-2 border-green-200 rounded-xl hover:border-green-400 transition-colors"
+              onClick={onClose}
+            >
+              <div className="p-3 bg-green-100 rounded-lg">
+                <Shield className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-semibold text-green-900">VPN</h3>
+                <p className="text-sm text-green-700">{t('portalDevices.vpnTypeDescription')}</p>
+              </div>
+              <Download className="w-5 h-5 text-green-600" />
+            </a>
+          )}
+
+          {hasProxy && (
+            <div className="p-4 bg-orange-50 border-2 border-orange-200 rounded-xl">
+              <div className="flex items-center gap-4 mb-3">
+                <div className="p-3 bg-orange-100 rounded-lg">
+                  <Globe className="w-6 h-6 text-orange-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-orange-900">Proxy</h3>
+                  <p className="text-sm text-orange-700">{t('portalDevices.proxyTypeDescription')}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <a
+                  href="/api/portal/profiles/pac"
+                  className="btn btn-secondary btn-sm text-center"
+                  onClick={onClose}
+                >
+                  <Download className="w-4 h-4 mr-1" />
+                  PAC
+                </a>
+                <a
+                  href="/api/portal/profiles/proxy-setup"
+                  className="btn btn-secondary btn-sm text-center"
+                  onClick={onClose}
+                >
+                  <Download className="w-4 h-4 mr-1" />
+                  {t('portalDevices.setup')}
+                </a>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <button
+          onClick={onClose}
+          className="btn btn-secondary w-full mt-4"
         >
-          <Download className="w-4 h-4" />
-          {t('portalDevices.downloadProfile')}
-        </a>
-
-        {instructionsList.length > 0 && (
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="w-full mt-3 text-sm text-gray-500 flex items-center justify-center gap-1 hover:text-gray-700"
-          >
-            {t('portalDevices.howToInstall')}
-            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-        )}
-
-        {expanded && instructionsList.length > 0 && (
-          <ol className="mt-3 text-sm text-gray-600 space-y-2 pl-5 list-decimal">
-            {instructionsList.map((step, idx) => (
-              <li key={idx}>{step}</li>
-            ))}
-          </ol>
-        )}
+          {t('common.cancel')}
+        </button>
       </div>
     </div>
   )
@@ -67,8 +115,9 @@ export default function PortalDevices() {
   const { t } = useTranslation()
   const [showPassword, setShowPassword] = useState(false)
   const [copied, setCopied] = useState('')
+  const [selectedPlatform, setSelectedPlatform] = useState(null)
 
-  const { data: profileInfo, isLoading, error } = useQuery({
+  const { data: profileInfo, isLoading } = useQuery({
     queryKey: ['portal-profiles'],
     queryFn: () => api.getPortalProfiles(),
     retry: 1,
@@ -87,42 +136,9 @@ export default function PortalDevices() {
     return typeof result === 'string' ? result : fallback
   }
 
-  // Helper to safely get array translation
-  const safeArrayT = (key) => {
-    const result = t(key, { returnObjects: true })
-    return Array.isArray(result) ? result : []
-  }
-
-  const devices = [
-    {
-      icon: Smartphone,
-      title: safeT('portalDevices.devices.iphone.title', 'iPhone / iPad'),
-      description: safeT('portalDevices.devices.iphone.description', 'Automatic setup'),
-      profileUrl: '/api/portal/profiles/ios',
-      instructions: safeArrayT('portalDevices.devices.iphone.instructions'),
-    },
-    {
-      icon: <span className="text-2xl">🤖</span>,
-      title: safeT('portalDevices.devices.android.title', 'Android'),
-      description: safeT('portalDevices.devices.android.description', 'Requires strongSwan app'),
-      profileUrl: '/api/portal/profiles/android',
-      instructions: safeArrayT('portalDevices.devices.android.instructions'),
-    },
-    {
-      icon: Monitor,
-      title: safeT('portalDevices.devices.windows.title', 'Windows 10/11'),
-      description: safeT('portalDevices.devices.windows.description', 'Automatic setup'),
-      profileUrl: '/api/portal/profiles/windows',
-      instructions: safeArrayT('portalDevices.devices.windows.instructions'),
-    },
-    {
-      icon: <span className="text-2xl">🍏</span>,
-      title: safeT('portalDevices.devices.macos.title', 'macOS'),
-      description: safeT('portalDevices.devices.macos.description', 'Profile for Mac'),
-      profileUrl: '/api/portal/profiles/macos',
-      instructions: safeArrayT('portalDevices.devices.macos.instructions'),
-    },
-  ]
+  const hasVpn = !!profileInfo?.vpn
+  const hasProxy = !!profileInfo?.proxy
+  const hasBoth = hasVpn && hasProxy
 
   if (isLoading) {
     return (
@@ -142,7 +158,7 @@ export default function PortalDevices() {
       </div>
 
       {/* Unified credentials section */}
-      {(profileInfo?.vpn || profileInfo?.proxy) && (
+      {(hasVpn || hasProxy) && (
         <div className="card p-4 sm:p-6 border-2 border-primary-200 bg-primary-50/30">
           <h2 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
             <span className="text-xl">🔑</span>
@@ -188,76 +204,49 @@ export default function PortalDevices() {
               </div>
             </div>
           </div>
-
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
-            <p className="font-medium mb-1">{t('portalDevices.usedFor')}</p>
-            <ul className="list-disc list-inside space-y-1 text-blue-600">
-              {profileInfo?.vpn && <li>{t('portalDevices.vpnConnection')}</li>}
-              {profileInfo?.proxy && <li>{t('portalDevices.proxyConnection')}</li>}
-            </ul>
-          </div>
         </div>
       )}
 
-      {/* VPN Section */}
-      {profileInfo?.vpn && (
-        <div className="card p-4 sm:p-6">
-          <h2 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-            <span className="text-xl">🛡️</span>
-            {t('portalDevices.vpnSection')}
-          </h2>
-          <p className="text-sm text-gray-500 mb-4">
-            {t('portalDevices.vpnSectionDescription')}
-          </p>
+      {/* Quick Download Section */}
+      <div className="card p-4 sm:p-6">
+        <h2 className="font-semibold text-gray-900 mb-4 uppercase text-sm tracking-wide">
+          {t('portalDevices.quickDownload')}
+        </h2>
 
-          {/* VPN Server info */}
-          <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-100">
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-600">{t('portalDevices.vpnServer')}</span>
-              <div className="flex items-center gap-2">
-                <code className="font-mono text-green-700">{profileInfo.vpn.server}</code>
-                <button
-                  onClick={() => copyToClipboard(profileInfo.vpn.server, 'vpnserver')}
-                  className="text-green-400 hover:text-green-600"
-                >
-                  <Copy className="w-4 h-4" />
-                </button>
-                {copied === 'vpnserver' && <span className="text-xs text-green-600">{t('common.copied')}</span>}
-              </div>
-            </div>
-          </div>
-
-          {/* VPN Device cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {devices.map((device, idx) => (
-              <DeviceCard key={idx} {...device} t={t} />
-            ))}
-          </div>
-
-          {/* Android app link */}
-          <a
-            href="https://play.google.com/store/apps/details?id=org.strongswan.android"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block mt-4 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">🤖</span>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">{t('portalDevices.strongswanAndroid')}</p>
-                <p className="text-sm text-gray-500">{t('portalDevices.freeInPlayStore')}</p>
-              </div>
-              <ExternalLink className="w-5 h-5 text-gray-400" />
-            </div>
-          </a>
+        <div className="grid grid-cols-2 gap-3">
+          {PLATFORMS.map((platform) => (
+            <button
+              key={platform.id}
+              onClick={() => {
+                if (hasBoth) {
+                  // Show modal to choose
+                  setSelectedPlatform(platform)
+                } else if (hasVpn) {
+                  // Direct VPN download
+                  window.location.href = platform.vpnProfile
+                } else if (hasProxy) {
+                  // Show modal for proxy options
+                  setSelectedPlatform(platform)
+                }
+              }}
+              className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors border-2 border-transparent hover:border-primary-200"
+            >
+              <span className="text-4xl mb-2">{platform.icon}</span>
+              <span className="font-medium text-gray-900">{platform.name}</span>
+              {!hasBoth && (
+                <span className="text-xs text-gray-500 mt-1">
+                  {hasVpn ? 'VPN' : hasProxy ? 'Proxy' : ''}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
-      )}
+      </div>
 
-      {/* Proxy Section */}
-      {profileInfo?.proxy && (
+      {/* Proxy Section - detailed info */}
+      {hasProxy && (
         <div className="card p-4 sm:p-6">
-          <h2 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
-            <span className="text-xl">🌐</span>
+          <h2 className="font-semibold text-gray-900 mb-2 uppercase text-sm tracking-wide">
             {t('portalDevices.proxySection')}
           </h2>
           <p className="text-sm text-gray-600 mb-4">
@@ -319,6 +308,61 @@ export default function PortalDevices() {
           </div>
         </div>
       )}
+
+      {/* VPN Section - detailed info */}
+      {hasVpn && (
+        <div className="card p-4 sm:p-6">
+          <h2 className="font-semibold text-gray-900 mb-2 uppercase text-sm tracking-wide">
+            {t('portalDevices.vpnSection')}
+          </h2>
+          <p className="text-sm text-gray-500 mb-4">
+            {t('portalDevices.vpnSectionDescription')}
+          </p>
+
+          {/* VPN Server info */}
+          <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-100">
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-gray-600">{t('portalDevices.vpnServer')}</span>
+              <div className="flex items-center gap-2">
+                <code className="font-mono text-green-700">{profileInfo.vpn.server}</code>
+                <button
+                  onClick={() => copyToClipboard(profileInfo.vpn.server, 'vpnserver')}
+                  className="text-green-400 hover:text-green-600"
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+                {copied === 'vpnserver' && <span className="text-xs text-green-600">{t('common.copied')}</span>}
+              </div>
+            </div>
+          </div>
+
+          {/* Android app link */}
+          <a
+            href="https://play.google.com/store/apps/details?id=org.strongswan.android"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">🤖</span>
+              <div className="flex-1">
+                <p className="font-medium text-gray-900">{t('portalDevices.strongswanAndroid')}</p>
+                <p className="text-sm text-gray-500">{t('portalDevices.freeInPlayStore')}</p>
+              </div>
+              <ExternalLink className="w-5 h-5 text-gray-400" />
+            </div>
+          </a>
+        </div>
+      )}
+
+      {/* Connection Type Modal */}
+      <ConnectionTypeModal
+        isOpen={!!selectedPlatform}
+        onClose={() => setSelectedPlatform(null)}
+        platform={selectedPlatform}
+        profileInfo={profileInfo}
+        t={t}
+      />
     </div>
   )
 }

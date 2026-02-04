@@ -393,7 +393,12 @@
     "vpnSectionDescription": "All device traffic goes through a secure VPN tunnel",
     "vpnServer": "VPN Server",
     "proxySection": "Proxy — For Browser",
-    "proxySetupOptions": "Setup Options"
+    "proxySetupOptions": "Setup Options",
+    "quickDownload": "Quick Download",
+    "chooseConnectionType": "Choose connection type:",
+    "vpnTypeDescription": "All traffic through VPN",
+    "proxyTypeDescription": "Browser only",
+    "setup": "Setup"
   },
   "portalDomains": {
     "title": "Your Domains",
