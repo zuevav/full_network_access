@@ -3,7 +3,6 @@ from typing import List, Dict, Optional
 from dataclasses import dataclass
 
 from app.config import settings
-from app.api.system import get_configured_domain
 
 
 @dataclass
@@ -33,6 +32,9 @@ class IKEv2Manager:
 
         One shared connection for all clients.
         """
+        # Lazy import to avoid circular dependency
+        from app.api.system import get_configured_domain
+
         # Use configured domain for server identity (must match client profiles)
         server_id = get_configured_domain()
 
