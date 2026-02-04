@@ -285,26 +285,29 @@ async def client_connect_page(
                 <button class="modal-close" onclick="hideModal()">&times;</button>
             </div>
             <div class="modal-body">
-                <a href="/api/download/{access_token}/ios?mode=ondemand" class="modal-option" onclick="setTimeout(hideModal, 500)">
+                <a href="/api/download/{access_token}/ios?mode=ondemand" class="modal-option">
                     <span class="modal-badge">Рекомендуем</span>
                     <div class="modal-option-icon">⚡</div>
                     <div class="modal-option-title">Авто (по доменам)</div>
-                    <div class="modal-option-desc">VPN включается только при открытии нужных сайтов. Экономит батарею.</div>
+                    <div class="modal-option-desc">VPN включается только при открытии нужных сайтов.</div>
                 </a>
-                <a href="/api/download/{access_token}/ios?mode=always" class="modal-option" onclick="setTimeout(hideModal, 500)">
+                <a href="/api/download/{access_token}/ios?mode=always" class="modal-option">
                     <div class="modal-option-icon">🛡️</div>
                     <div class="modal-option-title">Всегда (Split-туннель)</div>
                     <div class="modal-option-desc">VPN всегда включён, но только рабочий трафик идёт через VPN.</div>
                 </a>
-                <a href="/api/download/{access_token}/ios?mode=full" class="modal-option" onclick="setTimeout(hideModal, 500)">
+                <a href="/api/download/{access_token}/ios?mode=full" class="modal-option">
                     <div class="modal-option-icon">🌐</div>
                     <div class="modal-option-title">Всегда (Весь трафик)</div>
                     <div class="modal-option-desc">Весь трафик через VPN. Максимальная защита.</div>
                 </a>
             </div>
-            <div class="modal-footer">
-                После нажатия появится уведомление "Профиль загружен".<br>
-                Затем: Настройки → Загруженный профиль → Установить
+            <div class="modal-footer" style="background: #fff3cd; color: #856404;">
+                <strong>📱 Инструкция для iPhone:</strong><br>
+                1. Нажмите на режим выше<br>
+                2. Разрешите загрузку профиля<br>
+                3. Откройте: <strong>Настройки → Основные → VPN и управление устройством</strong><br>
+                4. Нажмите на загруженный профиль → Установить
             </div>
         </div>
     </div>
@@ -382,16 +385,14 @@ async def download_ios_public(
     content = profile_generator.generate_ios_mobileconfig(client, mode=mode)
     mode_suffix = f"-{mode}" if mode != "ondemand" else ""
 
-    # iOS Safari requires explicit Content-Length and cache headers
+    # iOS Safari headers for proper download handling
     return Response(
         content=content,
         media_type="application/x-apple-aspen-config",
         headers={
             "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}{mode_suffix}.mobileconfig"',
-            "Content-Length": str(len(content)),
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0"
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff"
         }
     )
 
@@ -423,16 +424,14 @@ async def download_macos_public(
     content = profile_generator.generate_macos_mobileconfig(client, mode=mode)
     mode_suffix = f"-{mode}" if mode != "ondemand" else ""
 
-    # Explicit headers for Safari compatibility
+    # Safari headers for proper download handling
     return Response(
         content=content,
         media_type="application/x-apple-aspen-config",
         headers={
             "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}-macos{mode_suffix}.mobileconfig"',
-            "Content-Length": str(len(content)),
-            "Cache-Control": "no-cache, no-store, must-revalidate",
-            "Pragma": "no-cache",
-            "Expires": "0"
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff"
         }
     )
 
