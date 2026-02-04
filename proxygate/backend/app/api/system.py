@@ -144,14 +144,26 @@ def check_service_status(service_name: str, alternatives: list = None) -> str:
     return "stopped"  # Service not found = stopped
 
 
-def check_port_open(port: int, host: str = "127.0.0.1") -> bool:
-    """Check if a port is open."""
+def check_port_open(port: int, host: str = "127.0.0.1", udp: bool = False) -> bool:
+    """Check if a port is open (TCP or UDP)."""
     try:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(2)
-        result = sock.connect_ex((host, port))
-        sock.close()
-        return result == 0
+        if udp:
+            # For UDP, we can't really check if it's open, so just return True
+            # if we can bind to it (meaning it's in use)
+            # Instead, check if process is listening on the port
+            result = subprocess.run(
+                ["ss", "-uln", f"sport = :{port}"],
+                capture_output=True,
+                text=True,
+                timeout=5
+            )
+            return str(port) in result.stdout
+        else:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(2)
+            result = sock.connect_ex((host, port))
+            sock.close()
+            return result == 0
     except:
         return False
 
@@ -286,31 +298,36 @@ async def get_status(admin: CurrentAdmin):
             "name": "nginx",
             "display_name": "Nginx Web Server",
             "ports": [80, 443],
-            "alternatives": []
+            "alternatives": [],
+            "udp": False
         },
         {
             "name": "proxygate",
             "display_name": "ProxyGate Backend",
             "ports": [8000],
-            "alternatives": ["proxygate.service"]
+            "alternatives": ["proxygate.service"],
+            "udp": False
         },
         {
-            "name": "strongswan",
+            "name": "strongswan-starter",
             "display_name": "StrongSwan VPN",
             "ports": [500],
-            "alternatives": ["strongswan-starter", "ipsec", "charon"]
+            "alternatives": ["strongswan", "ipsec", "charon"],
+            "udp": True  # IKE uses UDP port 500
         },
         {
             "name": "3proxy",
             "display_name": "3proxy HTTP/SOCKS",
             "ports": [settings.get("http_proxy_port", 3128), settings.get("socks_proxy_port", 1080)],
-            "alternatives": ["3proxy.service"]
+            "alternatives": ["3proxy.service"],
+            "udp": False
         },
         {
             "name": "postgresql",
             "display_name": "PostgreSQL Database",
             "ports": [5432],
-            "alternatives": ["postgresql@14-main", "postgresql@15-main", "postgresql@16-main", "postgres"]
+            "alternatives": ["postgresql@14-main", "postgresql@15-main", "postgresql@16-main", "postgres"],
+            "udp": False
         }
     ]
 
@@ -320,7 +337,8 @@ async def get_status(admin: CurrentAdmin):
 
         # Check first port for status indicator
         port = svc["ports"][0] if svc["ports"] else None
-        port_open = check_port_open(port) if port else None
+        is_udp = svc.get("udp", False)
+        port_open = check_port_open(port, udp=is_udp) if port else None
 
         # If systemctl says stopped but port is open, service is likely running
         if svc_status == "stopped" and port_open:
@@ -343,7 +361,7 @@ async def get_status(admin: CurrentAdmin):
 @router.post("/restart/{service_name}")
 async def restart_service(service_name: str, admin: CurrentAdmin):
     """Restart a specific service."""
-    allowed_services = ["nginx", "proxygate", "strongswan", "3proxy", "postgresql"]
+    allowed_services = ["nginx", "proxygate", "strongswan", "strongswan-starter", "3proxy", "postgresql"]
 
     if service_name not in allowed_services:
         raise HTTPException(
