@@ -18,14 +18,19 @@ import {
 } from 'lucide-react'
 import api from '../../api'
 
-const tabs = ['Profiles', 'Domains', 'Payments', 'Settings']
-
 export default function ClientDetail() {
   const { t } = useTranslation()
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [activeTab, setActiveTab] = useState('Profiles')
+
+  const tabs = [
+    { key: 'Profiles', label: t('clients.tabProfiles') },
+    { key: 'Domains', label: t('clients.tabDomains') },
+    { key: 'Payments', label: t('clients.tabPayments') },
+    { key: 'Settings', label: t('clients.tabSettings') }
+  ]
 
   const { data: client, isLoading } = useQuery({
     queryKey: ['client', id],
@@ -43,11 +48,11 @@ export default function ClientDetail() {
   })
 
   if (isLoading) {
-    return <div className="text-center py-12">Loading...</div>
+    return <div className="text-center py-12">{t('common.loading')}</div>
   }
 
   if (!client) {
-    return <div className="text-center py-12">Client not found</div>
+    return <div className="text-center py-12">{t('clients.clientNotFound')}</div>
   }
 
   return (
@@ -59,7 +64,7 @@ export default function ClientDetail() {
           className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to clients
+          {t('clients.backToClients')}
         </button>
 
         <div className="flex items-center justify-between">
@@ -69,12 +74,12 @@ export default function ClientDetail() {
               {client.is_active ? (
                 <span className="inline-flex items-center gap-1 text-green-600">
                   <CheckCircle className="w-4 h-4" />
-                  Active
+                  {t('common.active')}
                 </span>
               ) : (
                 <span className="inline-flex items-center gap-1 text-red-600">
                   <XCircle className="w-4 h-4" />
-                  Inactive
+                  {t('common.inactive')}
                 </span>
               )}
               <span className="px-2 py-1 bg-gray-100 rounded text-sm">
@@ -88,14 +93,14 @@ export default function ClientDetail() {
                 onClick={() => deactivateMutation.mutate()}
                 className="btn btn-danger"
               >
-                Deactivate
+                {t('clients.deactivate')}
               </button>
             ) : (
               <button
                 onClick={() => activateMutation.mutate()}
                 className="btn btn-primary"
               >
-                Activate
+                {t('clients.activate')}
               </button>
             )}
           </div>
@@ -107,37 +112,55 @@ export default function ClientDetail() {
         <nav className="flex gap-4">
           {tabs.map((tab) => (
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
               className={`py-3 px-1 border-b-2 font-medium transition-colors ${
-                activeTab === tab
+                activeTab === tab.key
                   ? 'border-primary-600 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
               }`}
             >
-              {tab}
+              {tab.label}
             </button>
           ))}
         </nav>
       </div>
 
       {/* Tab content */}
-      {activeTab === 'Profiles' && <ProfilesTab client={client} />}
-      {activeTab === 'Domains' && <DomainsTab client={client} />}
-      {activeTab === 'Payments' && <PaymentsTab clientId={id} />}
-      {activeTab === 'Settings' && <SettingsTab client={client} />}
+      {activeTab === 'Profiles' && <ProfilesTab client={client} t={t} />}
+      {activeTab === 'Domains' && <DomainsTab client={client} t={t} />}
+      {activeTab === 'Payments' && <PaymentsTab clientId={id} t={t} />}
+      {activeTab === 'Settings' && <SettingsTab client={client} t={t} />}
     </div>
   )
 }
 
-function ProfilesTab({ client }) {
+function ProfilesTab({ client, t }) {
   const [copied, setCopied] = useState(false)
-  const portalUrl = `${window.location.origin}/connect/${client.access_token}`
+  const portalUrl = `${window.location.origin}/api/connect/${client.access_token}`
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+  const copyToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      // Fallback for older browsers or HTTP context
+      const textArea = document.createElement('textarea')
+      textArea.value = text
+      textArea.style.position = 'fixed'
+      textArea.style.left = '-999999px'
+      document.body.appendChild(textArea)
+      textArea.select()
+      try {
+        document.execCommand('copy')
+        setCopied(true)
+        setTimeout(() => setCopied(false), 2000)
+      } catch (e) {
+        console.error('Copy failed:', e)
+      }
+      document.body.removeChild(textArea)
+    }
   }
 
   const downloadProfile = (platform) => {
@@ -150,7 +173,7 @@ function ProfilesTab({ client }) {
       <div className="card p-6">
         <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Smartphone className="w-5 h-5" />
-          Download Profiles
+          {t('clients.downloadProfiles')}
         </h3>
         <div className="grid grid-cols-2 gap-3">
           {[
@@ -175,7 +198,7 @@ function ProfilesTab({ client }) {
       <div className="card p-6">
         <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
           <Globe className="w-5 h-5" />
-          Client Portal Link
+          {t('clients.portalLink')}
         </h3>
         <div className="flex gap-2">
           <input
@@ -189,28 +212,28 @@ function ProfilesTab({ client }) {
             className="btn btn-secondary flex items-center gap-2"
           >
             {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-            {copied ? 'Copied!' : 'Copy'}
+            {copied ? t('clients.copied') : t('clients.copy')}
           </button>
         </div>
         <p className="text-sm text-gray-500 mt-2">
-          Share this link with the client for quick access
+          {t('clients.portalLinkHint')}
         </p>
       </div>
 
       {/* VPN credentials */}
       {client.vpn_config && (
-        <VpnCredentials clientId={client.id} />
+        <VpnCredentials clientId={client.id} t={t} />
       )}
 
       {/* Proxy credentials */}
       {client.proxy_account && (
-        <ProxyCredentials clientId={client.id} />
+        <ProxyCredentials clientId={client.id} t={t} />
       )}
     </div>
   )
 }
 
-function VpnCredentials({ clientId }) {
+function VpnCredentials({ clientId, t }) {
   const queryClient = useQueryClient()
   const { data, isLoading } = useQuery({
     queryKey: ['vpn-credentials', clientId],
@@ -227,25 +250,25 @@ function VpnCredentials({ clientId }) {
   return (
     <div className="card p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">VPN Credentials</h3>
+        <h3 className="font-semibold text-gray-900">{t('clients.vpnCredentials')}</h3>
         <button
           onClick={() => resetMutation.mutate()}
           className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
         >
           <RefreshCw className="w-4 h-4" />
-          Reset Password
+          {t('clients.resetPassword')}
         </button>
       </div>
       <div className="space-y-2 text-sm">
-        <p><span className="text-gray-500">Server:</span> {data?.server}</p>
-        <p><span className="text-gray-500">Username:</span> {data?.username}</p>
-        <p><span className="text-gray-500">Password:</span> {data?.password}</p>
+        <p><span className="text-gray-500">{t('clients.server')}:</span> {data?.server}</p>
+        <p><span className="text-gray-500">{t('clients.username')}:</span> {data?.username}</p>
+        <p><span className="text-gray-500">{t('clients.password')}:</span> {data?.password}</p>
       </div>
     </div>
   )
 }
 
-function ProxyCredentials({ clientId }) {
+function ProxyCredentials({ clientId, t }) {
   const queryClient = useQueryClient()
   const { data, isLoading } = useQuery({
     queryKey: ['proxy-credentials', clientId],
@@ -262,26 +285,26 @@ function ProxyCredentials({ clientId }) {
   return (
     <div className="card p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Proxy Credentials</h3>
+        <h3 className="font-semibold text-gray-900">{t('clients.proxyCredentials')}</h3>
         <button
           onClick={() => resetMutation.mutate()}
           className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
         >
           <RefreshCw className="w-4 h-4" />
-          Reset Password
+          {t('clients.resetPassword')}
         </button>
       </div>
       <div className="space-y-2 text-sm">
         <p><span className="text-gray-500">HTTP:</span> {data?.http_host}:{data?.http_port}</p>
         <p><span className="text-gray-500">SOCKS5:</span> {data?.socks_host}:{data?.socks_port}</p>
-        <p><span className="text-gray-500">Username:</span> {data?.username}</p>
-        <p><span className="text-gray-500">Password:</span> {data?.password}</p>
+        <p><span className="text-gray-500">{t('clients.username')}:</span> {data?.username}</p>
+        <p><span className="text-gray-500">{t('clients.password')}:</span> {data?.password}</p>
       </div>
     </div>
   )
 }
 
-function DomainsTab({ client }) {
+function DomainsTab({ client, t }) {
   const queryClient = useQueryClient()
   const [newDomain, setNewDomain] = useState('')
 
@@ -340,9 +363,9 @@ function DomainsTab({ client }) {
         </div>
 
         {isLoading ? (
-          <p className="p-4 text-center text-gray-500">Loading...</p>
+          <p className="p-4 text-center text-gray-500">{t('common.loading')}</p>
         ) : domains?.length === 0 ? (
-          <p className="p-8 text-center text-gray-500">No domains configured</p>
+          <p className="p-8 text-center text-gray-500">{t('clients.noDomains')}</p>
         ) : (
           <ul>
             {domains?.map((domain) => (
@@ -353,7 +376,7 @@ function DomainsTab({ client }) {
                 <div>
                   <p className="font-medium">{domain.domain}</p>
                   <p className="text-sm text-gray-500">
-                    {domain.include_subdomains ? 'Including subdomains' : 'Exact domain only'}
+                    {domain.include_subdomains ? t('clients.includeSubdomains') : t('clients.exactDomainOnly')}
                   </p>
                 </div>
                 <button
@@ -369,7 +392,7 @@ function DomainsTab({ client }) {
       </div>
 
       <div className="card p-4">
-        <h3 className="font-semibold text-gray-900 mb-4">Apply Template</h3>
+        <h3 className="font-semibold text-gray-900 mb-4">{t('clients.applyTemplate')}</h3>
         <div className="space-y-2">
           {templates?.map((template) => (
             <button
@@ -380,7 +403,7 @@ function DomainsTab({ client }) {
               <span className="mr-2">{template.icon}</span>
               <span className="font-medium">{template.name}</span>
               <span className="text-sm text-gray-500 ml-2">
-                ({template.domains.length} domains)
+                ({template.domains.length} {t('clients.domainsCount')})
               </span>
             </button>
           ))}
@@ -390,7 +413,7 @@ function DomainsTab({ client }) {
   )
 }
 
-function PaymentsTab({ clientId }) {
+function PaymentsTab({ clientId, t }) {
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
   const [amount, setAmount] = useState('')
@@ -432,11 +455,11 @@ function PaymentsTab({ clientId }) {
     <div className="card">
       <div className="p-4 border-b border-gray-100 flex items-center justify-between">
         <div>
-          <h3 className="font-semibold">Payment History</h3>
+          <h3 className="font-semibold">{t('clients.paymentHistory')}</h3>
           {data && (
             <p className={`text-sm ${data.status === 'active' ? 'text-green-600' : 'text-red-600'}`}>
-              Status: {data.status}
-              {data.days_left !== null && ` (${data.days_left} days left)`}
+              {t('common.status')}: {data.status}
+              {data.days_left !== null && ` (${data.days_left} ${t('clients.daysLeft')})`}
             </p>
           )}
         </div>
@@ -445,7 +468,7 @@ function PaymentsTab({ clientId }) {
           className="btn btn-primary flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
-          Add Payment
+          {t('clients.addPayment')}
         </button>
       </div>
 
@@ -453,7 +476,7 @@ function PaymentsTab({ clientId }) {
         <form onSubmit={handleSubmit} className="p-4 border-b border-gray-100 bg-gray-50">
           <div className="grid grid-cols-3 gap-4">
             <div>
-              <label className="label">Amount (RUB)</label>
+              <label className="label">{t('clients.amount')} (RUB)</label>
               <input
                 type="number"
                 className="input"
@@ -463,7 +486,7 @@ function PaymentsTab({ clientId }) {
               />
             </div>
             <div>
-              <label className="label">Valid From</label>
+              <label className="label">{t('clients.validFrom')}</label>
               <input
                 type="date"
                 className="input"
@@ -473,7 +496,7 @@ function PaymentsTab({ clientId }) {
               />
             </div>
             <div>
-              <label className="label">Valid Until</label>
+              <label className="label">{t('clients.validUntilDate')}</label>
               <input
                 type="date"
                 className="input"
@@ -485,27 +508,27 @@ function PaymentsTab({ clientId }) {
           </div>
           <div className="flex gap-2 mt-4">
             <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary">
-              Cancel
+              {t('common.cancel')}
             </button>
             <button type="submit" className="btn btn-primary">
-              Save Payment
+              {t('clients.savePayment')}
             </button>
           </div>
         </form>
       )}
 
       {isLoading ? (
-        <p className="p-4 text-center text-gray-500">Loading...</p>
+        <p className="p-4 text-center text-gray-500">{t('common.loading')}</p>
       ) : data?.payments?.length === 0 ? (
-        <p className="p-8 text-center text-gray-500">No payments yet</p>
+        <p className="p-8 text-center text-gray-500">{t('clients.noPayments')}</p>
       ) : (
         <table className="w-full">
           <thead className="bg-gray-50">
             <tr>
-              <th className="text-left p-4 font-medium text-gray-600">Date</th>
-              <th className="text-left p-4 font-medium text-gray-600">Amount</th>
-              <th className="text-left p-4 font-medium text-gray-600">Period</th>
-              <th className="text-left p-4 font-medium text-gray-600">Status</th>
+              <th className="text-left p-4 font-medium text-gray-600">{t('common.date')}</th>
+              <th className="text-left p-4 font-medium text-gray-600">{t('clients.amount')}</th>
+              <th className="text-left p-4 font-medium text-gray-600">{t('clients.period')}</th>
+              <th className="text-left p-4 font-medium text-gray-600">{t('common.status')}</th>
               <th className="p-4"></th>
             </tr>
           </thead>
@@ -513,11 +536,11 @@ function PaymentsTab({ clientId }) {
             {data?.payments?.map((payment) => (
               <tr key={payment.id} className="border-b border-gray-50">
                 <td className="p-4">
-                  {new Date(payment.paid_at).toLocaleDateString('ru')}
+                  {new Date(payment.paid_at).toLocaleDateString()}
                 </td>
                 <td className="p-4">{payment.amount} {payment.currency}</td>
                 <td className="p-4">
-                  {new Date(payment.valid_from).toLocaleDateString('ru')} - {new Date(payment.valid_until).toLocaleDateString('ru')}
+                  {new Date(payment.valid_from).toLocaleDateString()} - {new Date(payment.valid_until).toLocaleDateString()}
                 </td>
                 <td className="p-4">
                   <span className={`px-2 py-1 rounded text-sm ${
@@ -543,7 +566,7 @@ function PaymentsTab({ clientId }) {
   )
 }
 
-function SettingsTab({ client }) {
+function SettingsTab({ client, t }) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const [name, setName] = useState(client.name)
@@ -569,10 +592,10 @@ function SettingsTab({ client }) {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="card p-6">
-        <h3 className="font-semibold text-gray-900 mb-4">Client Information</h3>
+        <h3 className="font-semibold text-gray-900 mb-4">{t('clients.clientInfo')}</h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="label">Name</label>
+            <label className="label">{t('clients.name')}</label>
             <input
               type="text"
               className="input"
@@ -581,7 +604,7 @@ function SettingsTab({ client }) {
             />
           </div>
           <div>
-            <label className="label">Email</label>
+            <label className="label">{t('clients.email')}</label>
             <input
               type="email"
               className="input"
@@ -590,7 +613,7 @@ function SettingsTab({ client }) {
             />
           </div>
           <div>
-            <label className="label">Phone</label>
+            <label className="label">{t('clients.phone')}</label>
             <input
               type="text"
               className="input"
@@ -599,7 +622,7 @@ function SettingsTab({ client }) {
             />
           </div>
           <div>
-            <label className="label">Telegram ID</label>
+            <label className="label">{t('clients.telegramId')}</label>
             <input
               type="text"
               className="input"
@@ -608,25 +631,25 @@ function SettingsTab({ client }) {
             />
           </div>
           <button type="submit" className="btn btn-primary">
-            Save Changes
+            {t('clients.saveChanges')}
           </button>
         </form>
       </div>
 
       <div className="card p-6">
-        <h3 className="font-semibold text-red-600 mb-4">Danger Zone</h3>
+        <h3 className="font-semibold text-red-600 mb-4">{t('clients.dangerZone')}</h3>
         <p className="text-gray-600 mb-4">
-          Deleting a client will remove all their data including VPN config, proxy account, domains, and payment history.
+          {t('clients.deleteWarning')}
         </p>
         <button
           onClick={() => {
-            if (confirm('Are you sure you want to delete this client?')) {
+            if (confirm(t('clients.deleteConfirm'))) {
               deleteMutation.mutate()
             }
           }}
           className="btn btn-danger"
         >
-          Delete Client
+          {t('clients.deleteClient')}
         </button>
       </div>
     </div>
