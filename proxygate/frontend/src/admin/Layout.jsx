@@ -46,7 +46,10 @@ export default function AdminLayout() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Globe className="w-8 h-8 text-primary-600" />
-              <span className="text-xl font-bold text-gray-900">ProxyGate</span>
+              <div>
+                <span className="text-xl font-bold text-gray-900">ZETIT FNA</span>
+                <p className="text-xs text-gray-400">Full Network Access</p>
+              </div>
             </div>
             <LanguageSwitcher />
           </div>

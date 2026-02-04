@@ -21,8 +21,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="ProxyGate",
-    description="VPN/Proxy Access Management System",
+    title="ZETIT FNA",
+    description="Full Network Access - VPN/Proxy Management System",
     version=get_app_version(),
     lifespan=lifespan
 )

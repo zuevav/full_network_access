@@ -2,6 +2,7 @@
   "common": {
     "loading": "Загрузка...",
     "save": "Сохранить",
+    "saving": "Сохранение...",
     "cancel": "Отмена",
     "delete": "Удалить",
     "edit": "Редактировать",
@@ -130,6 +131,7 @@
     "exactDomainOnly": "Только этот домен",
     "applyTemplate": "Применить шаблон",
     "domainsCount": "доменов",
+    "manuallyAdded": "Добавлено вручную",
     "paymentHistory": "История платежей",
     "addPayment": "Добавить платёж",
     "amount": "Сумма",
@@ -144,17 +146,35 @@
     "dangerZone": "Опасная зона",
     "deleteWarning": "Удаление клиента приведёт к удалению всех его данных, включая VPN-конфиг, прокси-аккаунт, домены и историю платежей.",
     "deleteClient": "Удалить клиента",
-    "clientNotFound": "Клиент не найден"
+    "clientNotFound": "Клиент не найден",
+    "addSubscription": "Выдать подписку",
+    "subscriptionDuration": "Срок подписки",
+    "duration1Month": "1 месяц",
+    "duration2Months": "2 месяца",
+    "duration3Months": "3 месяца",
+    "duration4Months": "4 месяца",
+    "duration6Months": "6 месяцев",
+    "duration1Year": "1 год",
+    "duration2Years": "2 года",
+    "giveSubscription": "Выдать подписку",
+    "optional": "необязательно",
+    "addDomainPlaceholder": "example.com",
+    "deleteConfirm": "Вы уверены, что хотите удалить этого клиента?"
   },
   "templates": {
     "title": "Шаблоны доменов",
     "addTemplate": "Добавить шаблон",
+    "newTemplate": "Новый шаблон",
     "editTemplate": "Редактировать шаблон",
-    "templateName": "Название шаблона",
+    "templateName": "Название",
     "icon": "Иконка",
+    "description": "Описание",
+    "domainsOnePerLine": "Домены (по одному на строку)",
     "domainsCount": "{{count}} доменов",
     "noTemplates": "Шаблоны не найдены",
-    "deleteConfirm": "Вы уверены, что хотите удалить этот шаблон?",
+    "createFirst": "Создать первый шаблон",
+    "deleteConfirm": "Удалить этот шаблон?",
+    "more": "ещё",
     "templateCreated": "Шаблон успешно создан",
     "templateUpdated": "Шаблон успешно обновлен",
     "templateDeleted": "Шаблон успешно удален"
@@ -247,7 +267,7 @@
     "uptime": "Время работы",
     "memory": "Память",
     "disk": "Диск",
-    "about": "О ProxyGate",
+    "about": "О ZETIT FNA",
     "version": "Версия",
     "system": "Система",
     "features": "Возможности"
@@ -330,7 +350,7 @@
           "Правый клик → \"Запуск от имени администратора\"",
           "Дождитесь завершения скрипта",
           "Откройте Настройки → Сеть → VPN",
-          "Нажмите \"ProxyGate VPN\" → Подключить",
+          "Нажмите \"ZETIT FNA\" → Подключить",
           "Введите пароль (только при первом разе)"
         ]
       },
@@ -341,7 +361,7 @@
           "Скачайте профиль .mobileconfig",
           "Дважды кликните на файл",
           "Откройте Системные настройки → Профили",
-          "Установите профиль ProxyGate",
+          "Установите профиль ZETIT FNA",
           "VPN появится в строке меню"
         ]
       }

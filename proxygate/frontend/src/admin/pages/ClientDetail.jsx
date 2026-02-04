@@ -14,7 +14,9 @@ import {
   Globe,
   CreditCard,
   Settings,
-  Smartphone
+  Smartphone,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react'
 import api from '../../api'
 
@@ -307,6 +309,7 @@ function ProxyCredentials({ clientId, t }) {
 function DomainsTab({ client, t }) {
   const queryClient = useQueryClient()
   const [newDomain, setNewDomain] = useState('')
+  const [expandedGroups, setExpandedGroups] = useState({})
 
   const { data: domains, isLoading } = useQuery({
     queryKey: ['client-domains', client.id],
@@ -343,10 +346,48 @@ function DomainsTab({ client, t }) {
     }
   }
 
+  const toggleGroup = (groupName) => {
+    setExpandedGroups(prev => ({ ...prev, [groupName]: !prev[groupName] }))
+  }
+
+  // Group domains by template
+  const groupedDomains = () => {
+    if (!domains || !templates) return { groups: [], manual: [] }
+
+    const domainMap = new Map(domains.map(d => [d.domain, d]))
+    const usedDomains = new Set()
+    const groups = []
+
+    // Match domains against each template
+    templates.forEach(template => {
+      const templateDomainSet = new Set(template.domains || [])
+      const matchedDomains = domains.filter(d => templateDomainSet.has(d.domain) && !usedDomains.has(d.domain))
+
+      if (matchedDomains.length > 0) {
+        matchedDomains.forEach(d => usedDomains.add(d.domain))
+        groups.push({
+          name: template.name,
+          icon: template.icon,
+          domains: matchedDomains,
+          templateId: template.id
+        })
+      }
+    })
+
+    // Remaining domains are "manually added"
+    const manual = domains.filter(d => !usedDomains.has(d.domain))
+
+    return { groups, manual }
+  }
+
+  const { groups, manual } = groupedDomains()
+  const totalDomains = domains?.length || 0
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-2 card">
-        <div className="p-4 border-b border-gray-100">
+      <div className="lg:col-span-2 space-y-4">
+        {/* Add domain form */}
+        <div className="card p-4">
           <form onSubmit={handleAddDomain} className="flex gap-2">
             <input
               type="text"
@@ -364,34 +405,88 @@ function DomainsTab({ client, t }) {
 
         {isLoading ? (
           <p className="p-4 text-center text-gray-500">{t('common.loading')}</p>
-        ) : domains?.length === 0 ? (
-          <p className="p-8 text-center text-gray-500">{t('clients.noDomains')}</p>
+        ) : totalDomains === 0 ? (
+          <div className="card p-8 text-center text-gray-500">{t('clients.noDomains')}</div>
         ) : (
-          <ul>
-            {domains?.map((domain) => (
-              <li
-                key={domain.id}
-                className="flex items-center justify-between p-4 border-b border-gray-50 last:border-0"
-              >
-                <div>
-                  <p className="font-medium">{domain.domain}</p>
-                  <p className="text-sm text-gray-500">
-                    {domain.include_subdomains ? t('clients.includeSubdomains') : t('clients.exactDomainOnly')}
-                  </p>
-                </div>
+          <>
+            {/* Grouped domains by template */}
+            {groups.map((group) => (
+              <div key={group.name} className="card">
                 <button
-                  onClick={() => deleteMutation.mutate(domain.id)}
-                  className="text-gray-400 hover:text-red-600"
+                  onClick={() => toggleGroup(group.name)}
+                  className="w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
                 >
-                  <Trash2 className="w-4 h-4" />
+                  <div className="flex items-center gap-2">
+                    <span>{group.icon}</span>
+                    <span className="font-semibold">{group.name}</span>
+                    <span className="text-sm text-gray-500">({group.domains.length})</span>
+                  </div>
+                  {expandedGroups[group.name] ? (
+                    <ChevronUp className="w-5 h-5 text-gray-400" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-gray-400" />
+                  )}
                 </button>
-              </li>
+
+                {expandedGroups[group.name] && (
+                  <ul className="border-t border-gray-100">
+                    {group.domains.map((domain) => (
+                      <li
+                        key={domain.id}
+                        className="flex items-center justify-between px-4 py-2 border-b border-gray-50 last:border-0 hover:bg-gray-50"
+                      >
+                        <span className="text-sm font-mono">{domain.domain}</span>
+                        <button
+                          onClick={() => deleteMutation.mutate(domain.id)}
+                          className="text-gray-400 hover:text-red-600"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
             ))}
-          </ul>
+
+            {/* Manually added domains */}
+            {manual.length > 0 && (
+              <div className="card">
+                <div className="p-4 border-b border-gray-100">
+                  <div className="flex items-center gap-2">
+                    <Globe className="w-5 h-5 text-gray-500" />
+                    <span className="font-semibold">{t('clients.manuallyAdded')}</span>
+                    <span className="text-sm text-gray-500">({manual.length})</span>
+                  </div>
+                </div>
+                <ul>
+                  {manual.map((domain) => (
+                    <li
+                      key={domain.id}
+                      className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50"
+                    >
+                      <div>
+                        <p className="font-medium">{domain.domain}</p>
+                        <p className="text-xs text-gray-500">
+                          {domain.include_subdomains ? t('clients.includeSubdomains') : t('clients.exactDomainOnly')}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => deleteMutation.mutate(domain.id)}
+                        className="text-gray-400 hover:text-red-600"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </>
         )}
       </div>
 
-      <div className="card p-4">
+      <div className="card p-4 h-fit">
         <h3 className="font-semibold text-gray-900 mb-4">{t('clients.applyTemplate')}</h3>
         <div className="space-y-2">
           {templates?.map((template) => (
@@ -403,7 +498,7 @@ function DomainsTab({ client, t }) {
               <span className="mr-2">{template.icon}</span>
               <span className="font-medium">{template.name}</span>
               <span className="text-sm text-gray-500 ml-2">
-                ({template.domains.length} {t('clients.domainsCount')})
+                ({template.domains?.length || 0} {t('clients.domainsCount')})
               </span>
             </button>
           ))}
@@ -417,8 +512,18 @@ function PaymentsTab({ clientId, t }) {
   const queryClient = useQueryClient()
   const [showForm, setShowForm] = useState(false)
   const [amount, setAmount] = useState('')
-  const [validFrom, setValidFrom] = useState('')
-  const [validUntil, setValidUntil] = useState('')
+  const [duration, setDuration] = useState('1')
+
+  // Duration options in months
+  const durationOptions = [
+    { value: '1', label: t('clients.duration1Month') },
+    { value: '2', label: t('clients.duration2Months') },
+    { value: '3', label: t('clients.duration3Months') },
+    { value: '4', label: t('clients.duration4Months') },
+    { value: '6', label: t('clients.duration6Months') },
+    { value: '12', label: t('clients.duration1Year') },
+    { value: '24', label: t('clients.duration2Years') },
+  ]
 
   const { data, isLoading } = useQuery({
     queryKey: ['client-payments', clientId],
@@ -432,8 +537,7 @@ function PaymentsTab({ clientId, t }) {
       queryClient.invalidateQueries(['client', clientId])
       setShowForm(false)
       setAmount('')
-      setValidFrom('')
-      setValidUntil('')
+      setDuration('1')
     },
   })
 
@@ -444,10 +548,15 @@ function PaymentsTab({ clientId, t }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
+    const months = parseInt(duration)
+    const validFrom = new Date()
+    const validUntil = new Date()
+    validUntil.setMonth(validUntil.getMonth() + months)
+
     createMutation.mutate({
-      amount: parseFloat(amount),
-      valid_from: validFrom,
-      valid_until: validUntil,
+      amount: parseFloat(amount) || 0,
+      valid_from: validFrom.toISOString().split('T')[0],
+      valid_until: validUntil.toISOString().split('T')[0],
     })
   }
 
@@ -468,41 +577,33 @@ function PaymentsTab({ clientId, t }) {
           className="btn btn-primary flex items-center gap-2"
         >
           <Plus className="w-4 h-4" />
-          {t('clients.addPayment')}
+          {t('clients.addSubscription')}
         </button>
       </div>
 
       {showForm && (
         <form onSubmit={handleSubmit} className="p-4 border-b border-gray-100 bg-gray-50">
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="label">{t('clients.amount')} (RUB)</label>
+              <label className="label">{t('clients.subscriptionDuration')}</label>
+              <select
+                className="input"
+                value={duration}
+                onChange={(e) => setDuration(e.target.value)}
+              >
+                {durationOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label">{t('clients.amount')} (RUB) - {t('clients.optional')}</label>
               <input
                 type="number"
                 className="input"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <label className="label">{t('clients.validFrom')}</label>
-              <input
-                type="date"
-                className="input"
-                value={validFrom}
-                onChange={(e) => setValidFrom(e.target.value)}
-                required
-              />
-            </div>
-            <div>
-              <label className="label">{t('clients.validUntilDate')}</label>
-              <input
-                type="date"
-                className="input"
-                value={validUntil}
-                onChange={(e) => setValidUntil(e.target.value)}
-                required
+                placeholder="0"
               />
             </div>
           </div>
@@ -511,7 +612,7 @@ function PaymentsTab({ clientId, t }) {
               {t('common.cancel')}
             </button>
             <button type="submit" className="btn btn-primary">
-              {t('clients.savePayment')}
+              {t('clients.giveSubscription')}
             </button>
           </div>
         </form>
