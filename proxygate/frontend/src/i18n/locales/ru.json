@@ -285,7 +285,12 @@
     "about": "О ZETIT FNA",
     "version": "Версия",
     "system": "Система",
-    "features": "Возможности"
+    "features": "Возможности",
+    "vpnConfig": "Конфигурация VPN",
+    "vpnConfigDescription": "Синхронизация конфигурации VPN-сервера с текущими учётными данными клиентов. Обновляет конфигурацию strongSwan и перезагружает VPN-сервис.",
+    "syncVpn": "Синхронизировать VPN",
+    "vpnNeedsDomain": "Сначала настройте домен в системных настройках.",
+    "vpnActiveClients": "Активных клиентов: {{count}}"
   },
   "ssl": {
     "title": "SSL / Let's Encrypt",

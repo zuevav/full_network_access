@@ -11,9 +11,12 @@ from typing import Optional, List, Dict
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, status
+from sqlalchemy import select
 from pydantic import BaseModel, Field
 
-from app.api.deps import CurrentAdmin
+from app.api.deps import CurrentAdmin, DBSession
+from app.models import VpnConfig
+from app.services.ikev2_manager import IKEv2Manager, VpnClient
 
 
 router = APIRouter()
@@ -411,3 +414,147 @@ async def restart_service(service_name: str, admin: CurrentAdmin):
             status_code=status.HTTP_504_GATEWAY_TIMEOUT,
             detail="Service restart timed out"
         )
+
+
+class VpnSyncResponse(BaseModel):
+    success: bool
+    message: str
+    clients_count: int
+    details: List[str]
+
+
+@router.post("/vpn/sync", response_model=VpnSyncResponse)
+async def sync_vpn_config(
+    db: DBSession,
+    admin: CurrentAdmin
+):
+    """
+    Synchronize VPN configuration.
+
+    This endpoint:
+    1. Creates swanctl directory structure if needed
+    2. Links Let's Encrypt certificates
+    3. Generates connections.conf and secrets.conf
+    4. Reloads strongSwan
+    """
+    details = []
+
+    # Get configured domain
+    settings = load_system_settings()
+    domain = settings.get("domain", "")
+
+    if not domain or domain == "localhost":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Domain must be configured in system settings before syncing VPN"
+        )
+
+    # Paths
+    swanctl_dir = Path("/etc/swanctl")
+    conf_dir = swanctl_dir / "conf.d"
+    x509_dir = swanctl_dir / "x509"
+    private_dir = swanctl_dir / "private"
+    letsencrypt_dir = Path(f"/etc/letsencrypt/live/{domain}")
+
+    # Create directories if needed
+    try:
+        for d in [conf_dir, x509_dir, private_dir]:
+            d.mkdir(parents=True, exist_ok=True)
+            details.append(f"Created directory: {d}")
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Permission denied creating directories: {e}"
+        )
+
+    # Check and link Let's Encrypt certificates
+    le_fullchain = letsencrypt_dir / "fullchain.pem"
+    le_privkey = letsencrypt_dir / "privkey.pem"
+
+    if not le_fullchain.exists() or not le_privkey.exists():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Let's Encrypt certificates not found at {letsencrypt_dir}. "
+                   "Please obtain SSL certificate first."
+        )
+
+    # Create symlinks
+    try:
+        cert_link = x509_dir / "fullchain.pem"
+        key_link = private_dir / "privkey.pem"
+
+        # Remove existing links/files
+        if cert_link.exists() or cert_link.is_symlink():
+            cert_link.unlink()
+        if key_link.exists() or key_link.is_symlink():
+            key_link.unlink()
+
+        # Create new symlinks
+        cert_link.symlink_to(le_fullchain)
+        key_link.symlink_to(le_privkey)
+
+        details.append(f"Linked certificate: {le_fullchain} -> {cert_link}")
+        details.append(f"Linked private key: {le_privkey} -> {key_link}")
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to link certificates: {e}"
+        )
+
+    # Get all VPN configs from database
+    result = await db.execute(select(VpnConfig))
+    vpn_configs = result.scalars().all()
+
+    # Convert to VpnClient objects
+    clients = [
+        VpnClient(
+            username=vc.username,
+            password=vc.password,
+            is_active=vc.is_active
+        )
+        for vc in vpn_configs
+    ]
+
+    active_count = len([c for c in clients if c.is_active])
+    details.append(f"Found {len(clients)} VPN clients ({active_count} active)")
+
+    # Generate and write configuration
+    manager = IKEv2Manager()
+
+    try:
+        manager.write_config(clients)
+        details.append(f"Wrote {manager.CONNECTIONS_FILE}")
+        details.append(f"Wrote {manager.SECRETS_FILE}")
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to write configuration: {e}"
+        )
+
+    # Reload strongSwan
+    try:
+        result = subprocess.run(
+            ["swanctl", "--load-all"],
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+
+        if result.returncode != 0:
+            details.append(f"swanctl --load-all warning: {result.stderr}")
+        else:
+            details.append("Reloaded strongSwan configuration")
+
+    except FileNotFoundError:
+        details.append("WARNING: swanctl not found - strongSwan may need manual restart")
+    except subprocess.TimeoutExpired:
+        details.append("WARNING: swanctl reload timed out")
+    except Exception as e:
+        details.append(f"WARNING: Failed to reload strongSwan: {e}")
+
+    return VpnSyncResponse(
+        success=True,
+        message=f"VPN configuration synced for {active_count} active clients",
+        clients_count=active_count,
+        details=details
+    )

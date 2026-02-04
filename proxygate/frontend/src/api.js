@@ -315,6 +315,10 @@ class ApiClient {
     return this.request(`/admin/system/restart/${serviceName}`, { method: 'POST' })
   }
 
+  async syncVpnConfig() {
+    return this.request('/admin/system/vpn/sync', { method: 'POST' })
+  }
+
   // Admin Account API methods
   async changeAdminPassword(currentPassword, newPassword) {
     return this.request('/admin/auth/change-password', {

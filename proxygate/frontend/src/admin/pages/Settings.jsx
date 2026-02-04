@@ -15,7 +15,8 @@ import {
   Save,
   Eye,
   EyeOff,
-  ExternalLink
+  ExternalLink,
+  Wifi
 } from 'lucide-react'
 import api from '../../api'
 
@@ -68,6 +69,10 @@ export default function Settings() {
 
   // Messages
   const [message, setMessage] = useState(null)
+
+  // VPN sync state
+  const [vpnSyncing, setVpnSyncing] = useState(false)
+  const [vpnSyncResult, setVpnSyncResult] = useState(null)
 
   // App version
   const [appVersion, setAppVersion] = useState('...')
@@ -268,6 +273,22 @@ export default function Settings() {
       loadServiceStatus()
     } catch (error) {
       showMessage(error.message, 'error')
+    }
+  }
+
+  const handleSyncVpn = async () => {
+    setVpnSyncing(true)
+    setVpnSyncResult(null)
+    try {
+      const result = await api.syncVpnConfig()
+      setVpnSyncResult(result)
+      showMessage(result.message)
+      loadServiceStatus()
+    } catch (error) {
+      showMessage(error.message, 'error')
+      setVpnSyncResult({ success: false, message: error.message, details: [] })
+    } finally {
+      setVpnSyncing(false)
     }
   }
 
@@ -478,6 +499,62 @@ export default function Settings() {
             </div>
           ) : (
             <p className="text-gray-500">{t('common.error')}</p>
+          )}
+        </div>
+
+        {/* VPN Configuration Sync */}
+        <div className="card p-6">
+          <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+            <Wifi className="w-5 h-5" />
+            {t('settings.vpnConfig') || 'VPN Configuration'}
+          </h3>
+
+          <p className="text-sm text-gray-600 mb-4">
+            {t('settings.vpnConfigDescription') || 'Synchronize VPN server configuration with current client credentials. This updates the strongSwan configuration and reloads the VPN service.'}
+          </p>
+
+          <button
+            onClick={handleSyncVpn}
+            disabled={vpnSyncing || !systemSettings.domain}
+            className="btn btn-primary w-full mb-4"
+          >
+            {vpnSyncing ? (
+              <>
+                <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                {t('common.loading') || 'Loading...'}
+              </>
+            ) : (
+              <>
+                <RefreshCw className="w-4 h-4 mr-2" />
+                {t('settings.syncVpn') || 'Sync VPN Configuration'}
+              </>
+            )}
+          </button>
+
+          {!systemSettings.domain && (
+            <p className="text-sm text-yellow-600 mb-4">
+              {t('settings.vpnNeedsDomain') || 'Please configure domain in system settings first.'}
+            </p>
+          )}
+
+          {vpnSyncResult && (
+            <div className={`p-3 rounded-lg ${vpnSyncResult.success ? 'bg-green-50' : 'bg-red-50'}`}>
+              <p className={`text-sm font-medium ${vpnSyncResult.success ? 'text-green-700' : 'text-red-700'}`}>
+                {vpnSyncResult.message}
+              </p>
+              {vpnSyncResult.clients_count !== undefined && (
+                <p className="text-sm text-gray-600 mt-1">
+                  {t('settings.vpnActiveClients', { count: vpnSyncResult.clients_count }) || `Active clients: ${vpnSyncResult.clients_count}`}
+                </p>
+              )}
+              {vpnSyncResult.details && vpnSyncResult.details.length > 0 && (
+                <div className="mt-2 p-2 bg-gray-900 rounded max-h-32 overflow-y-auto">
+                  {vpnSyncResult.details.map((line, i) => (
+                    <p key={i} className="text-xs text-green-400 font-mono">{line}</p>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
         </div>
 
