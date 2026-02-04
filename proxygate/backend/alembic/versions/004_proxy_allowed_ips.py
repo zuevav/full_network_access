@@ -9,7 +9,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '004_proxy_allowed_ips'
-down_revision = '003_admin_email_and_templates'
+down_revision = '003_admin_email'
 branch_labels = None
 depends_on = None
 
