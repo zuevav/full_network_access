@@ -344,6 +344,23 @@ async def run_update_process():
         branch = gh_settings.get("branch", "main")
 
         add_log("Starting update process...")
+
+        # Check required commands exist
+        required_commands = [
+            "/usr/bin/git",
+            "/usr/bin/rsync",
+            "/usr/bin/npm",
+            "/usr/bin/cp",
+            "/usr/bin/rm",
+            "/usr/bin/chown",
+            "/usr/bin/systemctl",
+        ]
+        missing = [cmd for cmd in required_commands if not Path(cmd).exists()]
+        if missing:
+            add_log(f"ERROR: Missing required commands: {', '.join(missing)}")
+            add_log("Please install missing packages and try again.")
+            return
+
         add_log(f"Git directory: {GIT_DIR}")
         add_log(f"Code directory: {CODE_DIR}")
         add_log(f"Deploy directory: {DEPLOY_DIR}")
