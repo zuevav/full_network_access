@@ -272,6 +272,9 @@ function VpnCredentials({ clientId, t }) {
 
 function ProxyCredentials({ clientId, t }) {
   const queryClient = useQueryClient()
+  const [showIpEdit, setShowIpEdit] = useState(false)
+  const [ipInput, setIpInput] = useState('')
+
   const { data, isLoading } = useQuery({
     queryKey: ['proxy-credentials', clientId],
     queryFn: () => api.getProxyCredentials(clientId),
@@ -281,6 +284,25 @@ function ProxyCredentials({ clientId, t }) {
     mutationFn: () => api.resetProxyPassword(clientId),
     onSuccess: () => queryClient.invalidateQueries(['proxy-credentials', clientId]),
   })
+
+  const updateIpsMutation = useMutation({
+    mutationFn: (ips) => api.updateProxyAllowedIps(clientId, ips),
+    onSuccess: () => {
+      queryClient.invalidateQueries(['proxy-credentials', clientId])
+      setShowIpEdit(false)
+    },
+  })
+
+  // Initialize IP input when data loads or edit mode opens
+  const handleOpenIpEdit = () => {
+    setIpInput(data?.allowed_ips?.join('\n') || '')
+    setShowIpEdit(true)
+  }
+
+  const handleSaveIps = () => {
+    const ips = ipInput.split('\n').map(ip => ip.trim()).filter(Boolean)
+    updateIpsMutation.mutate(ips)
+  }
 
   if (isLoading) return null
 
@@ -301,6 +323,62 @@ function ProxyCredentials({ clientId, t }) {
         <p><span className="text-gray-500">SOCKS5:</span> {data?.socks_host}:{data?.socks_port}</p>
         <p><span className="text-gray-500">{t('clients.username')}:</span> {data?.username}</p>
         <p><span className="text-gray-500">{t('clients.password')}:</span> {data?.password}</p>
+      </div>
+
+      {/* IP Whitelist section */}
+      <div className="mt-4 pt-4 border-t">
+        <div className="flex items-center justify-between mb-2">
+          <h4 className="font-medium text-gray-700 text-sm">{t('clients.allowedIps')}</h4>
+          {!showIpEdit && (
+            <button
+              onClick={handleOpenIpEdit}
+              className="text-sm text-primary-600 hover:text-primary-700"
+            >
+              {t('common.edit')}
+            </button>
+          )}
+        </div>
+
+        {showIpEdit ? (
+          <div className="space-y-2">
+            <textarea
+              className="input text-sm font-mono h-24"
+              value={ipInput}
+              onChange={(e) => setIpInput(e.target.value)}
+              placeholder={t('clients.allowedIpsPlaceholder')}
+            />
+            <p className="text-xs text-gray-500">{t('clients.allowedIpsHint')}</p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleSaveIps}
+                disabled={updateIpsMutation.isPending}
+                className="btn btn-primary btn-sm"
+              >
+                {t('common.save')}
+              </button>
+              <button
+                onClick={() => setShowIpEdit(false)}
+                className="btn btn-secondary btn-sm"
+              >
+                {t('common.cancel')}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            {data?.allowed_ips?.length > 0 ? (
+              <div className="flex flex-wrap gap-1">
+                {data.allowed_ips.map((ip, idx) => (
+                  <span key={idx} className="px-2 py-1 bg-green-50 text-green-700 rounded text-xs font-mono">
+                    {ip}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400">{t('clients.noAllowedIps')}</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

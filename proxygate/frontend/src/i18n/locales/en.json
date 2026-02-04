@@ -161,7 +161,11 @@
     "giveSubscription": "Give Subscription",
     "optional": "optional",
     "addDomainPlaceholder": "example.com",
-    "deleteConfirm": "Are you sure you want to delete this client?"
+    "deleteConfirm": "Are you sure you want to delete this client?",
+    "allowedIps": "Password-free Access (by IP)",
+    "allowedIpsPlaceholder": "192.168.1.100\n10.0.0.0/24",
+    "allowedIpsHint": "IP addresses that can use proxy without authentication (office IPs). One per line.",
+    "noAllowedIps": "Password authentication for all IPs"
   },
   "templates": {
     "title": "Domain Templates",
@@ -369,7 +373,18 @@
       }
     },
     "strongswanAndroid": "strongSwan for Android",
-    "freeInPlayStore": "Free in Play Store"
+    "freeInPlayStore": "Free in Play Store",
+    "yourCredentials": "Your Credentials",
+    "sameCredentialsNote": "One login and password for all services",
+    "usedFor": "Used for:",
+    "vpnConnection": "VPN connection",
+    "proxyConnection": "Proxy authentication",
+    "downloadProxySetup": "Proxy Setup Script",
+    "vpnSection": "VPN — Full Network Access",
+    "vpnSectionDescription": "All device traffic goes through a secure VPN tunnel",
+    "vpnServer": "VPN Server",
+    "proxySection": "Proxy — For Browser",
+    "proxySetupOptions": "Setup Options"
   },
   "portalDomains": {
     "title": "Your Domains",

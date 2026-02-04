@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import DBSession
 from app.models import Client
 from app.services.profile_generator import ProfileGenerator
-from app.api.system import get_configured_server_ip, get_configured_ports
+from app.api.system import get_configured_domain, get_configured_ports
 
 
 router = APIRouter()
@@ -43,8 +43,9 @@ async def client_connect_page(
         if latest.valid_until >= date.today():
             status_emoji = "🟢"
 
-    # Get proxy settings
-    server_ip = get_configured_server_ip()
+    # Get proxy settings - use domain if configured
+    domain = get_configured_domain()
+    proxy_host = domain if domain and domain != "localhost" else "127.0.0.1"
     http_port, _ = get_configured_ports()
 
     html = f"""
@@ -182,7 +183,7 @@ async def client_connect_page(
         {"" if not client.proxy_account else f'''
         <div class="section-title">Прокси</div>
         <div class="proxy-info">
-            <p>Адрес: <code>{server_ip}:{http_port}</code></p>
+            <p>Адрес: <code>{proxy_host}:{http_port}</code></p>
             <p>Логин: <code>{client.proxy_account.username}</code></p>
             <p>Пароль: <code>{client.proxy_account.password_plain}</code></p>
             <p><a href="/download/{access_token}/pac">⬇ Скачать PAC-файл</a></p>

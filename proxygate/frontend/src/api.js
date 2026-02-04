@@ -160,6 +160,13 @@ class ApiClient {
     })
   }
 
+  async updateProxyAllowedIps(clientId, allowedIps) {
+    return this.request(`/admin/clients/${clientId}/proxy/allowed-ips`, {
+      method: 'PUT',
+      body: JSON.stringify({ allowed_ips: allowedIps }),
+    })
+  }
+
   async getClientPayments(clientId) {
     return this.request(`/admin/clients/${clientId}/payments`)
   }
