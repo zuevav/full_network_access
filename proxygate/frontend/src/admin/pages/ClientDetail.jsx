@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -20,6 +21,7 @@ import api from '../../api'
 const tabs = ['Profiles', 'Domains', 'Payments', 'Settings']
 
 export default function ClientDetail() {
+  const { t } = useTranslation()
   const { id } = useParams()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -326,13 +328,13 @@ function DomainsTab({ client }) {
             <input
               type="text"
               className="input flex-1"
-              placeholder="Add domain (e.g. example.com)"
+              placeholder={t('clients.addDomainPlaceholder')}
               value={newDomain}
               onChange={(e) => setNewDomain(e.target.value)}
             />
             <button type="submit" className="btn btn-primary flex items-center gap-2">
               <Plus className="w-4 h-4" />
-              Add
+              {t('common.add')}
             </button>
           </form>
         </div>

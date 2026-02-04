@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   Globe,
@@ -11,6 +12,7 @@ import {
 import api from '../../api'
 
 export default function PortalDomains() {
+  const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [newDomain, setNewDomain] = useState('')
   const [reason, setReason] = useState('')
@@ -114,7 +116,7 @@ export default function PortalDomains() {
               className="btn btn-primary btn-sm flex items-center gap-1"
             >
               <Plus className="w-4 h-4" />
-              Запросить
+              {t('portalDomains.request')}
             </button>
           )}
         </div>
@@ -122,7 +124,7 @@ export default function PortalDomains() {
         {showForm && (
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="label">Домен</label>
+              <label className="label">{t('portalDomains.domain')}</label>
               <input
                 type="text"
                 className="input"
@@ -133,13 +135,13 @@ export default function PortalDomains() {
               />
             </div>
             <div>
-              <label className="label">Зачем нужен (необязательно)</label>
+              <label className="label">{t('portalDomains.reasonLabel')}</label>
               <input
                 type="text"
                 className="input"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Для работы с клиентами"
+                placeholder={t('portalDomains.reasonPlaceholder')}
               />
             </div>
             <div className="flex gap-2">
@@ -148,7 +150,7 @@ export default function PortalDomains() {
                 onClick={() => setShowForm(false)}
                 className="btn btn-secondary flex-1"
               >
-                Отмена
+                {t('common.cancel')}
               </button>
               <button
                 type="submit"
@@ -156,7 +158,7 @@ export default function PortalDomains() {
                 className="btn btn-primary flex-1 flex items-center justify-center gap-2"
               >
                 <Send className="w-4 h-4" />
-                Отправить
+                {t('portalDomains.submit')}
               </button>
             </div>
           </form>
@@ -164,7 +166,7 @@ export default function PortalDomains() {
 
         {!showForm && (
           <p className="text-sm text-gray-600">
-            Отправьте запрос администратору на добавление нового сайта.
+            {t('portalDomains.requestHelpText')}
           </p>
         )}
       </div>
