@@ -81,34 +81,46 @@ export default function PortalDevices() {
     setTimeout(() => setCopied(''), 2000)
   }
 
+  // Helper to safely get translation (returns string or fallback)
+  const safeT = (key, fallback = '') => {
+    const result = t(key)
+    return typeof result === 'string' ? result : fallback
+  }
+
+  // Helper to safely get array translation
+  const safeArrayT = (key) => {
+    const result = t(key, { returnObjects: true })
+    return Array.isArray(result) ? result : []
+  }
+
   const devices = [
     {
       icon: Smartphone,
-      title: t('portalDevices.devices.iphone.title'),
-      description: t('portalDevices.devices.iphone.description'),
+      title: safeT('portalDevices.devices.iphone.title', 'iPhone / iPad'),
+      description: safeT('portalDevices.devices.iphone.description', 'Automatic setup'),
       profileUrl: '/api/portal/profiles/ios',
-      instructions: t('portalDevices.devices.iphone.instructions', { returnObjects: true }),
+      instructions: safeArrayT('portalDevices.devices.iphone.instructions'),
     },
     {
       icon: <span className="text-2xl">🤖</span>,
-      title: t('portalDevices.devices.android.title'),
-      description: t('portalDevices.devices.android.description'),
+      title: safeT('portalDevices.devices.android.title', 'Android'),
+      description: safeT('portalDevices.devices.android.description', 'Requires strongSwan app'),
       profileUrl: '/api/portal/profiles/android',
-      instructions: t('portalDevices.devices.android.instructions', { returnObjects: true }),
+      instructions: safeArrayT('portalDevices.devices.android.instructions'),
     },
     {
       icon: Monitor,
-      title: t('portalDevices.devices.windows.title'),
-      description: t('portalDevices.devices.windows.description'),
+      title: safeT('portalDevices.devices.windows.title', 'Windows 10/11'),
+      description: safeT('portalDevices.devices.windows.description', 'Automatic setup'),
       profileUrl: '/api/portal/profiles/windows',
-      instructions: t('portalDevices.devices.windows.instructions', { returnObjects: true }),
+      instructions: safeArrayT('portalDevices.devices.windows.instructions'),
     },
     {
       icon: <span className="text-2xl">🍏</span>,
-      title: t('portalDevices.devices.macos.title'),
-      description: t('portalDevices.devices.macos.description'),
+      title: safeT('portalDevices.devices.macos.title', 'macOS'),
+      description: safeT('portalDevices.devices.macos.description', 'Profile for Mac'),
       profileUrl: '/api/portal/profiles/macos',
-      instructions: t('portalDevices.devices.macos.instructions', { returnObjects: true }),
+      instructions: safeArrayT('portalDevices.devices.macos.instructions'),
     },
   ]
 
