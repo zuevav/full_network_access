@@ -132,6 +132,16 @@ export default function PortalDevices() {
     )
   }
 
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-red-500">{t('common.error')}: {error.message}</p>
+      </div>
+    )
+  }
+
+  const hasAnyService = profileInfo?.vpn || profileInfo?.proxy
+
   return (
     <div className="space-y-6 pb-20 md:pb-0">
       <div>
@@ -141,8 +151,21 @@ export default function PortalDevices() {
         </p>
       </div>
 
+      {/* No services configured message */}
+      {!hasAnyService && (
+        <div className="card p-6 text-center">
+          <span className="text-4xl mb-4 block">⚠️</span>
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">
+            {t('portalDevices.noServicesTitle', 'Сервисы не настроены')}
+          </h2>
+          <p className="text-gray-500">
+            {t('portalDevices.noServicesDescription', 'Обратитесь к администратору для настройки VPN или Proxy доступа.')}
+          </p>
+        </div>
+      )}
+
       {/* Unified credentials section */}
-      {(profileInfo?.vpn || profileInfo?.proxy) && (
+      {hasAnyService && (
         <div className="card p-4 sm:p-6 border-2 border-primary-200 bg-primary-50/30">
           <h2 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
             <span className="text-xl">🔑</span>

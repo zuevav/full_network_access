@@ -325,6 +325,8 @@
     "proxyDescription": "If VPN doesn't suit you, configure proxy in your browser or system.",
     "downloadPac": "Download PAC file",
     "pacDescription": "PAC file automatically routes necessary sites through proxy",
+    "noServicesTitle": "Services not configured",
+    "noServicesDescription": "Contact administrator to set up VPN or Proxy access.",
     "devices": {
       "iphone": {
         "title": "iPhone / iPad",
