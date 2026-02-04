@@ -120,7 +120,7 @@ export default function PortalDevices() {
   const [copied, setCopied] = useState('')
   const [selectedPlatform, setSelectedPlatform] = useState(null)
 
-  const { data: profileInfo, isLoading } = useQuery({
+  const { data: profileInfo, isLoading, error } = useQuery({
     queryKey: ['portal-profiles'],
     queryFn: () => api.getPortalProfiles(),
     retry: 1,
