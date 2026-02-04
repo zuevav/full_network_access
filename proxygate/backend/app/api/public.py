@@ -385,14 +385,11 @@ async def download_ios_public(
     content = profile_generator.generate_ios_mobileconfig(client, mode=mode)
     mode_suffix = f"-{mode}" if mode != "ondemand" else ""
 
-    # iOS Safari headers for proper download handling
     return Response(
         content=content,
         media_type="application/x-apple-aspen-config",
         headers={
-            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}{mode_suffix}.mobileconfig"',
-            "Cache-Control": "no-store",
-            "X-Content-Type-Options": "nosniff"
+            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}{mode_suffix}.mobileconfig"'
         }
     )
 
@@ -424,14 +421,11 @@ async def download_macos_public(
     content = profile_generator.generate_macos_mobileconfig(client, mode=mode)
     mode_suffix = f"-{mode}" if mode != "ondemand" else ""
 
-    # Safari headers for proper download handling
     return Response(
         content=content,
         media_type="application/x-apple-aspen-config",
         headers={
-            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}-macos{mode_suffix}.mobileconfig"',
-            "Cache-Control": "no-store",
-            "X-Content-Type-Options": "nosniff"
+            "Content-Disposition": f'attachment; filename="zetit-fna-{client.vpn_config.username}-macos{mode_suffix}.mobileconfig"'
         }
     )
 
