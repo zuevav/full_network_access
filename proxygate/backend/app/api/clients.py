@@ -116,8 +116,13 @@ async def create_client(
     db.add(client)
     await db.flush()  # Get client ID
 
-    # Generate username
-    username = generate_username(client.id)
+    # Get existing usernames for uniqueness check
+    vpn_usernames = await db.execute(select(VpnConfig.username))
+    proxy_usernames = await db.execute(select(ProxyAccount.username))
+    existing_usernames = set(u for (u,) in vpn_usernames) | set(u for (u,) in proxy_usernames)
+
+    # Generate username from client name
+    username = generate_username(client.id, request.name, existing_usernames)
 
     # Create VPN config if needed
     if request.service_type in ("vpn", "both"):
