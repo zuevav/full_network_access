@@ -395,7 +395,27 @@
     "vpnSectionDescription": "All device traffic goes through a secure VPN tunnel",
     "vpnServer": "VPN Server",
     "proxySection": "Proxy — For Browser",
-    "proxySetupOptions": "Setup Options"
+    "proxySetupOptions": "Setup Options",
+    "iosModal": {
+      "title": "Choose VPN Mode",
+      "subtitle": "How should VPN work on your device?"
+    },
+    "iosOptions": {
+      "recommended": "Recommended",
+      "hint": "After download, open Settings to install the profile",
+      "ondemand": {
+        "title": "Auto (by domains)",
+        "description": "VPN connects automatically only when accessing your work sites. Other traffic goes directly."
+      },
+      "always": {
+        "title": "Always (Split tunnel)",
+        "description": "VPN is always on, but only work site traffic goes through VPN. Other traffic goes directly."
+      },
+      "full": {
+        "title": "Always (All traffic)",
+        "description": "VPN is always on, ALL traffic goes through VPN. Maximum protection, but higher battery usage."
+      }
+    }
   },
   "portalDomains": {
     "title": "Your Domains",

@@ -11,14 +11,106 @@ import {
   Copy,
   Eye,
   EyeOff,
-  ExternalLink
+  ExternalLink,
+  X,
+  Zap,
+  Shield,
+  Globe
 } from 'lucide-react'
 import api from '../../api'
 
-function DeviceCard({ icon: Icon, title, description, profileUrl, instructions, t }) {
+// Modal for iOS profile type selection
+function IOSProfileModal({ isOpen, onClose, t }) {
+  if (!isOpen) return null
+
+  const options = [
+    {
+      id: 'ondemand',
+      icon: <Zap className="w-6 h-6 text-yellow-500" />,
+      title: t('portalDevices.iosOptions.ondemand.title', 'VPN по требованию'),
+      description: t('portalDevices.iosOptions.ondemand.description', 'Подключается автоматически только при открытии нужных сайтов. Экономит батарею.'),
+      url: '/api/portal/profiles/ios?mode=ondemand',
+      recommended: true
+    },
+    {
+      id: 'always',
+      icon: <Shield className="w-6 h-6 text-green-500" />,
+      title: t('portalDevices.iosOptions.always.title', 'VPN всегда включён'),
+      description: t('portalDevices.iosOptions.always.description', 'Постоянное подключение. Только трафик к нужным сайтам идёт через VPN.'),
+      url: '/api/portal/profiles/ios?mode=always'
+    },
+    {
+      id: 'full',
+      icon: <Globe className="w-6 h-6 text-blue-500" />,
+      title: t('portalDevices.iosOptions.full.title', 'Полный VPN'),
+      description: t('portalDevices.iosOptions.full.description', 'Весь трафик через VPN. Максимальная защита, но больше расход батареи.'),
+      url: '/api/portal/profiles/ios?mode=full'
+    }
+  ]
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md max-h-[90vh] overflow-auto" onClick={e => e.stopPropagation()}>
+        <div className="p-4 border-b flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">
+              {t('portalDevices.iosModal.title', 'Выберите режим VPN')}
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {t('portalDevices.iosModal.subtitle', 'Как должен работать VPN?')}
+            </p>
+          </div>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-full">
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-3">
+          {options.map(option => (
+            <a
+              key={option.id}
+              href={option.url}
+              className="block p-4 rounded-xl border-2 hover:border-primary-300 hover:bg-primary-50/50 transition-colors relative"
+            >
+              {option.recommended && (
+                <span className="absolute -top-2 right-3 bg-yellow-400 text-yellow-900 text-xs font-medium px-2 py-0.5 rounded-full">
+                  {t('portalDevices.iosOptions.recommended', 'Рекомендуем')}
+                </span>
+              )}
+              <div className="flex gap-3">
+                <div className="p-2 bg-gray-100 rounded-lg shrink-0">
+                  {option.icon}
+                </div>
+                <div>
+                  <h3 className="font-medium text-gray-900">{option.title}</h3>
+                  <p className="text-sm text-gray-500 mt-1">{option.description}</p>
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+
+        <div className="p-4 bg-gray-50 rounded-b-2xl">
+          <p className="text-xs text-gray-500 text-center">
+            {t('portalDevices.iosOptions.hint', 'После скачивания откройте Настройки для установки профиля')}
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function DeviceCard({ icon: Icon, title, description, profileUrl, instructions, t, onClick, hasModal }) {
   const [expanded, setExpanded] = useState(false)
   // Ensure instructions is always an array
   const instructionsList = Array.isArray(instructions) ? instructions : []
+
+  const handleClick = (e) => {
+    if (hasModal && onClick) {
+      e.preventDefault()
+      onClick()
+    }
+  }
 
   return (
     <div className="card">
@@ -35,6 +127,7 @@ function DeviceCard({ icon: Icon, title, description, profileUrl, instructions, 
 
         <a
           href={profileUrl}
+          onClick={handleClick}
           className="btn btn-primary w-full mt-4 flex items-center justify-center gap-2"
         >
           <Download className="w-4 h-4" />
@@ -67,6 +160,7 @@ export default function PortalDevices() {
   const { t } = useTranslation()
   const [showPassword, setShowPassword] = useState(false)
   const [copied, setCopied] = useState('')
+  const [showIOSModal, setShowIOSModal] = useState(false)
 
   const { data: profileInfo, isLoading, error } = useQuery({
     queryKey: ['portal-profiles'],
@@ -100,6 +194,8 @@ export default function PortalDevices() {
       description: safeT('portalDevices.devices.iphone.description', 'Automatic setup'),
       profileUrl: '/api/portal/profiles/ios',
       instructions: safeArrayT('portalDevices.devices.iphone.instructions'),
+      hasModal: true,
+      onClick: () => setShowIOSModal(true),
     },
     {
       icon: <span className="text-2xl">🤖</span>,
@@ -121,6 +217,8 @@ export default function PortalDevices() {
       description: safeT('portalDevices.devices.macos.description', 'Profile for Mac'),
       profileUrl: '/api/portal/profiles/macos',
       instructions: safeArrayT('portalDevices.devices.macos.instructions'),
+      hasModal: true,
+      onClick: () => setShowIOSModal(true),
     },
   ]
 
@@ -342,6 +440,13 @@ export default function PortalDevices() {
           </div>
         </div>
       )}
+
+      {/* iOS Profile Selection Modal */}
+      <IOSProfileModal
+        isOpen={showIOSModal}
+        onClose={() => setShowIOSModal(false)}
+        t={t}
+      />
     </div>
   )
 }
