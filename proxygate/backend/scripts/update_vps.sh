@@ -20,7 +20,7 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # 1. Fix IP forwarding
-echo "[1/5] Исправление IP forwarding..."
+echo "[1/6] Исправление IP forwarding..."
 
 # Check current status
 CURRENT_IP_FWD=$(cat /proc/sys/net/ipv4/ip_forward)
@@ -58,14 +58,14 @@ EOF
 fi
 
 # 2. Fix swanctl directories
-echo "[2/5] Проверка директорий swanctl..."
+echo "[2/6] Проверка директорий swanctl..."
 mkdir -p /etc/swanctl/x509
 mkdir -p /etc/swanctl/private
 mkdir -p /etc/swanctl/x509ca
 echo -e "${GREEN}[OK]${NC} Директории созданы"
 
 # 3. Check and fix certificate symlinks
-echo "[3/5] Проверка сертификатов..."
+echo "[3/6] Проверка сертификатов..."
 
 # Try to find the domain from existing config
 DOMAIN=""
@@ -114,7 +114,7 @@ else
 fi
 
 # 4. Fix NAT rules
-echo "[4/5] Проверка NAT правил..."
+echo "[4/6] Проверка NAT правил..."
 
 NAT_EXISTS=$(iptables -t nat -L POSTROUTING -n 2>/dev/null | grep -c "10.0.0.0/24" || echo "0")
 if [ "$NAT_EXISTS" -gt 0 ]; then
@@ -133,8 +133,35 @@ else
     echo -e "${GREEN}[OK]${NC} NAT правила добавлены"
 fi
 
-# 5. Fix strongSwan service
-echo "[5/5] Проверка strongSwan..."
+# 5. Fix certbot renewal hook
+echo "[5/6] Обновление certbot hook..."
+
+mkdir -p /etc/letsencrypt/renewal-hooks/post
+cat > /etc/letsencrypt/renewal-hooks/post/strongswan.sh << 'EOF'
+#!/bin/bash
+# Автоматическое обновление ключей strongSwan после обновления сертификата
+
+DOMAIN=""
+if [ -f /etc/swanctl/conf.d/connections.conf ]; then
+    DOMAIN=$(grep "id = " /etc/swanctl/conf.d/connections.conf | head -1 | sed 's/.*id = //' | tr -d ' ')
+fi
+
+if [ -n "$DOMAIN" ] && [ -d "/etc/letsencrypt/live/$DOMAIN" ]; then
+    cp "/etc/letsencrypt/live/$DOMAIN/privkey.pem" /etc/swanctl/private/privkey.pem
+    chmod 600 /etc/swanctl/private/privkey.pem
+    ln -sf "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" /etc/swanctl/x509/fullchain.pem
+    ln -sf "/etc/letsencrypt/live/$DOMAIN/chain.pem" /etc/swanctl/x509ca/chain.pem
+    echo "Updated strongSwan certificates for $DOMAIN"
+fi
+
+swanctl --load-creds
+systemctl reload strongswan
+EOF
+chmod +x /etc/letsencrypt/renewal-hooks/post/strongswan.sh
+echo -e "${GREEN}[OK]${NC} Certbot hook обновлён"
+
+# 6. Fix strongSwan service
+echo "[6/6] Проверка strongSwan..."
 
 # Make sure we're using charon-systemd, not strongswan-starter
 if systemctl is-active --quiet strongswan-starter 2>/dev/null; then

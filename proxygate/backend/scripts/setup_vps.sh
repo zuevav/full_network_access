@@ -199,11 +199,32 @@ mkdir -p /opt/proxygate
 cd /opt/proxygate
 python3 -m venv venv
 
-# 9. Setup certbot renewal hook
+# 9. Setup certbot renewal hook (автоматическое обновление ключей для strongSwan)
 echo "[9/10] Configuring certbot hooks..."
 mkdir -p /etc/letsencrypt/renewal-hooks/post
 cat > /etc/letsencrypt/renewal-hooks/post/strongswan.sh << 'EOF'
 #!/bin/bash
+# Автоматическое обновление ключей strongSwan после обновления сертификата
+
+# Определяем домен из конфига strongSwan
+DOMAIN=""
+if [ -f /etc/swanctl/conf.d/connections.conf ]; then
+    DOMAIN=$(grep "id = " /etc/swanctl/conf.d/connections.conf | head -1 | sed 's/.*id = //' | tr -d ' ')
+fi
+
+if [ -n "$DOMAIN" ] && [ -d "/etc/letsencrypt/live/$DOMAIN" ]; then
+    # Копируем приватный ключ (symlink не работает из-за прав)
+    cp "/etc/letsencrypt/live/$DOMAIN/privkey.pem" /etc/swanctl/private/privkey.pem
+    chmod 600 /etc/swanctl/private/privkey.pem
+
+    # Обновляем symlinks для сертификатов (они работают)
+    ln -sf "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" /etc/swanctl/x509/fullchain.pem
+    ln -sf "/etc/letsencrypt/live/$DOMAIN/chain.pem" /etc/swanctl/x509ca/chain.pem
+
+    echo "Updated strongSwan certificates for $DOMAIN"
+fi
+
+# Перезагружаем конфиг strongSwan
 swanctl --load-creds
 systemctl reload strongswan
 EOF
