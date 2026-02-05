@@ -98,7 +98,7 @@ cat > /etc/swanctl/conf.d/connections.conf << 'EOF'
 connections {
     proxygate {
         version = 2
-        proposals = aes256-sha256-modp2048,aes128-sha256-modp2048
+        proposals = aes256-sha256-ecp256,aes256-sha256-modp2048,aes128-sha256-ecp256,aes128-sha256-modp2048
         rekey_time = 0s
         unique = replace
         pools = client_pool
