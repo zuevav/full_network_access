@@ -11,6 +11,8 @@ if TYPE_CHECKING:
     from app.models.domain import ClientDomain
     from app.models.payment import Payment
     from app.models.domain_request import DomainRequest
+    from app.models.xray import XrayConfig
+    from app.models.wireguard import WireguardConfig
 
 
 class Client(Base):
@@ -50,5 +52,15 @@ class Client(Base):
     )
     domain_requests: Mapped[List["DomainRequest"]] = relationship(
         back_populates="client",
+        cascade="all, delete-orphan"
+    )
+    xray_config: Mapped[Optional["XrayConfig"]] = relationship(
+        back_populates="client",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
+    wireguard_config: Mapped[Optional["WireguardConfig"]] = relationship(
+        back_populates="client",
+        uselist=False,
         cascade="all, delete-orphan"
     )
