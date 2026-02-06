@@ -235,6 +235,12 @@ function ProfilesTab({ client, t }) {
       {client.proxy_account && (
         <ProxyCredentials clientId={client.id} t={t} />
       )}
+
+      {/* XRay VLESS */}
+      <XrayCredentials clientId={client.id} t={t} />
+
+      {/* WireGuard */}
+      <WireguardCredentials clientId={client.id} t={t} />
     </div>
   )
 }
@@ -384,6 +390,263 @@ function ProxyCredentials({ clientId, t }) {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function XrayCredentials({ clientId, t }) {
+  const queryClient = useQueryClient()
+  const [copied, setCopied] = useState(false)
+
+  const { data: serverStatus } = useQuery({
+    queryKey: ['xray-status'],
+    queryFn: () => api.getXrayStatus(),
+  })
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['xray-config', clientId],
+    queryFn: () => api.getClientXray(clientId),
+    enabled: serverStatus?.is_installed,
+    retry: false,
+  })
+
+  const enableMutation = useMutation({
+    mutationFn: () => api.enableClientXray(clientId),
+    onSuccess: () => queryClient.invalidateQueries(['xray-config', clientId]),
+  })
+
+  const disableMutation = useMutation({
+    mutationFn: () => api.disableClientXray(clientId),
+    onSuccess: () => queryClient.invalidateQueries(['xray-config', clientId]),
+  })
+
+  const regenerateMutation = useMutation({
+    mutationFn: () => api.regenerateClientXray(clientId),
+    onSuccess: () => queryClient.invalidateQueries(['xray-config', clientId]),
+  })
+
+  const copyToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Copy failed:', err)
+    }
+  }
+
+  if (!serverStatus?.is_installed) {
+    return (
+      <div className="card p-4 sm:p-6">
+        <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">XRay (VLESS + REALITY)</h3>
+        <p className="text-sm text-gray-500">XRay не установлен на сервере</p>
+      </div>
+    )
+  }
+
+  if (isLoading) return null
+
+  const hasConfig = data && !error
+
+  return (
+    <div className="card p-4 sm:p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-900 text-sm sm:text-base">XRay (VLESS + REALITY)</h3>
+        {hasConfig && data.is_active && (
+          <button
+            onClick={() => regenerateMutation.mutate()}
+            disabled={regenerateMutation.isPending}
+            className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
+          >
+            <RefreshCw className={`w-4 h-4 ${regenerateMutation.isPending ? 'animate-spin' : ''}`} />
+            {t('clients.regenerateKeys')}
+          </button>
+        )}
+      </div>
+
+      {!hasConfig || !data.is_active ? (
+        <div className="text-center py-4">
+          <p className="text-sm text-gray-500 mb-3">XRay не активирован для этого клиента</p>
+          <button
+            onClick={() => enableMutation.mutate()}
+            disabled={enableMutation.isPending}
+            className="btn btn-primary btn-sm"
+          >
+            {enableMutation.isPending ? <Loader className="w-4 h-4 animate-spin" /> : 'Включить XRay'}
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="space-y-2 text-sm mb-4">
+            <p><span className="text-gray-500">UUID:</span> <code className="bg-gray-100 px-1 rounded text-xs">{data.uuid}</code></p>
+            {data.short_id && <p><span className="text-gray-500">Short ID:</span> {data.short_id}</p>}
+          </div>
+
+          {data.vless_url && (
+            <div className="mt-3 pt-3 border-t">
+              <p className="text-xs text-gray-500 mb-2">VLESS URL:</p>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  className="input flex-1 text-xs font-mono"
+                  value={data.vless_url}
+                  readOnly
+                />
+                <button
+                  onClick={() => copyToClipboard(data.vless_url)}
+                  className="btn btn-secondary btn-sm"
+                >
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="mt-4 pt-3 border-t">
+            <button
+              onClick={() => disableMutation.mutate()}
+              disabled={disableMutation.isPending}
+              className="text-sm text-red-600 hover:text-red-700"
+            >
+              Отключить XRay
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function WireguardCredentials({ clientId, t }) {
+  const queryClient = useQueryClient()
+  const [copied, setCopied] = useState(false)
+
+  const { data: serverStatus } = useQuery({
+    queryKey: ['wireguard-status'],
+    queryFn: () => api.getWireguardStatus(),
+  })
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['wireguard-config', clientId],
+    queryFn: () => api.getClientWireguard(clientId),
+    enabled: serverStatus?.is_installed,
+    retry: false,
+  })
+
+  const enableMutation = useMutation({
+    mutationFn: () => api.enableClientWireguard(clientId),
+    onSuccess: () => queryClient.invalidateQueries(['wireguard-config', clientId]),
+  })
+
+  const disableMutation = useMutation({
+    mutationFn: () => api.disableClientWireguard(clientId),
+    onSuccess: () => queryClient.invalidateQueries(['wireguard-config', clientId]),
+  })
+
+  const regenerateMutation = useMutation({
+    mutationFn: () => api.regenerateClientWireguard(clientId),
+    onSuccess: () => queryClient.invalidateQueries(['wireguard-config', clientId]),
+  })
+
+  const copyToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch (err) {
+      console.error('Copy failed:', err)
+    }
+  }
+
+  const downloadConfig = () => {
+    if (data?.config) {
+      const blob = new Blob([data.config], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `wireguard-${clientId}.conf`
+      a.click()
+      URL.revokeObjectURL(url)
+    }
+  }
+
+  if (!serverStatus?.is_installed) {
+    return (
+      <div className="card p-4 sm:p-6">
+        <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">WireGuard VPN</h3>
+        <p className="text-sm text-gray-500">WireGuard не установлен на сервере</p>
+      </div>
+    )
+  }
+
+  if (isLoading) return null
+
+  const hasConfig = data && !error
+
+  return (
+    <div className="card p-4 sm:p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-900 text-sm sm:text-base">WireGuard VPN</h3>
+        {hasConfig && data.is_active && (
+          <button
+            onClick={() => regenerateMutation.mutate()}
+            disabled={regenerateMutation.isPending}
+            className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
+          >
+            <RefreshCw className={`w-4 h-4 ${regenerateMutation.isPending ? 'animate-spin' : ''}`} />
+            {t('clients.regenerateKeys')}
+          </button>
+        )}
+      </div>
+
+      {!hasConfig || !data.is_active ? (
+        <div className="text-center py-4">
+          <p className="text-sm text-gray-500 mb-3">WireGuard не активирован для этого клиента</p>
+          <button
+            onClick={() => enableMutation.mutate()}
+            disabled={enableMutation.isPending}
+            className="btn btn-primary btn-sm"
+          >
+            {enableMutation.isPending ? <Loader className="w-4 h-4 animate-spin" /> : 'Включить WireGuard'}
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="space-y-2 text-sm mb-4">
+            <p><span className="text-gray-500">IP:</span> {data.assigned_ip}</p>
+            <p><span className="text-gray-500">Public Key:</span> <code className="bg-gray-100 px-1 rounded text-xs break-all">{data.public_key}</code></p>
+          </div>
+
+          {data.config && (
+            <div className="flex gap-2 mt-3 pt-3 border-t">
+              <button
+                onClick={downloadConfig}
+                className="btn btn-secondary btn-sm flex items-center gap-1"
+              >
+                <Download className="w-4 h-4" />
+                Скачать .conf
+              </button>
+              <button
+                onClick={() => copyToClipboard(data.config)}
+                className="btn btn-secondary btn-sm flex items-center gap-1"
+              >
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                Копировать
+              </button>
+            </div>
+          )}
+
+          <div className="mt-4 pt-3 border-t">
+            <button
+              onClick={() => disableMutation.mutate()}
+              disabled={disableMutation.isPending}
+              className="text-sm text-red-600 hover:text-red-700"
+            >
+              Отключить WireGuard
+            </button>
+          </div>
+        </>
+      )}
     </div>
   )
 }
