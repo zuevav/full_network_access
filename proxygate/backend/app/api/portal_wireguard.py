@@ -10,8 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.database import get_db
-from app.api.portal_auth import get_current_client
+from app.api.deps import DBSession, CurrentClient
 from app.models import Client, WireguardConfig, WireguardServerConfig
 from app.services.wireguard_manager import WireGuardManager, WgServerSettings
 
@@ -34,8 +33,8 @@ class WireguardConnectionResponse(BaseModel):
 
 @router.get("/wireguard")
 async def get_wireguard_connection_info(
-        client: Client = Depends(get_current_client),
-        db: AsyncSession = Depends(get_db)
+        client: CurrentClient,
+        db: DBSession
 ) -> WireguardConnectionResponse:
     """
     Get WireGuard connection information for the current client.
@@ -159,8 +158,8 @@ async def get_wireguard_connection_info(
 
 @router.get("/wireguard/config")
 async def download_wireguard_config(
-        client: Client = Depends(get_current_client),
-        db: AsyncSession = Depends(get_db)
+        client: CurrentClient,
+        db: DBSession
 ):
     """
     Download WireGuard configuration file.
@@ -210,8 +209,8 @@ async def download_wireguard_config(
 
 @router.get("/wireguard/qrcode")
 async def get_wireguard_qrcode(
-        client: Client = Depends(get_current_client),
-        db: AsyncSession = Depends(get_db)
+        client: CurrentClient,
+        db: DBSession
 ):
     """
     Get QR code for WireGuard configuration.
