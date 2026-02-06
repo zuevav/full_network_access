@@ -1,6 +1,6 @@
 #!/bin/bash
 # ProxyGate VPS Update Script
-# Применяет исправления на уже установленных серверах
+# Применяет исправления и обновления на уже установленных серверах
 # Run: sudo bash update_vps.sh
 
 set -e
@@ -8,9 +8,10 @@ set -e
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
 NC='\033[0m'
 
-echo "=== ProxyGate VPS Update ==="
+echo -e "${BLUE}=== ProxyGate VPS Update ===${NC}"
 echo ""
 
 # Check if running as root
@@ -19,23 +20,28 @@ if [ "$EUID" -ne 0 ]; then
     exit 1
 fi
 
-# 1. Fix IP forwarding
-echo "[1/6] Исправление IP forwarding..."
+# Get current version
+CURRENT_VERSION="unknown"
+if [ -f /opt/proxygate/VERSION ]; then
+    CURRENT_VERSION=$(cat /opt/proxygate/VERSION)
+fi
+echo "Текущая версия: $CURRENT_VERSION"
+echo ""
 
-# Check current status
+# 1. Fix IP forwarding
+echo "[1/10] Исправление IP forwarding..."
+
 CURRENT_IP_FWD=$(cat /proc/sys/net/ipv4/ip_forward)
 if [ "$CURRENT_IP_FWD" = "1" ]; then
     echo -e "${GREEN}[OK]${NC} IP forwarding уже включен"
 else
     echo -e "${YELLOW}[FIX]${NC} Включаем IP forwarding..."
 
-    # Remove old settings
     sed -i '/net.ipv4.ip_forward/d' /etc/sysctl.conf
     sed -i '/net.ipv6.conf.all.forwarding/d' /etc/sysctl.conf
     sed -i '/net.ipv4.conf.all.accept_redirects/d' /etc/sysctl.conf
     sed -i '/net.ipv4.conf.all.send_redirects/d' /etc/sysctl.conf
 
-    # Add new settings
     cat >> /etc/sysctl.conf << 'EOF'
 
 # ProxyGate VPN - IP Forwarding
@@ -45,11 +51,9 @@ net.ipv4.conf.all.accept_redirects=0
 net.ipv4.conf.all.send_redirects=0
 EOF
 
-    # Apply
     sysctl -p >/dev/null 2>&1
     sysctl -w net.ipv4.ip_forward=1 >/dev/null 2>&1
 
-    # Verify
     if [ "$(cat /proc/sys/net/ipv4/ip_forward)" = "1" ]; then
         echo -e "${GREEN}[OK]${NC} IP forwarding включен"
     else
@@ -58,63 +62,84 @@ EOF
 fi
 
 # 2. Fix swanctl directories
-echo "[2/6] Проверка директорий swanctl..."
+echo "[2/10] Проверка директорий swanctl..."
 mkdir -p /etc/swanctl/x509
 mkdir -p /etc/swanctl/private
 mkdir -p /etc/swanctl/x509ca
 echo -e "${GREEN}[OK]${NC} Директории созданы"
 
 # 3. Check and fix certificate symlinks
-echo "[3/6] Проверка сертификатов..."
+echo "[3/10] Проверка сертификатов..."
 
-# Try to find the domain from existing config
 DOMAIN=""
 if [ -f /etc/swanctl/conf.d/connections.conf ]; then
     DOMAIN=$(grep "id = " /etc/swanctl/conf.d/connections.conf | head -1 | sed 's/.*id = //' | tr -d ' ')
 fi
 
 if [ -n "$DOMAIN" ] && [ -d "/etc/letsencrypt/live/$DOMAIN" ]; then
-    # Create symlinks if missing
-    if [ ! -f /etc/swanctl/x509/fullchain.pem ]; then
-        ln -sf "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" /etc/swanctl/x509/fullchain.pem
-        echo -e "${YELLOW}[FIX]${NC} Создан symlink для fullchain.pem"
+    # Сертификат - копируем вместо symlink для надёжности
+    if [ -L /etc/swanctl/x509/fullchain.pem ] || [ ! -f /etc/swanctl/x509/fullchain.pem ]; then
+        rm -f /etc/swanctl/x509/fullchain.pem 2>/dev/null || true
+        cp "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" /etc/swanctl/x509/fullchain.pem
+        chmod 644 /etc/swanctl/x509/fullchain.pem
+        echo -e "${YELLOW}[FIX]${NC} Скопирован fullchain.pem"
     else
         echo -e "${GREEN}[OK]${NC} fullchain.pem существует"
     fi
 
-    # Приватный ключ - копируем (symlink не работает из-за прав Let's Encrypt)
-    if [ ! -f /etc/swanctl/private/privkey.pem ]; then
+    # Приватный ключ - всегда копируем
+    if [ -L /etc/swanctl/private/privkey.pem ] || [ ! -f /etc/swanctl/private/privkey.pem ]; then
+        rm -f /etc/swanctl/private/privkey.pem 2>/dev/null || true
         cp "/etc/letsencrypt/live/$DOMAIN/privkey.pem" /etc/swanctl/private/privkey.pem
         chmod 600 /etc/swanctl/private/privkey.pem
         echo -e "${YELLOW}[FIX]${NC} Скопирован privkey.pem"
     else
-        # Проверяем, может это symlink который не работает
-        if [ -L /etc/swanctl/private/privkey.pem ]; then
-            rm /etc/swanctl/private/privkey.pem
-            cp "/etc/letsencrypt/live/$DOMAIN/privkey.pem" /etc/swanctl/private/privkey.pem
-            chmod 600 /etc/swanctl/private/privkey.pem
-            echo -e "${YELLOW}[FIX]${NC} Заменён symlink на копию privkey.pem"
-        else
-            echo -e "${GREEN}[OK]${NC} privkey.pem существует"
-        fi
+        echo -e "${GREEN}[OK]${NC} privkey.pem существует"
     fi
 
+    # Chain для CA
     if [ ! -f /etc/swanctl/x509ca/chain.pem ]; then
         ln -sf "/etc/letsencrypt/live/$DOMAIN/chain.pem" /etc/swanctl/x509ca/chain.pem
         echo -e "${YELLOW}[FIX]${NC} Создан symlink для chain.pem"
     else
         echo -e "${GREEN}[OK]${NC} chain.pem существует"
     fi
+
+    # Удаляем старые самоподписанные сертификаты если есть
+    rm -f /etc/swanctl/x509/server-cert.pem 2>/dev/null || true
+    rm -f /etc/swanctl/x509ca/ca-cert.pem 2>/dev/null || true
+    rm -f /etc/swanctl/private/ca-key.pem 2>/dev/null || true
+    rm -f /etc/swanctl/private/server-key.pem 2>/dev/null || true
 else
     echo -e "${YELLOW}[SKIP]${NC} Домен не определён или сертификаты отсутствуют"
-    echo "       Создайте symlinks вручную:"
-    echo "       ln -sf /etc/letsencrypt/live/YOUR_DOMAIN/fullchain.pem /etc/swanctl/x509/fullchain.pem"
-    echo "       ln -sf /etc/letsencrypt/live/YOUR_DOMAIN/privkey.pem /etc/swanctl/private/privkey.pem"
-    echo "       ln -sf /etc/letsencrypt/live/YOUR_DOMAIN/chain.pem /etc/swanctl/x509ca/chain.pem"
 fi
 
-# 4. Fix NAT rules
-echo "[4/6] Проверка NAT правил..."
+# 4. Fix strongSwan proposals for Apple devices
+echo "[4/10] Обновление конфигурации strongSwan..."
+
+if [ -f /etc/swanctl/conf.d/connections.conf ]; then
+    # Проверяем есть ли ecp256 в proposals
+    if ! grep -q "ecp256" /etc/swanctl/conf.d/connections.conf; then
+        echo -e "${YELLOW}[FIX]${NC} Добавляем поддержку ECP_256 для Apple устройств..."
+        sed -i 's/proposals = aes256-sha256-modp2048,aes128-sha256-modp2048/proposals = aes256-sha256-ecp256,aes256-sha256-modp2048,aes128-sha256-ecp256,aes128-sha256-modp2048/g' /etc/swanctl/conf.d/connections.conf
+        sed -i 's/esp_proposals = aes256-sha256,aes128-sha256/esp_proposals = aes256-sha256-ecp256,aes256-sha256-modp2048,aes128-sha256-ecp256,aes128-sha256-modp2048/g' /etc/swanctl/conf.d/connections.conf
+        echo -e "${GREEN}[OK]${NC} ECP_256 добавлен"
+    else
+        echo -e "${GREEN}[OK]${NC} ECP_256 уже поддерживается"
+    fi
+
+    # Обновляем certs если старый формат
+    if grep -q "certs = fullchain.pem" /etc/swanctl/conf.d/connections.conf; then
+        # Проверяем что файл существует
+        if [ -f /etc/swanctl/x509/server.pem ]; then
+            sed -i 's/certs = fullchain.pem/certs = server.pem/g' /etc/swanctl/conf.d/connections.conf
+            echo -e "${YELLOW}[FIX]${NC} Обновлён путь к сертификату"
+        fi
+    fi
+fi
+
+# 5. Fix NAT rules
+echo "[5/10] Проверка NAT правил..."
 
 NAT_EXISTS=$(iptables -t nat -L POSTROUTING -n 2>/dev/null | grep -c "10.0.0.0/24" || echo "0")
 if [ "$NAT_EXISTS" -gt 0 ]; then
@@ -126,15 +151,14 @@ else
     iptables -A FORWARD -s 10.0.0.0/24 -j ACCEPT
     iptables -A FORWARD -d 10.0.0.0/24 -j ACCEPT
 
-    # Save rules
     if command -v netfilter-persistent &> /dev/null; then
         netfilter-persistent save >/dev/null 2>&1
     fi
     echo -e "${GREEN}[OK]${NC} NAT правила добавлены"
 fi
 
-# 5. Fix certbot renewal hook
-echo "[5/6] Обновление certbot hook..."
+# 6. Fix certbot renewal hook
+echo "[6/10] Обновление certbot hook..."
 
 mkdir -p /etc/letsencrypt/renewal-hooks/post
 cat > /etc/letsencrypt/renewal-hooks/post/strongswan.sh << 'EOF'
@@ -149,28 +173,109 @@ fi
 if [ -n "$DOMAIN" ] && [ -d "/etc/letsencrypt/live/$DOMAIN" ]; then
     cp "/etc/letsencrypt/live/$DOMAIN/privkey.pem" /etc/swanctl/private/privkey.pem
     chmod 600 /etc/swanctl/private/privkey.pem
-    ln -sf "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" /etc/swanctl/x509/fullchain.pem
+    cp "/etc/letsencrypt/live/$DOMAIN/fullchain.pem" /etc/swanctl/x509/fullchain.pem
+    chmod 644 /etc/swanctl/x509/fullchain.pem
     ln -sf "/etc/letsencrypt/live/$DOMAIN/chain.pem" /etc/swanctl/x509ca/chain.pem
     echo "Updated strongSwan certificates for $DOMAIN"
 fi
 
-swanctl --load-creds
-systemctl reload strongswan
+swanctl --load-creds 2>/dev/null || true
+systemctl reload strongswan 2>/dev/null || true
 EOF
 chmod +x /etc/letsencrypt/renewal-hooks/post/strongswan.sh
 echo -e "${GREEN}[OK]${NC} Certbot hook обновлён"
 
-# 6. Fix strongSwan service
-echo "[6/6] Проверка strongSwan..."
+# 7. Install/Update XRay
+echo "[7/10] Установка XRay (VLESS + REALITY)..."
 
-# Make sure we're using charon-systemd, not strongswan-starter
+if [ -f /usr/local/bin/xray ]; then
+    echo -e "${GREEN}[OK]${NC} XRay уже установлен"
+    # Update to latest version
+    bash -c "$(curl -sL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install >/dev/null 2>&1 || true
+else
+    echo -e "${YELLOW}[INSTALL]${NC} Устанавливаем XRay..."
+    bash -c "$(curl -sL https://github.com/XTLS/Xray-install/raw/main/install-release.sh)" @ install >/dev/null 2>&1
+    if [ -f /usr/local/bin/xray ]; then
+        echo -e "${GREEN}[OK]${NC} XRay установлен"
+        systemctl enable xray 2>/dev/null || true
+    else
+        echo -e "${RED}[FAIL]${NC} Не удалось установить XRay"
+    fi
+fi
+
+# 8. Install/Update WireGuard
+echo "[8/10] Установка WireGuard..."
+
+if command -v wg &> /dev/null; then
+    echo -e "${GREEN}[OK]${NC} WireGuard уже установлен"
+else
+    echo -e "${YELLOW}[INSTALL]${NC} Устанавливаем WireGuard..."
+    apt-get update -qq
+    apt-get install -y wireguard wireguard-tools >/dev/null 2>&1
+    if command -v wg &> /dev/null; then
+        echo -e "${GREEN}[OK]${NC} WireGuard установлен"
+    else
+        echo -e "${RED}[FAIL]${NC} Не удалось установить WireGuard"
+    fi
+fi
+
+# Add NAT rules for WireGuard subnet if not exists
+WG_NAT_EXISTS=$(iptables -t nat -L POSTROUTING -n 2>/dev/null | grep -c "10.10.0.0/24" || echo "0")
+if [ "$WG_NAT_EXISTS" -eq 0 ]; then
+    IFACE=$(ip route | grep default | awk '{print $5}' | head -1)
+    iptables -t nat -A POSTROUTING -s 10.10.0.0/24 -o $IFACE -j MASQUERADE 2>/dev/null || true
+    iptables -A FORWARD -s 10.10.0.0/24 -j ACCEPT 2>/dev/null || true
+    iptables -A FORWARD -d 10.10.0.0/24 -j ACCEPT 2>/dev/null || true
+fi
+
+# 9. Install wstunnel for WireGuard obfuscation
+echo "[9/10] Установка wstunnel..."
+
+if [ -f /usr/local/bin/wstunnel ]; then
+    echo -e "${GREEN}[OK]${NC} wstunnel уже установлен"
+else
+    echo -e "${YELLOW}[INSTALL]${NC} Устанавливаем wstunnel..."
+    ARCH=$(uname -m)
+    case $ARCH in
+        x86_64) WSTUNNEL_ARCH="x86_64-unknown-linux-musl" ;;
+        aarch64) WSTUNNEL_ARCH="aarch64-unknown-linux-musl" ;;
+        *) WSTUNNEL_ARCH="" ;;
+    esac
+
+    if [ -n "$WSTUNNEL_ARCH" ]; then
+        # Get latest version
+        WSTUNNEL_VERSION=$(curl -sI https://github.com/erebe/wstunnel/releases/latest | grep -i location | sed 's/.*tag\/v//' | tr -d '\r\n')
+        if [ -n "$WSTUNNEL_VERSION" ]; then
+            curl -sL "https://github.com/erebe/wstunnel/releases/download/v${WSTUNNEL_VERSION}/wstunnel_${WSTUNNEL_VERSION}_linux_${ARCH}.tar.gz" -o /tmp/wstunnel.tar.gz
+            tar -xzf /tmp/wstunnel.tar.gz -C /usr/local/bin/ wstunnel 2>/dev/null || true
+            chmod +x /usr/local/bin/wstunnel 2>/dev/null || true
+            rm -f /tmp/wstunnel.tar.gz
+        fi
+    fi
+
+    if [ -f /usr/local/bin/wstunnel ]; then
+        echo -e "${GREEN}[OK]${NC} wstunnel установлен"
+    else
+        echo -e "${YELLOW}[SKIP]${NC} wstunnel не установлен (опционально)"
+    fi
+fi
+
+# 10. Install Python dependencies
+echo "[10/10] Обновление Python зависимостей..."
+
+# Install qrcode for QR code generation
+pip3 install -q qrcode[pil] 2>/dev/null || pip3 install -q qrcode 2>/dev/null || true
+echo -e "${GREEN}[OK]${NC} Python зависимости обновлены"
+
+# Reload strongSwan
+echo ""
+echo "Перезагрузка strongSwan..."
+
 if systemctl is-active --quiet strongswan-starter 2>/dev/null; then
-    echo -e "${YELLOW}[FIX]${NC} Отключаем strongswan-starter..."
     systemctl disable strongswan-starter 2>/dev/null || true
     systemctl stop strongswan-starter 2>/dev/null || true
 fi
 
-# Enable and reload strongswan
 systemctl enable strongswan 2>/dev/null || true
 swanctl --load-all 2>/dev/null || true
 systemctl restart strongswan
@@ -181,12 +286,24 @@ else
     echo -e "${RED}[FAIL]${NC} strongSwan не запустился!"
 fi
 
+# Save iptables rules
+if command -v netfilter-persistent &> /dev/null; then
+    netfilter-persistent save >/dev/null 2>&1 || true
+fi
+
 echo ""
-echo "=== Обновление завершено ==="
+echo -e "${BLUE}=== Обновление завершено ===${NC}"
+echo ""
+echo "Установленные компоненты:"
+echo "  - strongSwan (IKEv2/IPsec) ✓"
+[ -f /usr/local/bin/xray ] && echo "  - XRay (VLESS + REALITY) ✓"
+command -v wg &> /dev/null && echo "  - WireGuard ✓"
+[ -f /usr/local/bin/wstunnel ] && echo "  - wstunnel (WebSocket туннель) ✓"
 echo ""
 echo "Проверьте статус:"
 echo "  bash /opt/proxygate/backend/scripts/diagnose_vpn.sh"
 echo ""
-echo "Просмотр логов при подключении:"
-echo "  journalctl -u strongswan -f"
+echo "Просмотр логов:"
+echo "  journalctl -u strongswan -f  # IKEv2"
+echo "  journalctl -u xray -f        # XRay"
 echo ""
