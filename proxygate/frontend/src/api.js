@@ -174,6 +174,48 @@ class ApiClient {
     })
   }
 
+  // XRay API methods
+  async getXrayStatus() {
+    return this.request('/admin/clients/xray/status')
+  }
+
+  async getClientXray(clientId) {
+    return this.request(`/admin/clients/${clientId}/xray`)
+  }
+
+  async enableClientXray(clientId) {
+    return this.request(`/admin/clients/${clientId}/xray/enable`, { method: 'POST' })
+  }
+
+  async disableClientXray(clientId) {
+    return this.request(`/admin/clients/${clientId}/xray/disable`, { method: 'POST' })
+  }
+
+  async regenerateClientXray(clientId) {
+    return this.request(`/admin/clients/${clientId}/xray/regenerate`, { method: 'POST' })
+  }
+
+  // WireGuard API methods
+  async getWireguardStatus() {
+    return this.request('/admin/clients/wireguard/status')
+  }
+
+  async getClientWireguard(clientId) {
+    return this.request(`/admin/clients/${clientId}/wireguard`)
+  }
+
+  async enableClientWireguard(clientId) {
+    return this.request(`/admin/clients/${clientId}/wireguard/enable`, { method: 'POST' })
+  }
+
+  async disableClientWireguard(clientId) {
+    return this.request(`/admin/clients/${clientId}/wireguard/disable`, { method: 'POST' })
+  }
+
+  async regenerateClientWireguard(clientId) {
+    return this.request(`/admin/clients/${clientId}/wireguard/regenerate`, { method: 'POST' })
+  }
+
   async getClientPayments(clientId) {
     return this.request(`/admin/clients/${clientId}/payments`)
   }
