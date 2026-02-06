@@ -62,33 +62,33 @@ export default function ClientDetail() {
   }
 
   return (
-    <div>
+    <div className="pb-20 md:pb-0">
       {/* Header */}
-      <div className="mb-6">
+      <div className="mb-4 sm:mb-6">
         <button
           onClick={() => navigate('/admin/clients')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-3 sm:mb-4"
         >
           <ArrowLeft className="w-4 h-4" />
-          {t('clients.backToClients')}
+          <span className="text-sm sm:text-base">{t('clients.backToClients')}</span>
         </button>
 
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{client.name}</h1>
-            <div className="flex items-center gap-4 mt-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">{client.name}</h1>
+            <div className="flex items-center gap-3 sm:gap-4 mt-2">
               {client.is_active ? (
-                <span className="inline-flex items-center gap-1 text-green-600">
+                <span className="inline-flex items-center gap-1 text-green-600 text-sm sm:text-base">
                   <CheckCircle className="w-4 h-4" />
                   {t('common.active')}
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1 text-red-600">
+                <span className="inline-flex items-center gap-1 text-red-600 text-sm sm:text-base">
                   <XCircle className="w-4 h-4" />
                   {t('common.inactive')}
                 </span>
               )}
-              <span className="px-2 py-1 bg-gray-100 rounded text-sm">
+              <span className="px-2 py-1 bg-gray-100 rounded text-xs sm:text-sm">
                 {client.service_type}
               </span>
             </div>
@@ -97,14 +97,14 @@ export default function ClientDetail() {
             {client.is_active ? (
               <button
                 onClick={() => deactivateMutation.mutate()}
-                className="btn btn-danger"
+                className="btn btn-danger w-full sm:w-auto"
               >
                 {t('clients.deactivate')}
               </button>
             ) : (
               <button
                 onClick={() => activateMutation.mutate()}
-                className="btn btn-primary"
+                className="btn btn-primary w-full sm:w-auto"
               >
                 {t('clients.activate')}
               </button>
@@ -113,14 +113,14 @@ export default function ClientDetail() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="flex gap-4">
+      {/* Tabs - horizontally scrollable on mobile */}
+      <div className="border-b border-gray-200 mb-4 sm:mb-6 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <nav className="flex gap-1 sm:gap-4 overflow-x-auto scrollbar-hide">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`py-3 px-1 border-b-2 font-medium transition-colors ${
+              className={`py-3 px-3 sm:px-1 border-b-2 font-medium transition-colors whitespace-nowrap text-sm sm:text-base ${
                 activeTab === tab.key
                   ? 'border-primary-600 text-primary-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -174,14 +174,14 @@ function ProfilesTab({ client, t }) {
   }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
       {/* Download profiles */}
-      <div className="card p-6">
-        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+      <div className="card p-4 sm:p-6">
+        <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
           <Smartphone className="w-5 h-5" />
           {t('clients.downloadProfiles')}
         </h3>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
           {[
             { platform: 'windows', label: 'Windows', icon: '🪟' },
             { platform: 'ios', label: 'iPhone/iPad', icon: '📱' },
@@ -191,37 +191,37 @@ function ProfilesTab({ client, t }) {
             <button
               key={platform}
               onClick={() => downloadProfile(platform)}
-              className="flex items-center justify-center gap-2 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+              className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 p-3 sm:p-4 bg-gray-50 rounded-lg hover:bg-gray-100 active:bg-gray-200 transition-colors"
             >
-              <span className="text-2xl">{icon}</span>
-              <span className="font-medium">{label}</span>
+              <span className="text-xl sm:text-2xl">{icon}</span>
+              <span className="font-medium text-xs sm:text-sm">{label}</span>
             </button>
           ))}
         </div>
       </div>
 
       {/* Portal link */}
-      <div className="card p-6">
-        <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+      <div className="card p-4 sm:p-6">
+        <h3 className="font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2 text-sm sm:text-base">
           <Globe className="w-5 h-5" />
           {t('clients.portalLink')}
         </h3>
-        <div className="flex gap-2">
+        <div className="flex flex-col sm:flex-row gap-2">
           <input
             type="text"
-            className="input flex-1"
+            className="input flex-1 text-xs sm:text-sm"
             value={portalUrl}
             readOnly
           />
           <button
             onClick={() => copyToClipboard(portalUrl)}
-            className="btn btn-secondary flex items-center gap-2"
+            className="btn btn-secondary flex items-center justify-center gap-2 w-full sm:w-auto"
           >
             {copied ? <CheckCircle className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
             {copied ? t('clients.copied') : t('clients.copy')}
           </button>
         </div>
-        <p className="text-sm text-gray-500 mt-2">
+        <p className="text-xs sm:text-sm text-gray-500 mt-2">
           {t('clients.portalLinkHint')}
         </p>
       </div>
@@ -793,11 +793,11 @@ function PaymentsTab({ clientId, t }) {
 
   return (
     <div className="card">
-      <div className="p-4 border-b border-gray-100 flex items-center justify-between">
+      <div className="p-3 sm:p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h3 className="font-semibold">{t('clients.paymentHistory')}</h3>
+          <h3 className="font-semibold text-sm sm:text-base">{t('clients.paymentHistory')}</h3>
           {data && (
-            <p className={`text-sm ${data.status === 'active' ? 'text-green-600' : 'text-red-600'}`}>
+            <p className={`text-xs sm:text-sm ${data.status === 'active' ? 'text-green-600' : 'text-red-600'}`}>
               {t('common.status')}: {data.status}
               {data.days_left !== null && ` (${data.days_left} ${t('clients.daysLeft')})`}
             </p>
@@ -805,7 +805,7 @@ function PaymentsTab({ clientId, t }) {
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="btn btn-primary flex items-center gap-2"
+          className="btn btn-primary flex items-center justify-center gap-2 w-full sm:w-auto"
         >
           <Plus className="w-4 h-4" />
           {t('clients.addSubscription')}
@@ -813,8 +813,8 @@ function PaymentsTab({ clientId, t }) {
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} className="p-4 border-b border-gray-100 bg-gray-50">
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit} className="p-3 sm:p-4 border-b border-gray-100 bg-gray-50">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="label">{t('clients.subscriptionDuration')}</label>
               <select
@@ -839,10 +839,10 @@ function PaymentsTab({ clientId, t }) {
             </div>
           </div>
           <div className="flex gap-2 mt-4">
-            <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary">
+            <button type="button" onClick={() => setShowForm(false)} className="btn btn-secondary flex-1 sm:flex-none">
               {t('common.cancel')}
             </button>
-            <button type="submit" className="btn btn-primary">
+            <button type="submit" className="btn btn-primary flex-1 sm:flex-none">
               {t('clients.giveSubscription')}
             </button>
           </div>
@@ -854,45 +854,80 @@ function PaymentsTab({ clientId, t }) {
       ) : data?.payments?.length === 0 ? (
         <p className="p-8 text-center text-gray-500">{t('clients.noPayments')}</p>
       ) : (
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="text-left p-4 font-medium text-gray-600">{t('common.date')}</th>
-              <th className="text-left p-4 font-medium text-gray-600">{t('clients.amount')}</th>
-              <th className="text-left p-4 font-medium text-gray-600">{t('clients.period')}</th>
-              <th className="text-left p-4 font-medium text-gray-600">{t('common.status')}</th>
-              <th className="p-4"></th>
-            </tr>
-          </thead>
-          <tbody>
+        <>
+          {/* Desktop table */}
+          <table className="w-full hidden sm:table">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-left p-4 font-medium text-gray-600">{t('common.date')}</th>
+                <th className="text-left p-4 font-medium text-gray-600">{t('clients.amount')}</th>
+                <th className="text-left p-4 font-medium text-gray-600">{t('clients.period')}</th>
+                <th className="text-left p-4 font-medium text-gray-600">{t('common.status')}</th>
+                <th className="p-4"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {data?.payments?.map((payment) => (
+                <tr key={payment.id} className="border-b border-gray-50">
+                  <td className="p-4">
+                    {new Date(payment.paid_at).toLocaleDateString()}
+                  </td>
+                  <td className="p-4">{payment.amount} {payment.currency}</td>
+                  <td className="p-4">
+                    {new Date(payment.valid_from).toLocaleDateString()} - {new Date(payment.valid_until).toLocaleDateString()}
+                  </td>
+                  <td className="p-4">
+                    <span className={`px-2 py-1 rounded text-sm ${
+                      payment.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                    }`}>
+                      {payment.status}
+                    </span>
+                  </td>
+                  <td className="p-4">
+                    <button
+                      onClick={() => deleteMutation.mutate(payment.id)}
+                      className="text-gray-400 hover:text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+
+          {/* Mobile cards */}
+          <div className="sm:hidden divide-y divide-gray-100">
             {data?.payments?.map((payment) => (
-              <tr key={payment.id} className="border-b border-gray-50">
-                <td className="p-4">
-                  {new Date(payment.paid_at).toLocaleDateString()}
-                </td>
-                <td className="p-4">{payment.amount} {payment.currency}</td>
-                <td className="p-4">
-                  {new Date(payment.valid_from).toLocaleDateString()} - {new Date(payment.valid_until).toLocaleDateString()}
-                </td>
-                <td className="p-4">
-                  <span className={`px-2 py-1 rounded text-sm ${
+              <div key={payment.id} className="p-3">
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <div>
+                    <p className="font-medium text-sm">
+                      {new Date(payment.paid_at).toLocaleDateString()}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(payment.valid_from).toLocaleDateString()} - {new Date(payment.valid_until).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => deleteMutation.mutate(payment.id)}
+                    className="text-gray-400 hover:text-red-600 p-1"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{payment.amount} {payment.currency}</span>
+                  <span className={`px-2 py-0.5 rounded text-xs ${
                     payment.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                   }`}>
                     {payment.status}
                   </span>
-                </td>
-                <td className="p-4">
-                  <button
-                    onClick={() => deleteMutation.mutate(payment.id)}
-                    className="text-gray-400 hover:text-red-600"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </td>
-              </tr>
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+        </>
       )}
     </div>
   )

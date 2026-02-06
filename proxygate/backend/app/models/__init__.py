@@ -6,6 +6,8 @@ from app.models.payment import Payment
 from app.models.domain_request import DomainRequest
 from app.models.admin import AdminUser
 from app.models.security import FailedLogin, BlockedIP, SecurityEvent
+from app.models.xray import XrayConfig, XrayServerConfig
+from app.models.wireguard import WireguardConfig, WireguardServerConfig
 
 __all__ = [
     "Client",
@@ -19,4 +21,8 @@ __all__ = [
     "FailedLogin",
     "BlockedIP",
     "SecurityEvent",
+    "XrayConfig",
+    "XrayServerConfig",
+    "WireguardConfig",
+    "WireguardServerConfig",
 ]
