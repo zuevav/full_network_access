@@ -28,6 +28,36 @@ fi
 echo "Текущая версия: $CURRENT_VERSION"
 echo ""
 
+# 0. Sync files from git repository to working directory
+echo "[0/12] Синхронизация файлов из git..."
+
+# Check if git repo structure exists (proxygate/proxygate/backend)
+if [ -d /opt/proxygate/proxygate/backend ]; then
+    echo -e "${YELLOW}[SYNC]${NC} Обнаружена структура git репозитория"
+
+    # Sync backend files
+    rsync -a --delete \
+        --exclude '__pycache__' \
+        --exclude '*.pyc' \
+        --exclude '.env' \
+        --exclude 'alembic.ini' \
+        /opt/proxygate/proxygate/backend/ /opt/proxygate/backend/
+
+    # Sync frontend if exists
+    if [ -d /opt/proxygate/proxygate/frontend/dist ]; then
+        rsync -a --delete /opt/proxygate/proxygate/frontend/dist/ /opt/proxygate/frontend/dist/
+    fi
+
+    # Sync scripts
+    if [ -d /opt/proxygate/proxygate/backend/scripts ]; then
+        rsync -a /opt/proxygate/proxygate/backend/scripts/ /opt/proxygate/backend/scripts/
+    fi
+
+    echo -e "${GREEN}[OK]${NC} Файлы синхронизированы"
+else
+    echo -e "${GREEN}[OK]${NC} Стандартная структура, синхронизация не требуется"
+fi
+
 # 1. Fix IP forwarding
 echo "[1/12] Исправление IP forwarding..."
 
