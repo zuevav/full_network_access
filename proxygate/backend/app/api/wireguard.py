@@ -10,8 +10,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.database import get_db
-from app.api.auth import get_current_admin
+from app.api.deps import DBSession, CurrentAdmin
 from app.models import Client, WireguardConfig, WireguardServerConfig
 from app.services.wireguard_manager import WireGuardManager, WgClient, WgServerSettings
 
@@ -55,8 +54,8 @@ class WireguardClientResponse(BaseModel):
 
 @router.get("/wireguard/status")
 async def get_wireguard_status(
-        admin=Depends(get_current_admin),
-        db: AsyncSession = Depends(get_db)
+        admin: CurrentAdmin,
+        db: DBSession
 ) -> WireguardServerResponse:
     """Get WireGuard server status."""
     is_installed = wg_manager.is_installed()
@@ -87,8 +86,8 @@ async def get_wireguard_status(
 @router.post("/wireguard/setup")
 async def setup_wireguard_server(
         request: WireguardServerSetupRequest,
-        admin=Depends(get_current_admin),
-        db: AsyncSession = Depends(get_db)
+        admin: CurrentAdmin,
+        db: DBSession
 ):
     """
     Setup or reconfigure WireGuard server.
@@ -161,8 +160,8 @@ async def setup_wireguard_server(
 
 @router.post("/wireguard/stop")
 async def stop_wireguard_server(
-        admin=Depends(get_current_admin),
-        db: AsyncSession = Depends(get_db)
+        admin: CurrentAdmin,
+        db: DBSession
 ):
     """Stop WireGuard server."""
     result = await db.execute(select(WireguardServerConfig).limit(1))
@@ -178,8 +177,8 @@ async def stop_wireguard_server(
 
 @router.post("/wireguard/start")
 async def start_wireguard_server(
-        admin=Depends(get_current_admin),
-        db: AsyncSession = Depends(get_db)
+        admin: CurrentAdmin,
+        db: DBSession
 ):
     """Start WireGuard server."""
     result = await db.execute(select(WireguardServerConfig).limit(1))
@@ -200,8 +199,8 @@ async def start_wireguard_server(
 @router.get("/{client_id}/wireguard")
 async def get_client_wireguard_config(
         client_id: int,
-        admin=Depends(get_current_admin),
-        db: AsyncSession = Depends(get_db)
+        admin: CurrentAdmin,
+        db: DBSession
 ) -> WireguardClientResponse:
     """Get WireGuard configuration for a client."""
     result = await db.execute(select(Client).where(Client.id == client_id))
@@ -250,8 +249,8 @@ async def get_client_wireguard_config(
 @router.post("/{client_id}/wireguard/enable")
 async def enable_client_wireguard(
         client_id: int,
-        admin=Depends(get_current_admin),
-        db: AsyncSession = Depends(get_db)
+        admin: CurrentAdmin,
+        db: DBSession
 ):
     """Enable WireGuard for a client."""
     result = await db.execute(select(Client).where(Client.id == client_id))
@@ -306,8 +305,8 @@ async def enable_client_wireguard(
 @router.post("/{client_id}/wireguard/disable")
 async def disable_client_wireguard(
         client_id: int,
-        admin=Depends(get_current_admin),
-        db: AsyncSession = Depends(get_db)
+        admin: CurrentAdmin,
+        db: DBSession
 ):
     """Disable WireGuard for a client."""
     result = await db.execute(select(Client).where(Client.id == client_id))
@@ -330,8 +329,8 @@ async def disable_client_wireguard(
 @router.post("/{client_id}/wireguard/regenerate")
 async def regenerate_client_wireguard_keys(
         client_id: int,
-        admin=Depends(get_current_admin),
-        db: AsyncSession = Depends(get_db)
+        admin: CurrentAdmin,
+        db: DBSession
 ):
     """Regenerate WireGuard keys for a client."""
     result = await db.execute(select(Client).where(Client.id == client_id))

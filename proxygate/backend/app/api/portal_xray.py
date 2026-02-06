@@ -9,8 +9,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.database import get_db
-from app.api.portal_auth import get_current_client
+from app.api.deps import DBSession, CurrentClient
 from app.models import Client, XrayConfig, XrayServerConfig
 from app.services.xray_manager import XRayManager, XrayServerSettings
 
@@ -36,8 +35,8 @@ class XrayConnectionResponse(BaseModel):
 
 @router.get("/xray")
 async def get_xray_connection_info(
-        client: Client = Depends(get_current_client),
-        db: AsyncSession = Depends(get_db)
+        client: CurrentClient,
+        db: DBSession
 ) -> XrayConnectionResponse:
     """
     Get XRay/VLESS connection information for the current client.
@@ -165,8 +164,8 @@ async def get_xray_connection_info(
 
 @router.get("/xray/qrcode")
 async def get_xray_qrcode(
-        client: Client = Depends(get_current_client),
-        db: AsyncSession = Depends(get_db)
+        client: CurrentClient,
+        db: DBSession
 ):
     """
     Get QR code for XRay/VLESS configuration.

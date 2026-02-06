@@ -11,8 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from app.database import get_db
-from app.api.auth import get_current_admin
+from app.api.deps import DBSession, CurrentAdmin
 from app.models import Client, XrayConfig, XrayServerConfig
 from app.services.xray_manager import XRayManager, XrayClient, XrayServerSettings
 
@@ -65,8 +64,8 @@ class XrayConnectionInfo(BaseModel):
 
 @router.get("/xray/status")
 async def get_xray_status(
-        admin=Depends(get_current_admin),
-        db: AsyncSession = Depends(get_db)
+        admin: CurrentAdmin,
+        db: DBSession
 ) -> XrayServerResponse:
     """Get XRay server status."""
     is_installed = xray_manager.is_installed()
@@ -97,8 +96,8 @@ async def get_xray_status(
 @router.post("/xray/setup")
 async def setup_xray_server(
         request: XrayServerSetupRequest,
-        admin=Depends(get_current_admin),
-        db: AsyncSession = Depends(get_db)
+        admin: CurrentAdmin,
+        db: DBSession
 ):
     """
     Setup or reconfigure XRay server.
@@ -187,8 +186,8 @@ async def setup_xray_server(
 
 @router.post("/xray/stop")
 async def stop_xray_server(
-        admin=Depends(get_current_admin),
-        db: AsyncSession = Depends(get_db)
+        admin: CurrentAdmin,
+        db: DBSession
 ):
     """Stop XRay server."""
     result = await db.execute(select(XrayServerConfig).limit(1))
@@ -204,8 +203,8 @@ async def stop_xray_server(
 
 @router.post("/xray/start")
 async def start_xray_server(
-        admin=Depends(get_current_admin),
-        db: AsyncSession = Depends(get_db)
+        admin: CurrentAdmin,
+        db: DBSession
 ):
     """Start XRay server."""
     result = await db.execute(select(XrayServerConfig).limit(1))
@@ -226,8 +225,8 @@ async def start_xray_server(
 @router.get("/{client_id}/xray")
 async def get_client_xray_config(
         client_id: int,
-        admin=Depends(get_current_admin),
-        db: AsyncSession = Depends(get_db)
+        admin: CurrentAdmin,
+        db: DBSession
 ) -> XrayClientResponse:
     """Get XRay configuration for a client."""
     result = await db.execute(
@@ -275,8 +274,8 @@ async def get_client_xray_config(
 @router.post("/{client_id}/xray/enable")
 async def enable_client_xray(
         client_id: int,
-        admin=Depends(get_current_admin),
-        db: AsyncSession = Depends(get_db)
+        admin: CurrentAdmin,
+        db: DBSession
 ):
     """Enable XRay for a client. Creates config if not exists."""
     result = await db.execute(
@@ -315,8 +314,8 @@ async def enable_client_xray(
 @router.post("/{client_id}/xray/disable")
 async def disable_client_xray(
         client_id: int,
-        admin=Depends(get_current_admin),
-        db: AsyncSession = Depends(get_db)
+        admin: CurrentAdmin,
+        db: DBSession
 ):
     """Disable XRay for a client."""
     result = await db.execute(
@@ -342,8 +341,8 @@ async def disable_client_xray(
 @router.post("/{client_id}/xray/regenerate")
 async def regenerate_client_xray_uuid(
         client_id: int,
-        admin=Depends(get_current_admin),
-        db: AsyncSession = Depends(get_db)
+        admin: CurrentAdmin,
+        db: DBSession
 ):
     """Regenerate XRay UUID for a client (invalidates old connections)."""
     result = await db.execute(
