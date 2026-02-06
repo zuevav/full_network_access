@@ -29,7 +29,7 @@ echo "Текущая версия: $CURRENT_VERSION"
 echo ""
 
 # 1. Fix IP forwarding
-echo "[1/10] Исправление IP forwarding..."
+echo "[1/12] Исправление IP forwarding..."
 
 CURRENT_IP_FWD=$(cat /proc/sys/net/ipv4/ip_forward)
 if [ "$CURRENT_IP_FWD" = "1" ]; then
@@ -62,14 +62,14 @@ EOF
 fi
 
 # 2. Fix swanctl directories
-echo "[2/10] Проверка директорий swanctl..."
+echo "[2/12] Проверка директорий swanctl..."
 mkdir -p /etc/swanctl/x509
 mkdir -p /etc/swanctl/private
 mkdir -p /etc/swanctl/x509ca
 echo -e "${GREEN}[OK]${NC} Директории созданы"
 
 # 3. Check and fix certificate symlinks
-echo "[3/10] Проверка сертификатов..."
+echo "[3/12] Проверка сертификатов..."
 
 DOMAIN=""
 if [ -f /etc/swanctl/conf.d/connections.conf ]; then
@@ -115,7 +115,7 @@ else
 fi
 
 # 4. Fix strongSwan proposals for Apple devices
-echo "[4/10] Обновление конфигурации strongSwan..."
+echo "[4/12] Обновление конфигурации strongSwan..."
 
 if [ -f /etc/swanctl/conf.d/connections.conf ]; then
     # Проверяем есть ли ecp256 в proposals
@@ -139,7 +139,7 @@ if [ -f /etc/swanctl/conf.d/connections.conf ]; then
 fi
 
 # 5. Fix NAT rules
-echo "[5/10] Проверка NAT правил..."
+echo "[5/12] Проверка NAT правил..."
 
 NAT_EXISTS=$(iptables -t nat -L POSTROUTING -n 2>/dev/null | grep -c "10.0.0.0/24" || echo "0")
 if [ "$NAT_EXISTS" -gt 0 ]; then
@@ -158,7 +158,7 @@ else
 fi
 
 # 6. Fix certbot renewal hook
-echo "[6/10] Обновление certbot hook..."
+echo "[6/12] Обновление certbot hook..."
 
 mkdir -p /etc/letsencrypt/renewal-hooks/post
 cat > /etc/letsencrypt/renewal-hooks/post/strongswan.sh << 'EOF'
@@ -186,7 +186,7 @@ chmod +x /etc/letsencrypt/renewal-hooks/post/strongswan.sh
 echo -e "${GREEN}[OK]${NC} Certbot hook обновлён"
 
 # 7. Install/Update XRay
-echo "[7/10] Установка XRay (VLESS + REALITY)..."
+echo "[7/12] Установка XRay (VLESS + REALITY)..."
 
 if [ -f /usr/local/bin/xray ]; then
     echo -e "${GREEN}[OK]${NC} XRay уже установлен"
@@ -204,7 +204,7 @@ else
 fi
 
 # 8. Install/Update WireGuard
-echo "[8/10] Установка WireGuard..."
+echo "[8/12] Установка WireGuard..."
 
 if command -v wg &> /dev/null; then
     echo -e "${GREEN}[OK]${NC} WireGuard уже установлен"
@@ -229,7 +229,7 @@ if [ "$WG_NAT_EXISTS" -eq 0 ]; then
 fi
 
 # 9. Install wstunnel for WireGuard obfuscation
-echo "[9/10] Установка wstunnel..."
+echo "[9/12] Установка wstunnel..."
 
 if [ -f /usr/local/bin/wstunnel ]; then
     echo -e "${GREEN}[OK]${NC} wstunnel уже установлен"
@@ -261,11 +261,47 @@ else
 fi
 
 # 10. Install Python dependencies
-echo "[10/10] Обновление Python зависимостей..."
+echo "[10/12] Обновление Python зависимостей..."
 
 # Install qrcode for QR code generation
 pip3 install -q qrcode[pil] 2>/dev/null || pip3 install -q qrcode 2>/dev/null || true
 echo -e "${GREEN}[OK]${NC} Python зависимости обновлены"
+
+# 11. Run database migrations
+echo "[11/12] Выполнение миграций базы данных..."
+
+if [ -d /opt/proxygate/backend ]; then
+    cd /opt/proxygate/backend
+    if [ -f alembic.ini ]; then
+        source /opt/proxygate/venv/bin/activate 2>/dev/null || true
+        alembic upgrade head 2>/dev/null
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}[OK]${NC} Миграции выполнены"
+        else
+            echo -e "${YELLOW}[SKIP]${NC} Миграции уже применены или ошибка"
+        fi
+        deactivate 2>/dev/null || true
+    else
+        echo -e "${YELLOW}[SKIP]${NC} alembic.ini не найден"
+    fi
+else
+    echo -e "${YELLOW}[SKIP]${NC} /opt/proxygate/backend не найден"
+fi
+
+# 12. Restart backend service
+echo "[12/12] Перезапуск backend сервиса..."
+
+if systemctl list-units --type=service | grep -q "proxygate"; then
+    systemctl restart proxygate 2>/dev/null || systemctl restart proxygate-backend 2>/dev/null || true
+    if systemctl is-active --quiet proxygate 2>/dev/null || systemctl is-active --quiet proxygate-backend 2>/dev/null; then
+        echo -e "${GREEN}[OK]${NC} Backend перезапущен"
+    else
+        echo -e "${RED}[FAIL]${NC} Backend не запустился!"
+        echo "Проверьте логи: journalctl -u proxygate -n 50"
+    fi
+else
+    echo -e "${YELLOW}[SKIP]${NC} Сервис proxygate не найден"
+fi
 
 # Reload strongSwan
 echo ""
