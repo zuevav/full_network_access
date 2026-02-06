@@ -21,14 +21,14 @@ function StatCard({ icon: Icon, label, value, color = 'primary' }) {
   }
 
   return (
-    <div className="card p-6">
-      <div className="flex items-center gap-4">
-        <div className={`p-3 rounded-lg ${colors[color]}`}>
-          <Icon className="w-6 h-6" />
+    <div className="card p-4 sm:p-6">
+      <div className="flex items-center gap-3 sm:gap-4">
+        <div className={`p-2 sm:p-3 rounded-lg ${colors[color]}`}>
+          <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
         </div>
         <div>
-          <p className="text-sm text-gray-500">{label}</p>
-          <p className="text-2xl font-semibold text-gray-900">{value}</p>
+          <p className="text-xs sm:text-sm text-gray-500">{label}</p>
+          <p className="text-xl sm:text-2xl font-semibold text-gray-900">{value}</p>
         </div>
       </div>
     </div>
@@ -96,11 +96,11 @@ export default function Dashboard() {
   }
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('dashboard.title')}</h1>
+    <div className="pb-20 md:pb-0">
+      <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6">{t('dashboard.title')}</h1>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
         <StatCard
           icon={Users}
           label={t('dashboard.totalClients')}
@@ -131,20 +131,20 @@ export default function Dashboard() {
       {data.pending_domain_requests > 0 && (
         <Link
           to="/admin/domain-requests"
-          className="block mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg hover:bg-yellow-100 transition-colors"
+          className="block mb-4 sm:mb-6 p-3 sm:p-4 bg-yellow-50 border border-yellow-200 rounded-lg hover:bg-yellow-100 active:bg-yellow-100 transition-colors"
         >
-          <div className="flex items-center gap-3">
-            <MessageSquare className="w-5 h-5 text-yellow-600" />
-            <span className="font-medium text-yellow-800">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <MessageSquare className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+            <span className="font-medium text-yellow-800 text-sm sm:text-base">
               {data.pending_domain_requests} {t('dashboard.pendingRequests')}
             </span>
-            <ChevronRight className="w-5 h-5 text-yellow-600 ml-auto" />
+            <ChevronRight className="w-5 h-5 text-yellow-600 ml-auto flex-shrink-0" />
           </div>
         </Link>
       )}
 
       {/* Client lists */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         <ClientList
           title={t('dashboard.expiringSoon')}
           clients={data.expiring_soon}
