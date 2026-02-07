@@ -41,6 +41,7 @@ if [ -d /opt/proxygate/proxygate/backend ]; then
         --exclude '*.pyc' \
         --exclude '.env' \
         --exclude 'alembic.ini' \
+        --exclude 'venv' \
         /opt/proxygate/proxygate/backend/ /opt/proxygate/backend/
 
     # Sync frontend if exists
@@ -250,8 +251,7 @@ else
 fi
 
 # Add NAT rules for WireGuard subnet if not exists
-WG_NAT_EXISTS=$(iptables -t nat -L POSTROUTING -n 2>/dev/null | grep -c "10.10.0.0/24" || echo "0")
-if [ "$WG_NAT_EXISTS" -eq 0 ]; then
+if ! iptables -t nat -L POSTROUTING -n 2>/dev/null | grep -q "10.10.0.0/24"; then
     IFACE=$(ip route | grep default | awk '{print $5}' | head -1)
     iptables -t nat -A POSTROUTING -s 10.10.0.0/24 -o $IFACE -j MASQUERADE 2>/dev/null || true
     iptables -A FORWARD -s 10.10.0.0/24 -j ACCEPT 2>/dev/null || true
