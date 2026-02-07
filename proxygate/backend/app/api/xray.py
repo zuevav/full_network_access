@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.api.deps import DBSession, CurrentAdmin
 from app.models import Client, XrayConfig, XrayServerConfig
@@ -230,7 +231,7 @@ async def get_client_xray_config(
 ) -> XrayClientResponse:
     """Get XRay configuration for a client."""
     result = await db.execute(
-        select(Client).where(Client.id == client_id)
+        select(Client).where(Client.id == client_id).options(selectinload(Client.xray_config))
     )
     client = result.scalar_one_or_none()
     if not client:
@@ -279,7 +280,7 @@ async def enable_client_xray(
 ):
     """Enable XRay for a client. Creates config if not exists."""
     result = await db.execute(
-        select(Client).where(Client.id == client_id)
+        select(Client).where(Client.id == client_id).options(selectinload(Client.xray_config))
     )
     client = result.scalar_one_or_none()
     if not client:
@@ -319,7 +320,7 @@ async def disable_client_xray(
 ):
     """Disable XRay for a client."""
     result = await db.execute(
-        select(Client).where(Client.id == client_id)
+        select(Client).where(Client.id == client_id).options(selectinload(Client.xray_config))
     )
     client = result.scalar_one_or_none()
     if not client:
@@ -346,7 +347,7 @@ async def regenerate_client_xray_uuid(
 ):
     """Regenerate XRay UUID for a client (invalidates old connections)."""
     result = await db.execute(
-        select(Client).where(Client.id == client_id)
+        select(Client).where(Client.id == client_id).options(selectinload(Client.xray_config))
     )
     client = result.scalar_one_or_none()
     if not client:

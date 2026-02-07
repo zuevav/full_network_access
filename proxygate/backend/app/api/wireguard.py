@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from app.api.deps import DBSession, CurrentAdmin
 from app.models import Client, WireguardConfig, WireguardServerConfig
@@ -203,7 +204,9 @@ async def get_client_wireguard_config(
         db: DBSession
 ) -> WireguardClientResponse:
     """Get WireGuard configuration for a client."""
-    result = await db.execute(select(Client).where(Client.id == client_id))
+    result = await db.execute(
+        select(Client).where(Client.id == client_id).options(selectinload(Client.wireguard_config))
+    )
     client = result.scalar_one_or_none()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -253,7 +256,9 @@ async def enable_client_wireguard(
         db: DBSession
 ):
     """Enable WireGuard for a client."""
-    result = await db.execute(select(Client).where(Client.id == client_id))
+    result = await db.execute(
+        select(Client).where(Client.id == client_id).options(selectinload(Client.wireguard_config))
+    )
     client = result.scalar_one_or_none()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -309,7 +314,9 @@ async def disable_client_wireguard(
         db: DBSession
 ):
     """Disable WireGuard for a client."""
-    result = await db.execute(select(Client).where(Client.id == client_id))
+    result = await db.execute(
+        select(Client).where(Client.id == client_id).options(selectinload(Client.wireguard_config))
+    )
     client = result.scalar_one_or_none()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
@@ -333,7 +340,9 @@ async def regenerate_client_wireguard_keys(
         db: DBSession
 ):
     """Regenerate WireGuard keys for a client."""
-    result = await db.execute(select(Client).where(Client.id == client_id))
+    result = await db.execute(
+        select(Client).where(Client.id == client_id).options(selectinload(Client.wireguard_config))
+    )
     client = result.scalar_one_or_none()
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
