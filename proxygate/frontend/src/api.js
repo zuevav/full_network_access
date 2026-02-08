@@ -481,6 +481,22 @@ class ApiClient {
     }, 'client')
   }
 
+  async getPortalXray() {
+    return this.request('/portal/profiles/xray', {}, 'client')
+  }
+
+  async getPortalXrayQrcode() {
+    return this.request('/portal/profiles/xray/qrcode', {}, 'client')
+  }
+
+  async getPortalWireguard() {
+    return this.request('/portal/profiles/wireguard', {}, 'client')
+  }
+
+  async getPortalWireguardQrcode() {
+    return this.request('/portal/profiles/wireguard/qrcode', {}, 'client')
+  }
+
   async getPortalPayments() {
     return this.request('/portal/payments', {}, 'client')
   }

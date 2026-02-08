@@ -14,7 +14,10 @@ import {
   ExternalLink,
   X,
   Shield,
-  Globe
+  Globe,
+  QrCode,
+  Zap,
+  Wifi
 } from 'lucide-react'
 import api from '../../api'
 
@@ -244,17 +247,123 @@ const PLATFORMS = [
   { id: 'macos', name: 'macOS', icon: '🍏' },
 ]
 
+// Platform instruction accordion component
+function PlatformAccordion({ platforms, colorClass }) {
+  const [openPlatform, setOpenPlatform] = useState(null)
+
+  const colorMap = {
+    purple: {
+      bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700',
+      stepBg: 'bg-purple-100', stepText: 'text-purple-700', linkText: 'text-purple-600 hover:text-purple-800'
+    },
+    blue: {
+      bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700',
+      stepBg: 'bg-blue-100', stepText: 'text-blue-700', linkText: 'text-blue-600 hover:text-blue-800'
+    }
+  }
+  const c = colorMap[colorClass] || colorMap.purple
+
+  return (
+    <div className="space-y-2">
+      {platforms.map(({ key, label, icon, data }) => {
+        if (!data) return null
+        const isOpen = openPlatform === key
+        const appLink = data.app_store || data.play_store || data.github || data.download
+        return (
+          <div key={key} className={`rounded-lg border ${c.border} overflow-hidden`}>
+            <button
+              onClick={() => setOpenPlatform(isOpen ? null : key)}
+              className={`w-full flex items-center justify-between p-3 ${c.bg} hover:opacity-80 transition-opacity`}
+            >
+              <span className="flex items-center gap-2 font-medium text-gray-800">
+                <span>{icon}</span> {label}
+                <span className={`text-xs ${c.text}`}>({data.app})</span>
+              </span>
+              {isOpen ? <ChevronUp className="w-4 h-4 text-gray-500" /> : <ChevronDown className="w-4 h-4 text-gray-500" />}
+            </button>
+            {isOpen && (
+              <div className="p-3 bg-white">
+                {data.price && (
+                  <p className="text-xs text-gray-500 mb-2">Цена: {data.price}</p>
+                )}
+                <ol className="space-y-2 text-sm text-gray-700">
+                  {data.steps?.map((step, i) => (
+                    <li key={i} className="flex gap-3">
+                      <span className={`flex-shrink-0 w-6 h-6 ${c.stepBg} ${c.stepText} rounded-full flex items-center justify-center text-xs font-bold`}>
+                        {i + 1}
+                      </span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ol>
+                {appLink && (
+                  <a
+                    href={appLink}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`mt-3 flex items-center gap-2 text-sm ${c.linkText}`}
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Скачать {data.app}
+                  </a>
+                )}
+                {data.alternative_apps && (
+                  <p className="mt-2 text-xs text-gray-500">
+                    Альтернативы: {data.alternative_apps.join(', ')}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 export default function PortalDevices() {
   const { t } = useTranslation()
   const [showPassword, setShowPassword] = useState(false)
   const [copied, setCopied] = useState('')
   const [selectedPlatform, setSelectedPlatform] = useState(null)
+  const [showXrayQr, setShowXrayQr] = useState(false)
+  const [showWgQr, setShowWgQr] = useState(false)
 
   const { data: profileInfo, isLoading, error } = useQuery({
     queryKey: ['portal-profiles'],
     queryFn: () => api.getPortalProfiles(),
     retry: 1,
     staleTime: 60000,
+  })
+
+  const { data: xrayData } = useQuery({
+    queryKey: ['portal-xray'],
+    queryFn: () => api.getPortalXray(),
+    retry: 1,
+    staleTime: 60000,
+  })
+
+  const { data: wgData } = useQuery({
+    queryKey: ['portal-wireguard'],
+    queryFn: () => api.getPortalWireguard(),
+    retry: 1,
+    staleTime: 60000,
+  })
+
+  const { data: xrayQr, isFetching: xrayQrLoading } = useQuery({
+    queryKey: ['portal-xray-qr'],
+    queryFn: () => api.getPortalXrayQrcode(),
+    enabled: showXrayQr,
+    retry: 1,
+    staleTime: 300000,
+  })
+
+  const { data: wgQr, isFetching: wgQrLoading } = useQuery({
+    queryKey: ['portal-wg-qr'],
+    queryFn: () => api.getPortalWireguardQrcode(),
+    enabled: showWgQr,
+    retry: 1,
+    staleTime: 300000,
   })
 
   const copyToClipboard = (text, field) => {
@@ -499,6 +608,180 @@ export default function PortalDevices() {
               <ExternalLink className="w-5 h-5 text-gray-400" />
             </div>
           </a>
+        </div>
+      )}
+
+      {/* XRay (VLESS + REALITY) Section */}
+      {xrayData?.available && (
+        <div className="card p-4 sm:p-6 border-2 border-purple-200">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <Zap className="w-6 h-6 text-purple-600" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-gray-900 uppercase text-sm tracking-wide">
+                XRay (VLESS + REALITY)
+              </h2>
+              <p className="text-sm text-gray-500">Современный протокол с маскировкой трафика</p>
+            </div>
+          </div>
+
+          {/* VLESS URL */}
+          <div className="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-100">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs font-medium text-purple-700">VLESS URL</span>
+              <button
+                onClick={() => copyToClipboard(xrayData.vless_url, 'vless')}
+                className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-800"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                {copied === 'vless' ? 'Скопировано!' : 'Копировать'}
+              </button>
+            </div>
+            <code className="block text-xs text-purple-800 font-mono break-all bg-white p-2 rounded border border-purple-100 max-h-20 overflow-y-auto">
+              {xrayData.vless_url}
+            </code>
+          </div>
+
+          {/* QR Code toggle */}
+          <div className="mt-3">
+            <button
+              onClick={() => setShowXrayQr(!showXrayQr)}
+              className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-800 font-medium"
+            >
+              <QrCode className="w-4 h-4" />
+              {showXrayQr ? 'Скрыть QR-код' : 'Показать QR-код'}
+            </button>
+            {showXrayQr && (
+              <div className="mt-3 flex justify-center">
+                {xrayQrLoading ? (
+                  <div className="w-48 h-48 bg-purple-50 rounded-lg flex items-center justify-center">
+                    <span className="text-sm text-purple-500">Загрузка...</span>
+                  </div>
+                ) : xrayQr?.qrcode ? (
+                  <img src={xrayQr.qrcode} alt="XRay QR Code" className="w-48 h-48 rounded-lg border border-purple-200" />
+                ) : (
+                  <p className="text-sm text-gray-500">QR-код недоступен</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Platform instructions */}
+          <div className="mt-4">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Инструкции по платформам</h3>
+            <PlatformAccordion
+              colorClass="purple"
+              platforms={[
+                { key: 'ios', label: 'iPhone / iPad', icon: '📱', data: xrayData.instructions?.ios },
+                { key: 'android', label: 'Android', icon: '🤖', data: xrayData.instructions?.android },
+                { key: 'windows', label: 'Windows', icon: '🪟', data: xrayData.instructions?.windows },
+                { key: 'macos', label: 'macOS', icon: '🍏', data: xrayData.instructions?.mac },
+              ]}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* WireGuard VPN Section */}
+      {wgData?.available && (
+        <div className="card p-4 sm:p-6 border-2 border-blue-200">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Wifi className="w-6 h-6 text-blue-600" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-gray-900 uppercase text-sm tracking-wide">
+                WireGuard VPN
+              </h2>
+              <p className="text-sm text-gray-500">Быстрый и лёгкий VPN-протокол</p>
+            </div>
+          </div>
+
+          {/* Download .conf + QR */}
+          <div className="mt-4 flex flex-wrap gap-3">
+            <a
+              href={`/api/portal/profiles/wireguard/config`}
+              onClick={(e) => {
+                e.preventDefault()
+                const token = localStorage.getItem('client_token')
+                fetch('/api/portal/profiles/wireguard/config', {
+                  headers: { 'Authorization': `Bearer ${token}` }
+                })
+                  .then(r => r.blob())
+                  .then(blob => {
+                    const url = URL.createObjectURL(blob)
+                    const a = document.createElement('a')
+                    a.href = url
+                    a.download = 'wireguard.conf'
+                    a.click()
+                    URL.revokeObjectURL(url)
+                  })
+              }}
+              className="btn btn-primary flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              Скачать .conf
+            </a>
+            <button
+              onClick={() => setShowWgQr(!showWgQr)}
+              className="btn btn-secondary flex items-center gap-2"
+            >
+              <QrCode className="w-4 h-4" />
+              {showWgQr ? 'Скрыть QR-код' : 'Показать QR-код'}
+            </button>
+          </div>
+
+          {/* QR Code */}
+          {showWgQr && (
+            <div className="mt-3 flex justify-center">
+              {wgQrLoading ? (
+                <div className="w-48 h-48 bg-blue-50 rounded-lg flex items-center justify-center">
+                  <span className="text-sm text-blue-500">Загрузка...</span>
+                </div>
+              ) : wgQr?.qrcode ? (
+                <img src={wgQr.qrcode} alt="WireGuard QR Code" className="w-48 h-48 rounded-lg border border-blue-200" />
+              ) : (
+                <p className="text-sm text-gray-500">QR-код недоступен</p>
+              )}
+            </div>
+          )}
+
+          {/* Server info */}
+          <div className="mt-4 space-y-2">
+            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm">
+              <span className="text-gray-600">Сервер</span>
+              <div className="flex items-center gap-2">
+                <code className="font-mono text-blue-700">{wgData.server_ip}:{wgData.server_port}</code>
+                <button
+                  onClick={() => copyToClipboard(`${wgData.server_ip}:${wgData.server_port}`, 'wgserver')}
+                  className="text-blue-400 hover:text-blue-600"
+                >
+                  <Copy className="w-4 h-4" />
+                </button>
+                {copied === 'wgserver' && <span className="text-xs text-green-600">Скопировано!</span>}
+              </div>
+            </div>
+            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm">
+              <span className="text-gray-600">Ваш IP</span>
+              <code className="font-mono text-blue-700">{wgData.client_ip}</code>
+            </div>
+          </div>
+
+          {/* Platform instructions */}
+          <div className="mt-4">
+            <h3 className="text-sm font-medium text-gray-700 mb-2">Инструкции по платформам</h3>
+            <PlatformAccordion
+              colorClass="blue"
+              platforms={[
+                { key: 'ios', label: 'iPhone / iPad', icon: '📱', data: wgData.instructions?.ios },
+                { key: 'android', label: 'Android', icon: '🤖', data: wgData.instructions?.android },
+                { key: 'windows', label: 'Windows', icon: '🪟', data: wgData.instructions?.windows },
+                { key: 'macos', label: 'macOS', icon: '🍏', data: wgData.instructions?.mac },
+                { key: 'linux', label: 'Linux', icon: '🐧', data: wgData.instructions?.linux },
+              ]}
+            />
+          </div>
         </div>
       )}
 
