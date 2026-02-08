@@ -47,8 +47,11 @@ async def get_xray_connection_info(
     - VLESS URL for easy import
     - Instructions for different platforms
     """
-    # Check if client has XRay enabled
-    if not client.xray_config or not client.xray_config.is_active:
+    # Load XRay config for this client (avoid lazy loading in async)
+    xray_result = await db.execute(select(XrayConfig).where(XrayConfig.client_id == client.id))
+    xray_config = xray_result.scalar_one_or_none()
+
+    if not xray_config or not xray_config.is_active:
         return XrayConnectionResponse(
             available=False,
             instructions={
@@ -69,7 +72,7 @@ async def get_xray_connection_info(
         )
 
     server_ip = xray_manager.get_server_ip()
-    short_id = client.xray_config.short_id or server_config.short_id
+    short_id = xray_config.short_id or server_config.short_id
 
     server_settings = XrayServerSettings(
         port=server_config.port,
@@ -84,8 +87,8 @@ async def get_xray_connection_info(
     vless_url = xray_manager.generate_vless_url(
         server_ip,
         server_settings,
-        client.xray_config.uuid,
-        client.xray_config.short_id,
+        xray_config.uuid,
+        xray_config.short_id,
         client.name
     )
 
@@ -150,7 +153,7 @@ async def get_xray_connection_info(
         available=True,
         server_ip=server_ip,
         port=server_config.port,
-        uuid=client.xray_config.uuid,
+        uuid=xray_config.uuid,
         flow="xtls-rprx-vision",
         security="reality",
         sni=server_config.server_name,
@@ -183,8 +186,11 @@ async def get_xray_qrcode(
             detail="QR code generation not available. Install 'qrcode' package."
         )
 
-    # Check if client has XRay enabled
-    if not client.xray_config or not client.xray_config.is_active:
+    # Load XRay config (avoid lazy loading in async)
+    xray_result = await db.execute(select(XrayConfig).where(XrayConfig.client_id == client.id))
+    xray_config = xray_result.scalar_one_or_none()
+
+    if not xray_config or not xray_config.is_active:
         raise HTTPException(status_code=404, detail="XRay not enabled for this client")
 
     # Get server config
@@ -208,8 +214,8 @@ async def get_xray_qrcode(
     vless_url = xray_manager.generate_vless_url(
         server_ip,
         server_settings,
-        client.xray_config.uuid,
-        client.xray_config.short_id,
+        xray_config.uuid,
+        xray_config.short_id,
         client.name
     )
 

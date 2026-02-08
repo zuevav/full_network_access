@@ -39,7 +39,11 @@ async def get_wireguard_connection_info(
     """
     Get WireGuard connection information for the current client.
     """
-    if not client.wireguard_config or not client.wireguard_config.is_active:
+    # Load WireGuard config for this client (avoid lazy loading in async)
+    wg_result = await db.execute(select(WireguardConfig).where(WireguardConfig.client_id == client.id))
+    wg_config = wg_result.scalar_one_or_none()
+
+    if not wg_config or not wg_config.is_active:
         return WireguardConnectionResponse(
             available=False,
             instructions={
@@ -77,9 +81,9 @@ async def get_wireguard_connection_info(
     config_text = wg_manager.generate_client_config(
         server_ip,
         server_settings,
-        client.wireguard_config.private_key,
-        client.wireguard_config.assigned_ip,
-        client.wireguard_config.preshared_key
+        wg_config.private_key,
+        wg_config.assigned_ip,
+        wg_config.preshared_key
     )
 
     instructions = {
@@ -148,7 +152,7 @@ async def get_wireguard_connection_info(
         server_ip=server_ip,
         server_port=server_config.wstunnel_port if server_config.wstunnel_enabled else server_config.listen_port,
         server_public_key=server_config.public_key,
-        client_ip=client.wireguard_config.assigned_ip,
+        client_ip=wg_config.assigned_ip,
         dns=server_config.dns,
         wstunnel_enabled=server_config.wstunnel_enabled,
         config=config_text,
@@ -164,7 +168,11 @@ async def download_wireguard_config(
     """
     Download WireGuard configuration file.
     """
-    if not client.wireguard_config or not client.wireguard_config.is_active:
+    # Load WireGuard config (avoid lazy loading in async)
+    wg_result = await db.execute(select(WireguardConfig).where(WireguardConfig.client_id == client.id))
+    wg_config = wg_result.scalar_one_or_none()
+
+    if not wg_config or not wg_config.is_active:
         raise HTTPException(status_code=404, detail="WireGuard not enabled")
 
     result = await db.execute(select(WireguardServerConfig).limit(1))
@@ -192,9 +200,9 @@ async def download_wireguard_config(
     config_text = wg_manager.generate_client_config(
         server_ip,
         server_settings,
-        client.wireguard_config.private_key,
-        client.wireguard_config.assigned_ip,
-        client.wireguard_config.preshared_key
+        wg_config.private_key,
+        wg_config.assigned_ip,
+        wg_config.preshared_key
     )
 
     # Return as downloadable file
@@ -226,7 +234,11 @@ async def get_wireguard_qrcode(
             detail="QR code generation not available"
         )
 
-    if not client.wireguard_config or not client.wireguard_config.is_active:
+    # Load WireGuard config (avoid lazy loading in async)
+    wg_result = await db.execute(select(WireguardConfig).where(WireguardConfig.client_id == client.id))
+    wg_config = wg_result.scalar_one_or_none()
+
+    if not wg_config or not wg_config.is_active:
         raise HTTPException(status_code=404, detail="WireGuard not enabled")
 
     result = await db.execute(select(WireguardServerConfig).limit(1))
@@ -254,9 +266,9 @@ async def get_wireguard_qrcode(
     config_text = wg_manager.generate_client_config(
         server_ip,
         server_settings,
-        client.wireguard_config.private_key,
-        client.wireguard_config.assigned_ip,
-        client.wireguard_config.preshared_key
+        wg_config.private_key,
+        wg_config.assigned_ip,
+        wg_config.preshared_key
     )
 
     # Generate QR code
