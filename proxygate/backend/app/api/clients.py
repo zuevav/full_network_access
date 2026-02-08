@@ -2,7 +2,7 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, status, Query
 from sqlalchemy import select, func, or_
 from sqlalchemy.orm import selectinload
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 from app.api.deps import DBSession, CurrentAdmin
 from app.models import Client, VpnConfig, ProxyAccount, ClientDomain, Payment
@@ -309,6 +309,41 @@ async def deactivate_client(
     return _client_to_detail_response(client)
 
 
+@router.post("/{client_id}/regenerate-token", response_model=ClientDetailResponse)
+async def regenerate_token(
+    client_id: int,
+    db: DBSession,
+    admin: CurrentAdmin,
+    expires_in_days: Optional[int] = Query(None, ge=1, le=3650)
+):
+    """Regenerate client access token with optional expiration."""
+    result = await db.execute(
+        select(Client)
+        .options(
+            selectinload(Client.vpn_config),
+            selectinload(Client.proxy_account),
+            selectinload(Client.domains),
+            selectinload(Client.payments)
+        )
+        .where(Client.id == client_id)
+    )
+    client = result.scalar_one_or_none()
+
+    if client is None:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    client.access_token = generate_access_token()
+    if expires_in_days is not None:
+        client.access_token_expires_at = datetime.now(timezone.utc) + timedelta(days=expires_in_days)
+    else:
+        client.access_token_expires_at = None
+
+    await db.commit()
+    await db.refresh(client)
+
+    return _client_to_detail_response(client)
+
+
 def _client_to_detail_response(client: Client) -> ClientDetailResponse:
     """Convert Client model to ClientDetailResponse."""
     valid_until = None
@@ -338,6 +373,7 @@ def _client_to_detail_response(client: Client) -> ClientDetailResponse:
         service_type=client.service_type,
         is_active=client.is_active,
         access_token=client.access_token,
+        access_token_expires_at=client.access_token_expires_at,
         notes=client.notes,
         created_at=client.created_at,
         updated_at=client.updated_at,

@@ -13,6 +13,7 @@ from app.models import Client, IpWhitelistLog
 from app.services.profile_generator import ProfileGenerator
 from app.services.proxy_manager import rebuild_proxy_config
 from app.api.system import get_configured_domain, get_configured_ports
+from app.utils.security import is_access_token_expired
 
 
 def _generate_csrf_token(access_token: str) -> str:
@@ -83,6 +84,8 @@ async def client_connect_page(
 
     if client is None:
         raise HTTPException(status_code=404, detail="Not found")
+    if is_access_token_expired(client):
+        raise HTTPException(status_code=410, detail="Link expired")
 
     # Get subscription status
     valid_until_str = "Не оплачено"
@@ -572,6 +575,8 @@ async def whitelist_ip(
 
     if client is None:
         raise HTTPException(status_code=404, detail="Not found")
+    if is_access_token_expired(client):
+        raise HTTPException(status_code=410, detail="Link expired")
 
     if client.proxy_account is None:
         raise HTTPException(status_code=400, detail="Proxy not configured")
@@ -622,6 +627,8 @@ async def download_windows_public(
 
     if client is None or client.vpn_config is None:
         raise HTTPException(status_code=404, detail="Not found")
+    if is_access_token_expired(client):
+        raise HTTPException(status_code=410, detail="Link expired")
 
     content = profile_generator.generate_windows_ps1(client)
 
@@ -653,6 +660,8 @@ async def download_ios_public(
 
     if client is None or client.vpn_config is None:
         raise HTTPException(status_code=404, detail="Not found")
+    if is_access_token_expired(client):
+        raise HTTPException(status_code=410, detail="Link expired")
 
     # Validate mode
     if mode not in ("ondemand", "always", "full"):
@@ -691,6 +700,8 @@ async def download_macos_public(
 
     if client is None or client.vpn_config is None:
         raise HTTPException(status_code=404, detail="Not found")
+    if is_access_token_expired(client):
+        raise HTTPException(status_code=410, detail="Link expired")
 
     # Validate mode
     if mode not in ("ondemand", "always", "full"):
@@ -726,6 +737,8 @@ async def download_android_public(
 
     if client is None or client.vpn_config is None:
         raise HTTPException(status_code=404, detail="Not found")
+    if is_access_token_expired(client):
+        raise HTTPException(status_code=410, detail="Link expired")
 
     content = profile_generator.generate_android_sswan(client)
 
@@ -753,6 +766,8 @@ async def download_pac_public(
 
     if client is None:
         raise HTTPException(status_code=404, detail="Not found")
+    if is_access_token_expired(client):
+        raise HTTPException(status_code=410, detail="Link expired")
 
     content = profile_generator.generate_pac_file(client)
 
@@ -780,6 +795,8 @@ async def get_pac_file(
 
     if client is None:
         raise HTTPException(status_code=404, detail="Not found")
+    if is_access_token_expired(client):
+        raise HTTPException(status_code=410, detail="Link expired")
 
     content = profile_generator.generate_pac_file(client)
 
@@ -804,6 +821,8 @@ async def download_proxy_setup_public(
 
     if client is None or client.proxy_account is None:
         raise HTTPException(status_code=404, detail="Not found")
+    if is_access_token_expired(client):
+        raise HTTPException(status_code=410, detail="Link expired")
 
     domain = get_configured_domain()
     http_port, _ = get_configured_ports()

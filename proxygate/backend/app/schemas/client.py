@@ -99,6 +99,7 @@ class ClientDetailResponse(BaseModel):
     service_type: str
     is_active: bool
     access_token: str
+    access_token_expires_at: Optional[datetime] = None
     notes: Optional[str]
     created_at: datetime
     updated_at: datetime

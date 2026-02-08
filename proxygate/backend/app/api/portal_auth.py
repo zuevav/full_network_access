@@ -5,7 +5,7 @@ from sqlalchemy.orm import selectinload
 from app.api.deps import DBSession
 from app.models import Client, VpnConfig
 from app.schemas.auth import ClientLoginRequest, TokenResponse
-from app.utils.security import verify_password, create_access_token
+from app.utils.security import verify_password, create_access_token, is_access_token_expired
 from app.services.security_service import SecurityService
 from app.middleware.security import get_client_ip
 from app.config import settings
@@ -117,6 +117,12 @@ async def login_by_link(access_token: str, db: DBSession):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Link not found",
+        )
+
+    if is_access_token_expired(client):
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail="Link expired",
         )
 
     if not client.is_active:

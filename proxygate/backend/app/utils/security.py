@@ -84,3 +84,10 @@ def get_totp_uri(secret: str, username: str) -> str:
     """Get TOTP provisioning URI for QR code."""
     totp = pyotp.TOTP(secret)
     return totp.provisioning_uri(name=username, issuer_name="ProxyGate")
+
+
+def is_access_token_expired(client) -> bool:
+    """Check if client's access token has expired. NULL = never expires."""
+    if client.access_token_expires_at is None:
+        return False
+    return datetime.now(timezone.utc) > client.access_token_expires_at.replace(tzinfo=timezone.utc)

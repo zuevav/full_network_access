@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List, TYPE_CHECKING
-from sqlalchemy import String, Text, func
+from sqlalchemy import DateTime, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from app.models.domain_request import DomainRequest
     from app.models.xray import XrayConfig
     from app.models.wireguard import WireguardConfig
+    from app.models.ip_whitelist import IpWhitelistLog
 
 
 class Client(Base):
@@ -27,6 +28,7 @@ class Client(Base):
     is_active: Mapped[bool] = mapped_column(default=True)
     access_token: Mapped[str] = mapped_column(String(64), unique=True)  # Secret token for client page
     portal_password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)  # Hash for portal login
+    access_token_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     notes: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(default=func.now())
     updated_at: Mapped[datetime] = mapped_column(default=func.now(), onupdate=func.now())
@@ -62,5 +64,9 @@ class Client(Base):
     wireguard_config: Mapped[Optional["WireguardConfig"]] = relationship(
         back_populates="client",
         uselist=False,
+        cascade="all, delete-orphan"
+    )
+    ip_whitelist_logs: Mapped[List["IpWhitelistLog"]] = relationship(
+        back_populates="client",
         cascade="all, delete-orphan"
     )
