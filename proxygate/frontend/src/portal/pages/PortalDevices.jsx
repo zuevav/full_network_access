@@ -788,8 +788,8 @@ export default function PortalDevices() {
   // Build available tabs
   const availableTabs = useMemo(() => {
     const tabs = []
-    if (hasVpn) tabs.push(TAB_CONFIG.vpn)
     if (hasProxy) tabs.push(TAB_CONFIG.proxy)
+    if (hasVpn) tabs.push(TAB_CONFIG.vpn)
     if (hasXray) tabs.push(TAB_CONFIG.xray)
     if (hasWg) tabs.push(TAB_CONFIG.wireguard)
     return tabs
