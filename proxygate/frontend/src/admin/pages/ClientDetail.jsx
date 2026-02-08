@@ -397,6 +397,7 @@ function ProxyCredentials({ clientId, t }) {
 function XrayCredentials({ clientId, t }) {
   const queryClient = useQueryClient()
   const [copied, setCopied] = useState(false)
+  const [enableError, setEnableError] = useState('')
 
   const { data: serverStatus } = useQuery({
     queryKey: ['xray-status'],
@@ -412,7 +413,13 @@ function XrayCredentials({ clientId, t }) {
 
   const enableMutation = useMutation({
     mutationFn: () => api.enableClientXray(clientId),
-    onSuccess: () => queryClient.invalidateQueries(['xray-config', clientId]),
+    onSuccess: () => {
+      setEnableError('')
+      queryClient.invalidateQueries(['xray-config', clientId])
+    },
+    onError: (err) => {
+      setEnableError(err.message || 'Ошибка при включении XRay')
+    },
   })
 
   const disableMutation = useMutation({
@@ -435,11 +442,17 @@ function XrayCredentials({ clientId, t }) {
     }
   }
 
-  if (!serverStatus?.is_installed) {
+  // Server not installed or not configured
+  if (!serverStatus?.is_installed || !serverStatus?.is_enabled) {
     return (
       <div className="card p-4 sm:p-6">
         <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">XRay (VLESS + REALITY)</h3>
-        <p className="text-sm text-gray-500">XRay не установлен на сервере</p>
+        <p className="text-sm text-gray-500">
+          {!serverStatus?.is_installed
+            ? 'XRay не установлен на сервере'
+            : 'XRay сервер не настроен. Настройте его в разделе "Настройки".'
+          }
+        </p>
       </div>
     )
   }
@@ -467,6 +480,9 @@ function XrayCredentials({ clientId, t }) {
       {!hasConfig || !data.is_active ? (
         <div className="text-center py-4">
           <p className="text-sm text-gray-500 mb-3">XRay не активирован для этого клиента</p>
+          {enableError && (
+            <p className="text-sm text-red-600 mb-3">{enableError}</p>
+          )}
           <button
             onClick={() => enableMutation.mutate()}
             disabled={enableMutation.isPending}
@@ -520,6 +536,7 @@ function XrayCredentials({ clientId, t }) {
 function WireguardCredentials({ clientId, t }) {
   const queryClient = useQueryClient()
   const [copied, setCopied] = useState(false)
+  const [enableError, setEnableError] = useState('')
 
   const { data: serverStatus } = useQuery({
     queryKey: ['wireguard-status'],
@@ -535,7 +552,13 @@ function WireguardCredentials({ clientId, t }) {
 
   const enableMutation = useMutation({
     mutationFn: () => api.enableClientWireguard(clientId),
-    onSuccess: () => queryClient.invalidateQueries(['wireguard-config', clientId]),
+    onSuccess: () => {
+      setEnableError('')
+      queryClient.invalidateQueries(['wireguard-config', clientId])
+    },
+    onError: (err) => {
+      setEnableError(err.message || 'Ошибка при включении WireGuard')
+    },
   })
 
   const disableMutation = useMutation({
@@ -570,11 +593,17 @@ function WireguardCredentials({ clientId, t }) {
     }
   }
 
-  if (!serverStatus?.is_installed) {
+  // Server not installed or not configured
+  if (!serverStatus?.is_installed || !serverStatus?.is_enabled) {
     return (
       <div className="card p-4 sm:p-6">
         <h3 className="font-semibold text-gray-900 mb-2 text-sm sm:text-base">WireGuard VPN</h3>
-        <p className="text-sm text-gray-500">WireGuard не установлен на сервере</p>
+        <p className="text-sm text-gray-500">
+          {!serverStatus?.is_installed
+            ? 'WireGuard не установлен на сервере'
+            : 'WireGuard сервер не настроен. Настройте его в разделе "Настройки".'
+          }
+        </p>
       </div>
     )
   }
@@ -602,6 +631,9 @@ function WireguardCredentials({ clientId, t }) {
       {!hasConfig || !data.is_active ? (
         <div className="text-center py-4">
           <p className="text-sm text-gray-500 mb-3">WireGuard не активирован для этого клиента</p>
+          {enableError && (
+            <p className="text-sm text-red-600 mb-3">{enableError}</p>
+          )}
           <button
             onClick={() => enableMutation.mutate()}
             disabled={enableMutation.isPending}
