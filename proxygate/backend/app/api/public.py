@@ -1,6 +1,7 @@
 import hmac
 import hashlib
 import time
+from html import escape
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response, HTMLResponse
@@ -64,6 +65,365 @@ def get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+def _build_connect_html(client, access_token, status_emoji, valid_until_str,
+                        proxy_host, http_port, client_ip, csrf_token,
+                        ip_already_whitelisted):
+    """Build the full HTML page for client connect."""
+
+    name = escape(client.name or "")
+    initial = escape((client.name or "?")[0].upper())
+
+    # IP whitelist button or status
+    if ip_already_whitelisted:
+        ip_status_html = (
+            '<div class="ip-ok">'
+            '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2">'
+            '<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/>'
+            '<polyline points="22 4 12 14.01 9 11.01"/></svg>'
+            ' Ваш IP добавлен</div>'
+        )
+    else:
+        ip_status_html = (
+            '<button onclick="addMyIp()" id="add-ip-btn" class="ip-btn">'
+            'Добавить мой IP (работа без пароля)</button>'
+        )
+
+    # Badge class
+    badge_cls = "badge-green" if status_emoji == "\U0001f7e2" else "badge-red"
+    badge_text = "Активен" if status_emoji == "\U0001f7e2" else "Не оплачено"
+
+    # VPN card
+    vpn_html = ""
+    if client.vpn_config:
+        vpn_html = f"""
+        <div class="card">
+            <div class="card-header" style="background: linear-gradient(135deg, #059669 0%, #047857 100%);">
+                <div class="card-icon">\U0001f6e1</div>
+                <div>
+                    <div class="card-title" style="color: white;">VPN (IKEv2)</div>
+                    <div class="card-desc" style="color: rgba(255,255,255,0.8);">Защита всего трафика</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="dl-grid">
+                    <button onclick="showModal('ios')" class="dl-btn">
+                        <span class="icon">\U0001f4f1</span>
+                        <span class="name">iPhone</span>
+                        <span class="hint">Выбор режима</span>
+                    </button>
+                    <a href="/api/download/{access_token}/android" class="dl-btn">
+                        <span class="icon">\U0001f916</span>
+                        <span class="name">Android</span>
+                        <span class="hint">.sswan профиль</span>
+                    </a>
+                    <a href="/api/download/{access_token}/windows" class="dl-btn">
+                        <span class="icon">\U0001fa9f</span>
+                        <span class="name">Windows</span>
+                        <span class="hint">PowerShell скрипт</span>
+                    </a>
+                    <button onclick="showModal('macos')" class="dl-btn">
+                        <span class="icon">\U0001f34f</span>
+                        <span class="name">macOS</span>
+                        <span class="hint">Выбор режима</span>
+                    </button>
+                </div>
+            </div>
+            <div class="acc-item">
+                <button class="acc-head" onclick="toggleAcc(this)">
+                    <span>\U0001f4f1</span> iPhone / iPad <span class="arr">\u25bc</span>
+                </button>
+                <div class="acc-body">
+                    <ol>
+                        <li>Нажмите \u00abiPhone\u00bb выше \u2014 откроется выбор режима VPN</li>
+                        <li>Выберите режим (рекомендуем \u00abАвто\u00bb)</li>
+                        <li>В появившемся окне нажмите \u00abРазрешить\u00bb</li>
+                        <li>Откройте <strong>Настройки \u2192 Основные \u2192 VPN и управление устройством</strong></li>
+                        <li>Нажмите на загруженный профиль \u2192 \u00abУстановить\u00bb</li>
+                        <li>VPN появится в <strong>Настройки \u2192 VPN</strong> \u2014 включите его!</li>
+                    </ol>
+                </div>
+            </div>
+            <div class="acc-item">
+                <button class="acc-head" onclick="toggleAcc(this)">
+                    <span>\U0001f916</span> Android <span class="arr">\u25bc</span>
+                </button>
+                <div class="acc-body">
+                    <ol>
+                        <li>Установите <strong>strongSwan VPN Client</strong> из Google Play</li>
+                        <li>Нажмите \u00abAndroid\u00bb выше \u2014 скачается .sswan файл</li>
+                        <li>Откройте скачанный файл</li>
+                        <li>Нажмите \u00abИмпортировать\u00bb и подтвердите</li>
+                        <li>Подключитесь в приложении strongSwan</li>
+                    </ol>
+                    <a href="https://play.google.com/store/apps/details?id=org.strongswan.android"
+                       target="_blank" rel="noopener noreferrer" class="ext-link">\u2197 strongSwan в Google Play</a>
+                </div>
+            </div>
+            <div class="acc-item">
+                <button class="acc-head" onclick="toggleAcc(this)">
+                    <span>\U0001fa9f</span> Windows <span class="arr">\u25bc</span>
+                </button>
+                <div class="acc-body">
+                    <ol>
+                        <li>Нажмите \u00abWindows\u00bb выше \u2014 скачается скрипт .ps1</li>
+                        <li>Правой кнопкой \u2192 \u00abВыполнить с помощью PowerShell\u00bb (от имени админа)</li>
+                        <li>Скрипт автоматически настроит VPN-подключение</li>
+                    </ol>
+                </div>
+            </div>
+            <div class="acc-item">
+                <button class="acc-head" onclick="toggleAcc(this)">
+                    <span>\U0001f34f</span> macOS <span class="arr">\u25bc</span>
+                </button>
+                <div class="acc-body">
+                    <ol>
+                        <li>Нажмите \u00abmacOS\u00bb выше \u2014 откроется выбор режима</li>
+                        <li>Выберите режим (рекомендуем \u00abАвто\u00bb)</li>
+                        <li>Откройте скачанный файл .mobileconfig</li>
+                        <li><strong>Системные настройки \u2192 Профили</strong> \u2192 Установить</li>
+                        <li>VPN появится в <strong>Системные настройки \u2192 VPN</strong></li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+        """
+
+    # Proxy card
+    proxy_html = ""
+    if client.proxy_account:
+        proxy_password = escape(client.proxy_account.password_plain or "")
+        proxy_username = escape(client.proxy_account.username or "")
+        proxy_html = f"""
+        <div class="card proxy-card">
+            <div class="card-header" style="background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);">
+                <div class="card-icon">\U0001f310</div>
+                <div>
+                    <div class="card-title" style="color: white;">Прокси</div>
+                    <div class="card-desc" style="color: rgba(255,255,255,0.8);">Для браузера и приложений</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="cred-row">
+                    <span class="cred-label">HTTP</span>
+                    <div class="cred-value-wrap">
+                        <code class="cred-value" id="proxy-http">{escape(proxy_host)}:{http_port}</code>
+                        <button class="copy-btn" onclick="copyText('proxy-http')" title="Копировать">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="cred-row">
+                    <span class="cred-label">Логин</span>
+                    <div class="cred-value-wrap">
+                        <code class="cred-value" id="proxy-user">{proxy_username}</code>
+                        <button class="copy-btn" onclick="copyText('proxy-user')" title="Копировать">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="cred-row">
+                    <span class="cred-label">Пароль</span>
+                    <div class="cred-value-wrap">
+                        <code class="cred-value" id="proxy-pass">\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022</code>
+                        <button class="copy-btn" onclick="revealAndCopy()" title="Показать и скопировать" id="reveal-btn">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;">
+                    <a href="/api/download/{access_token}/pac" class="action-btn" style="background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        PAC-файл
+                    </a>
+                    <a href="/api/download/{access_token}/proxy-setup" class="action-btn" style="background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                        Скрипт Windows
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <div class="card" style="border:1px solid #e5e7eb;">
+            <div class="card-body" style="padding:16px;">
+                <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                    <div style="width:36px;height:36px;background:#eff6ff;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    </div>
+                    <div>
+                        <div style="font-weight:600;font-size:14px;color:#111;">Доступ по IP</div>
+                        <div style="font-size:13px;color:#6b7280;">Ваш IP: <code style="background:#f3f4f6;padding:1px 6px;border-radius:4px;font-size:12px;">{escape(client_ip)}</code></div>
+                    </div>
+                </div>
+                <div id="ip-whitelist-status">{ip_status_html}</div>
+                <div id="ip-whitelist-result"></div>
+            </div>
+        </div>
+        """
+
+    # JavaScript — password stored separately to avoid HTML injection
+    js_password = proxy_password if client.proxy_account else ""
+
+    return f"""<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZETIT FNA \u2014 {name}</title>
+    <style>
+        *{{margin:0;padding:0;box-sizing:border-box}}
+        body{{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#f0f2f5;min-height:100vh;color:#111}}
+        .top-bar{{background:linear-gradient(135deg,#4f46e5 0%,#7c3aed 100%);padding:24px 20px 48px;text-align:center;color:white}}
+        .top-bar h1{{font-size:22px;font-weight:700;letter-spacing:-0.3px}}
+        .top-bar .sub{{font-size:13px;opacity:0.8;margin-top:4px}}
+        .page{{max-width:480px;margin:-32px auto 0;padding:0 16px 32px;position:relative}}
+        .card{{background:white;border-radius:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06),0 1px 2px rgba(0,0,0,0.04);margin-bottom:16px;overflow:hidden}}
+        .card-header{{padding:16px 20px;display:flex;align-items:center;gap:14px}}
+        .card-icon{{font-size:28px;width:44px;height:44px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.2);border-radius:12px;flex-shrink:0}}
+        .card-title{{font-size:16px;font-weight:700}}
+        .card-desc{{font-size:13px;margin-top:2px}}
+        .card-body{{padding:20px}}
+        .status-card{{display:flex;align-items:center;gap:14px;padding:16px 20px}}
+        .status-avatar{{width:48px;height:48px;background:linear-gradient(135deg,#4f46e5,#7c3aed);border-radius:14px;display:flex;align-items:center;justify-content:center;color:white;font-size:20px;font-weight:700;flex-shrink:0}}
+        .status-name{{font-size:17px;font-weight:700;color:#111}}
+        .status-sub{{font-size:13px;color:#6b7280;margin-top:2px}}
+        .badge{{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px}}
+        .badge-green{{background:#dcfce7;color:#15803d}}
+        .badge-red{{background:#fee2e2;color:#dc2626}}
+        .portal-link{{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px;border-top:1px solid #f3f4f6;color:#4f46e5;font-weight:600;font-size:14px;text-decoration:none;transition:background 0.15s}}
+        .portal-link:hover{{background:#f5f3ff}}
+        .dl-grid{{display:grid;grid-template-columns:1fr 1fr;gap:10px}}
+        .dl-btn{{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:18px 12px;background:#f9fafb;border-radius:14px;border:2px solid transparent;cursor:pointer;font-family:inherit;text-decoration:none;color:#111;transition:all 0.15s}}
+        .dl-btn:hover{{border-color:#4f46e5;background:#f5f3ff}}
+        .dl-btn .icon{{font-size:28px;margin-bottom:6px}}
+        .dl-btn .name{{font-size:14px;font-weight:600}}
+        .dl-btn .hint{{font-size:11px;color:#9ca3af;margin-top:2px}}
+        .cred-row{{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f3f4f6}}
+        .cred-row:last-of-type{{border-bottom:none}}
+        .cred-label{{font-size:13px;color:#6b7280;font-weight:500}}
+        .cred-value-wrap{{display:flex;align-items:center;gap:8px}}
+        .cred-value{{font-family:'SF Mono',SFMono-Regular,Consolas,monospace;font-size:13px;color:#111;background:#f3f4f6;padding:4px 10px;border-radius:6px}}
+        .copy-btn{{background:none;border:none;cursor:pointer;color:#9ca3af;padding:4px;border-radius:6px;transition:all 0.15s;display:flex;align-items:center}}
+        .copy-btn:hover{{color:#4f46e5;background:#f5f3ff}}
+        .copy-btn.copied{{color:#16a34a}}
+        .action-btn{{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:10px;font-size:13px;font-weight:600;text-decoration:none;transition:opacity 0.15s}}
+        .action-btn:hover{{opacity:0.85}}
+        .acc-item{{border-bottom:1px solid #f3f4f6}}
+        .acc-item:last-child{{border-bottom:none}}
+        .acc-head{{display:flex;align-items:center;gap:10px;width:100%;padding:14px 20px;background:none;border:none;cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;color:#111;text-align:left}}
+        .acc-head:hover{{background:#f9fafb}}
+        .acc-head .arr{{margin-left:auto;font-size:12px;color:#9ca3af;transition:transform 0.2s}}
+        .acc-head.open .arr{{transform:rotate(180deg)}}
+        .acc-body{{display:none;padding:0 20px 16px 48px}}
+        .acc-body.open{{display:block}}
+        .acc-body ol{{padding-left:16px;margin:0}}
+        .acc-body li{{margin-bottom:8px;font-size:13px;color:#374151;line-height:1.6}}
+        .ext-link{{display:inline-flex;align-items:center;gap:4px;margin-top:6px;color:#4f46e5;text-decoration:none;font-weight:600;font-size:13px}}
+        .ext-link:hover{{text-decoration:underline}}
+        .overlay{{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);backdrop-filter:blur(4px);z-index:1000;justify-content:center;align-items:flex-end;padding:0}}
+        @media(min-width:480px){{.overlay{{align-items:center;padding:20px}}.modal{{border-radius:20px!important;max-height:85vh}}}}
+        .overlay.open{{display:flex}}
+        .modal{{background:white;border-radius:20px 20px 0 0;width:100%;max-width:420px;overflow:auto;animation:slideUp 0.25s ease-out}}
+        @keyframes slideUp{{from{{transform:translateY(40px);opacity:0}}to{{transform:translateY(0);opacity:1}}}}
+        .modal-head{{padding:20px;border-bottom:1px solid #f3f4f6;display:flex;justify-content:space-between;align-items:center}}
+        .modal-head h2{{font-size:18px;font-weight:700}}
+        .modal-head p{{font-size:13px;color:#6b7280;margin-top:2px}}
+        .modal-x{{width:32px;height:32px;border-radius:10px;background:#f3f4f6;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#6b7280;font-size:18px}}
+        .modal-x:hover{{background:#e5e7eb}}
+        .modal-opts{{padding:16px}}
+        .opt{{display:block;padding:16px;border:2px solid #e5e7eb;border-radius:14px;margin-bottom:10px;text-decoration:none;color:#111;position:relative;transition:all 0.15s}}
+        .opt:hover{{border-color:#4f46e5;background:#f5f3ff}}
+        .opt-icon{{font-size:22px;margin-bottom:6px}}
+        .opt-title{{font-weight:700;font-size:15px;margin-bottom:2px}}
+        .opt-desc{{font-size:13px;color:#6b7280}}
+        .opt-badge{{position:absolute;top:-8px;right:14px;background:linear-gradient(135deg,#fbbf24,#f59e0b);color:#78350f;font-size:11px;font-weight:700;padding:2px 10px;border-radius:10px}}
+        .modal-tip{{padding:14px 20px;background:#fffbeb;border-top:1px solid #fef3c7;font-size:12px;color:#92400e;line-height:1.6}}
+        .ip-btn{{padding:10px 20px;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:white;border:none;border-radius:10px;font-weight:600;cursor:pointer;font-size:13px;font-family:inherit;transition:opacity 0.15s;width:100%}}
+        .ip-btn:hover{{opacity:0.9}}
+        .ip-btn:disabled{{opacity:0.6;cursor:not-allowed}}
+        .ip-ok{{display:flex;align-items:center;gap:8px;color:#16a34a;font-weight:600;font-size:14px;padding:8px 0}}
+    </style>
+</head>
+<body>
+    <div class="top-bar">
+        <h1>ZETIT FNA</h1>
+        <div class="sub">Full Network Access</div>
+    </div>
+
+    <div class="page">
+        <div class="card">
+            <div class="status-card">
+                <div class="status-avatar">{initial}</div>
+                <div style="flex:1;min-width:0;">
+                    <div class="status-name">{name}</div>
+                    <div class="status-sub">
+                        <span class="badge {badge_cls}">
+                            {status_emoji} {badge_text} до {valid_until_str}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <a href="/my/link/{access_token}" class="portal-link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                Личный кабинет
+            </a>
+        </div>
+
+        {vpn_html}
+
+        {proxy_html}
+
+        <div style="text-align:center;padding:16px 0;color:#9ca3af;font-size:13px;">
+            Вопросы? Обратитесь к администратору
+        </div>
+    </div>
+
+    <div id="vpnModal" class="overlay" onclick="hideModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-head">
+                <div>
+                    <h2>Режим VPN</h2>
+                    <p>Как должен работать VPN?</p>
+                </div>
+                <button class="modal-x" onclick="hideModal()">\u2715</button>
+            </div>
+            <div class="modal-opts">
+                <a id="opt-ondemand" class="opt">
+                    <span class="opt-badge">Рекомендуем</span>
+                    <div class="opt-icon">\u26a1</div>
+                    <div class="opt-title">Авто (по доменам)</div>
+                    <div class="opt-desc">VPN включается только при открытии нужных сайтов</div>
+                </a>
+                <a id="opt-always" class="opt">
+                    <div class="opt-icon">\U0001f6e1\ufe0f</div>
+                    <div class="opt-title">Всегда (Split-туннель)</div>
+                    <div class="opt-desc">VPN всегда включён, но только рабочий трафик через VPN</div>
+                </a>
+                <a id="opt-full" class="opt">
+                    <div class="opt-icon">\U0001f310</div>
+                    <div class="opt-title">Всегда (Весь трафик)</div>
+                    <div class="opt-desc">Весь трафик через VPN. Максимальная защита</div>
+                </a>
+            </div>
+            <div class="modal-tip">
+                <strong>Инструкция:</strong> нажмите на режим \u2192 разрешите загрузку \u2192 откройте <strong>Настройки \u2192 Профили</strong> \u2192 Установить
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var _at='{access_token}';
+        var _pw='{js_password}';
+        function showModal(p){{var b='/api/download/'+_at+'/'+p;document.getElementById('opt-ondemand').href=b+'?mode=ondemand';document.getElementById('opt-always').href=b+'?mode=always';document.getElementById('opt-full').href=b+'?mode=full';document.getElementById('vpnModal').classList.add('open')}}
+        function hideModal(e){{if(!e||e.target===e.currentTarget)document.getElementById('vpnModal').classList.remove('open')}}
+        function toggleAcc(b){{var d=b.nextElementSibling,w=b.classList.contains('open');document.querySelectorAll('.acc-head').forEach(function(h){{h.classList.remove('open')}});document.querySelectorAll('.acc-body').forEach(function(x){{x.classList.remove('open')}});if(!w){{b.classList.add('open');d.classList.add('open')}}}}
+        function copyText(id){{var el=document.getElementById(id);if(!el)return;navigator.clipboard.writeText(el.textContent).then(function(){{var btn=el.parentElement.querySelector('.copy-btn');if(btn){{btn.classList.add('copied');setTimeout(function(){{btn.classList.remove('copied')}},1500)}}}})}};
+        function revealAndCopy(){{var el=document.getElementById('proxy-pass');el.textContent=_pw;copyText('proxy-pass')}}
+        function addMyIp(){{var btn=document.getElementById('add-ip-btn');var res=document.getElementById('ip-whitelist-result');if(btn)btn.disabled=true;fetch('/api/connect/'+_at+'/whitelist-ip',{{method:'POST',headers:{{'Content-Type':'application/json','X-CSRF-Token':'{csrf_token}'}}}}).then(function(r){{return r.json()}}).then(function(d){{if(d.success){{document.getElementById('ip-whitelist-status').innerHTML='<div class="ip-ok"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Ваш IP добавлен</div>';res.innerHTML=''}}else{{res.innerHTML='<p style="color:#dc2626;font-size:13px;margin-top:8px;">'+(d.detail||'Ошибка')+'</p>';if(btn)btn.disabled=false}}}}).catch(function(e){{res.innerHTML='<p style="color:#dc2626;font-size:13px;margin-top:8px;">Ошибка: '+e.message+'</p>';if(btn)btn.disabled=false}})}};
+    </script>
+</body>
+</html>"""
+
+
 @router.get("/connect/{access_token}", response_class=HTMLResponse)
 async def client_connect_page(
     access_token: str,
@@ -89,15 +449,15 @@ async def client_connect_page(
 
     # Get subscription status
     valid_until_str = "Не оплачено"
-    status_emoji = "🔴"
+    status_emoji = "\U0001f534"
     if client.payments:
         latest = max(client.payments, key=lambda p: p.valid_until)
         valid_until_str = latest.valid_until.strftime("%d.%m.%Y")
         from datetime import date
         if latest.valid_until >= date.today():
-            status_emoji = "🟢"
+            status_emoji = "\U0001f7e2"
 
-    # Get proxy settings - use domain if configured
+    # Get proxy settings
     domain = get_configured_domain()
     proxy_host = domain if domain and domain != "localhost" else "127.0.0.1"
     http_port, _ = get_configured_ports()
@@ -110,452 +470,14 @@ async def client_connect_page(
         whitelisted = [ip.strip() for ip in client.proxy_account.allowed_ips.split(",") if ip.strip()]
         ip_already_whitelisted = client_ip in whitelisted
 
-    ip_status_html = (
-        '<p style="color: #16a34a; font-weight: 600;">Ваш IP уже добавлен &#10003;</p>'
-        if ip_already_whitelisted
-        else '<button onclick="addMyIp()" id="add-ip-btn" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">Добавить мой IP (работа без пароля)</button>'
+    html = _build_connect_html(
+        client, access_token, status_emoji, valid_until_str,
+        proxy_host, http_port, client_ip, csrf_token, ip_already_whitelisted
     )
-
-    html = f"""
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZETIT FNA</title>
-    <style>
-        * {{ margin: 0; padding: 0; box-sizing: border-box; }}
-        body {{
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }}
-        .container {{
-            max-width: 480px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 16px;
-            padding: 24px;
-            box-shadow: 0 4px 24px rgba(0,0,0,0.1);
-        }}
-        .header {{
-            text-align: center;
-            margin-bottom: 24px;
-        }}
-        .logo {{ font-size: 32px; margin-bottom: 8px; }}
-        h1 {{ font-size: 24px; color: #333; }}
-        .subtitle {{ font-size: 12px; color: #888; margin-top: 4px; }}
-        .status {{
-            background: #f5f5f5;
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 24px;
-            text-align: center;
-        }}
-        .status-text {{ font-size: 18px; color: #333; }}
-        .portal-btn {{
-            display: block;
-            width: 100%;
-            padding: 14px;
-            background: #667eea;
-            color: white;
-            text-align: center;
-            text-decoration: none;
-            border-radius: 8px;
-            font-weight: 600;
-            margin-bottom: 24px;
-        }}
-        .portal-btn:hover {{ background: #5a6fd6; }}
-        .section-title {{
-            font-size: 14px;
-            color: #888;
-            margin-bottom: 12px;
-            text-transform: uppercase;
-        }}
-        .download-grid {{
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-            margin-bottom: 24px;
-        }}
-        .download-btn {{
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            padding: 16px;
-            background: #f5f5f5;
-            border-radius: 12px;
-            text-decoration: none;
-            color: #333;
-            border: none;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: inherit;
-        }}
-        .download-btn:hover {{ background: #e8e8e8; }}
-        .download-icon {{ font-size: 24px; margin-bottom: 8px; }}
-        /* Instructions accordion */
-        .instructions-section {{
-            margin-bottom: 24px;
-        }}
-        .instr-header {{
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            width: 100%;
-            padding: 14px 16px;
-            background: #f5f5f5;
-            border: none;
-            border-radius: 12px;
-            cursor: pointer;
-            font-family: inherit;
-            font-size: 15px;
-            font-weight: 600;
-            color: #333;
-            text-align: left;
-            margin-bottom: 4px;
-        }}
-        .instr-header:hover {{ background: #e8e8e8; }}
-        .instr-header .arrow {{ margin-left: auto; transition: transform 0.2s; }}
-        .instr-header.active .arrow {{ transform: rotate(180deg); }}
-        .instr-body {{
-            display: none;
-            padding: 12px 16px;
-            background: #fafafa;
-            border-radius: 0 0 12px 12px;
-            margin-top: -4px;
-            margin-bottom: 4px;
-        }}
-        .instr-body.active {{ display: block; }}
-        .instr-body ol {{
-            padding-left: 20px;
-            margin: 0;
-        }}
-        .instr-body li {{
-            margin-bottom: 8px;
-            font-size: 14px;
-            color: #444;
-            line-height: 1.5;
-        }}
-        .instr-body .instr-link {{
-            display: inline-block;
-            margin-top: 8px;
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 14px;
-        }}
-        .instr-body .instr-link:hover {{ text-decoration: underline; }}
-        /* Modal styles */
-        .modal-overlay {{
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.5);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }}
-        .modal-overlay.active {{ display: flex; }}
-        .modal {{
-            background: white;
-            border-radius: 16px;
-            width: 100%;
-            max-width: 400px;
-            max-height: 90vh;
-            overflow: auto;
-        }}
-        .modal-header {{
-            padding: 16px;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-        }}
-        .modal-title {{ font-size: 18px; font-weight: 600; color: #333; }}
-        .modal-subtitle {{ font-size: 14px; color: #888; margin-top: 4px; }}
-        .modal-close {{
-            background: none;
-            border: none;
-            font-size: 24px;
-            color: #888;
-            cursor: pointer;
-            padding: 0;
-            line-height: 1;
-        }}
-        .modal-body {{ padding: 16px; }}
-        .modal-option {{
-            display: block;
-            padding: 16px;
-            border: 2px solid #e0e0e0;
-            border-radius: 12px;
-            margin-bottom: 12px;
-            text-decoration: none;
-            color: #333;
-            position: relative;
-        }}
-        .modal-option:hover {{ border-color: #667eea; background: #f8f9ff; }}
-        .modal-option-icon {{ font-size: 24px; margin-bottom: 8px; }}
-        .modal-option-title {{ font-weight: 600; margin-bottom: 4px; }}
-        .modal-option-desc {{ font-size: 13px; color: #666; }}
-        .modal-badge {{
-            position: absolute;
-            top: -8px;
-            right: 12px;
-            background: #fbbf24;
-            color: #78350f;
-            font-size: 11px;
-            font-weight: 600;
-            padding: 2px 8px;
-            border-radius: 10px;
-        }}
-        .modal-footer {{
-            padding: 12px 16px;
-            background: #f5f5f5;
-            border-radius: 0 0 16px 16px;
-            text-align: center;
-            font-size: 12px;
-            color: #888;
-        }}
-        .proxy-info {{
-            background: #f5f5f5;
-            border-radius: 12px;
-            padding: 16px;
-            font-size: 14px;
-        }}
-        .proxy-info p {{ margin-bottom: 8px; }}
-        .proxy-info code {{
-            background: #e0e0e0;
-            padding: 2px 6px;
-            border-radius: 4px;
-        }}
-        .footer {{
-            text-align: center;
-            margin-top: 24px;
-            color: #888;
-            font-size: 14px;
-        }}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <div class="logo">🔐</div>
-            <h1>ZETIT FNA</h1>
-            <div class="subtitle">Full Network Access</div>
-        </div>
-
-        <div class="status">
-            <div class="status-text">
-                Привет, <strong>{client.name}</strong>!<br>
-                {status_emoji} Активен до: {valid_until_str}
-            </div>
-        </div>
-
-        <a href="/my/link/{access_token}" class="portal-btn">🔑 Личный кабинет</a>
-
-        <div class="section-title">Быстрое скачивание</div>
-        <div class="download-grid">
-            <button onclick="showModal()" class="download-btn">
-                <span class="download-icon">📱</span>
-                <span>iPhone</span>
-            </button>
-            <a href="/api/download/{access_token}/android" class="download-btn">
-                <span class="download-icon">🤖</span>
-                <span>Android</span>
-            </a>
-            <a href="/api/download/{access_token}/windows" class="download-btn">
-                <span class="download-icon">🪟</span>
-                <span>Windows</span>
-            </a>
-            <button onclick="showModal()" class="download-btn">
-                <span class="download-icon">🍏</span>
-                <span>macOS</span>
-            </button>
-        </div>
-
-        <div class="section-title">Инструкции по настройке</div>
-        <div class="instructions-section">
-            <button class="instr-header" onclick="toggleInstr(this)">
-                📱 iPhone / iPad <span class="arrow">▼</span>
-            </button>
-            <div class="instr-body">
-                <ol>
-                    <li>Нажмите кнопку «iPhone» выше — откроется выбор режима VPN</li>
-                    <li>Выберите режим (рекомендуем «Авто»)</li>
-                    <li>В появившемся окне нажмите «Разрешить»</li>
-                    <li>Откройте <strong>Настройки → Основные → VPN и управление устройством</strong></li>
-                    <li>Нажмите на загруженный профиль → «Установить»</li>
-                    <li>VPN появится в <strong>Настройки → VPN</strong> — включите его!</li>
-                </ol>
-            </div>
-
-            <button class="instr-header" onclick="toggleInstr(this)">
-                🤖 Android <span class="arrow">▼</span>
-            </button>
-            <div class="instr-body">
-                <ol>
-                    <li>Установите приложение <strong>strongSwan VPN Client</strong> из Google Play</li>
-                    <li>Нажмите кнопку «Android» выше — скачается файл .sswan</li>
-                    <li>Откройте скачанный файл</li>
-                    <li>Приложение strongSwan предложит импортировать профиль — нажмите «Импортировать»</li>
-                    <li>Подключитесь к VPN в приложении strongSwan</li>
-                </ol>
-                <a href="https://play.google.com/store/apps/details?id=org.strongswan.android" target="_blank" rel="noopener noreferrer" class="instr-link">↗ strongSwan в Google Play</a>
-            </div>
-
-            <button class="instr-header" onclick="toggleInstr(this)">
-                🪟 Windows <span class="arrow">▼</span>
-            </button>
-            <div class="instr-body">
-                <ol>
-                    <li><strong>VPN:</strong> нажмите кнопку «Windows» выше — скачается скрипт настройки VPN (.ps1)</li>
-                    <li>Нажмите правой кнопкой → «Выполнить с помощью PowerShell» (от имени администратора)</li>
-                    <li>Скрипт автоматически настроит VPN-подключение</li>
-                </ol>
-                {"" if not client.proxy_account else f'''<hr style="margin: 12px 0; border: none; border-top: 1px solid #ddd;">
-                <ol start="4">
-                    <li><strong>Proxy:</strong> скачайте скрипт авто-настройки прокси (ссылка ниже)</li>
-                    <li>Нажмите правой кнопкой → «Выполнить с помощью PowerShell»</li>
-                    <li>Скрипт автоматически настроит системный прокси для всех сайтов</li>
-                </ol>
-                <a href="/api/download/{access_token}/proxy-setup" class="instr-link">⬇ Скачать скрипт настройки прокси</a>'''}
-            </div>
-
-            <button class="instr-header" onclick="toggleInstr(this)">
-                🍏 macOS <span class="arrow">▼</span>
-            </button>
-            <div class="instr-body">
-                <ol>
-                    <li>Нажмите кнопку «macOS» выше — откроется выбор режима VPN</li>
-                    <li>Выберите режим (рекомендуем «Авто»)</li>
-                    <li>Откройте скачанный файл .mobileconfig</li>
-                    <li>Откройте <strong>Системные настройки → Профили</strong></li>
-                    <li>Нажмите на загруженный профиль → «Установить»</li>
-                    <li>VPN появится в <strong>Системные настройки → VPN</strong> — включите его!</li>
-                </ol>
-            </div>
-        </div>
-
-        {"" if not client.proxy_account else f'''
-        <div class="section-title">Прокси</div>
-        <div class="proxy-info">
-            <p>Адрес: <code>{proxy_host}:{http_port}</code></p>
-            <p>Логин: <code>{client.proxy_account.username}</code></p>
-            <p>Пароль: <code style="user-select:all; cursor:pointer" title="Нажмите, чтобы выделить">{"•" * 8}</code>
-               <button onclick="this.previousElementSibling.textContent='{client.proxy_account.password_plain}';this.remove()" style="background:#e0e0e0;border:none;border-radius:6px;padding:2px 10px;cursor:pointer;font-size:12px;">Показать</button></p>
-            <p><a href="/api/download/{access_token}/pac">⬇ Скачать PAC-файл</a></p>
-        </div>
-        <div style="margin-top: 16px; background: #f5f5f5; border-radius: 12px; padding: 16px; font-size: 14px;">
-            <p style="margin-bottom: 8px;">Ваш текущий IP: <code>{client_ip}</code></p>
-            <div id="ip-whitelist-status">
-                {ip_status_html}
-            </div>
-            <div id="ip-whitelist-result" style="margin-top: 8px;"></div>
-        </div>
-        '''}
-
-        <div class="footer">
-            Вопросы? Обратитесь к администратору
-        </div>
-    </div>
-
-    <!-- iOS/macOS VPN Mode Selection Modal -->
-    <div id="vpnModal" class="modal-overlay" onclick="hideModal(event)">
-        <div class="modal" onclick="event.stopPropagation()">
-            <div class="modal-header">
-                <div>
-                    <div class="modal-title">Выберите режим VPN</div>
-                    <div class="modal-subtitle">Как должен работать VPN?</div>
-                </div>
-                <button class="modal-close" onclick="hideModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <a href="/api/download/{access_token}/ios?mode=ondemand" class="modal-option">
-                    <span class="modal-badge">Рекомендуем</span>
-                    <div class="modal-option-icon">⚡</div>
-                    <div class="modal-option-title">Авто (по доменам)</div>
-                    <div class="modal-option-desc">VPN включается только при открытии нужных сайтов.</div>
-                </a>
-                <a href="/api/download/{access_token}/ios?mode=always" class="modal-option">
-                    <div class="modal-option-icon">🛡️</div>
-                    <div class="modal-option-title">Всегда (Split-туннель)</div>
-                    <div class="modal-option-desc">VPN всегда включён, но только рабочий трафик идёт через VPN.</div>
-                </a>
-                <a href="/api/download/{access_token}/ios?mode=full" class="modal-option">
-                    <div class="modal-option-icon">🌐</div>
-                    <div class="modal-option-title">Всегда (Весь трафик)</div>
-                    <div class="modal-option-desc">Весь трафик через VPN. Максимальная защита.</div>
-                </a>
-            </div>
-            <div class="modal-footer" style="background: #fff3cd; color: #856404;">
-                <strong>📱 Инструкция для iPhone:</strong><br>
-                1. Нажмите на режим выше<br>
-                2. Разрешите загрузку профиля<br>
-                3. Откройте: <strong>Настройки → Основные → VPN и управление устройством</strong><br>
-                4. Нажмите на загруженный профиль → Установить
-            </div>
-        </div>
-    </div>
-
-    <script>
-        function showModal() {{
-            document.getElementById('vpnModal').classList.add('active');
-        }}
-        function hideModal(event) {{
-            if (!event || event.target === event.currentTarget) {{
-                document.getElementById('vpnModal').classList.remove('active');
-            }}
-        }}
-        function toggleInstr(btn) {{
-            var body = btn.nextElementSibling;
-            var wasActive = btn.classList.contains('active');
-            // Close all
-            document.querySelectorAll('.instr-header').forEach(function(h) {{ h.classList.remove('active'); }});
-            document.querySelectorAll('.instr-body').forEach(function(b) {{ b.classList.remove('active'); }});
-            // Toggle clicked
-            if (!wasActive) {{
-                btn.classList.add('active');
-                body.classList.add('active');
-            }}
-        }}
-        function addMyIp() {{
-            var btn = document.getElementById('add-ip-btn');
-            var result = document.getElementById('ip-whitelist-result');
-            if (btn) btn.disabled = true;
-            fetch('/api/connect/{access_token}/whitelist-ip', {{
-                method: 'POST',
-                headers: {{ 'Content-Type': 'application/json', 'X-CSRF-Token': '{csrf_token}' }}
-            }})
-            .then(function(r) {{ return r.json(); }})
-            .then(function(data) {{
-                if (data.success) {{
-                    document.getElementById('ip-whitelist-status').innerHTML =
-                        '<p style="color: #16a34a; font-weight: 600;">Ваш IP уже добавлен ✓</p>';
-                    result.innerHTML = '';
-                }} else {{
-                    result.innerHTML = '<p style="color: #dc2626;">' + (data.detail || 'Ошибка') + '</p>';
-                    if (btn) btn.disabled = false;
-                }}
-            }})
-            .catch(function(e) {{
-                result.innerHTML = '<p style="color: #dc2626;">Ошибка: ' + e.message + '</p>';
-                if (btn) btn.disabled = false;
-            }});
-        }}
-    </script>
-</body>
-</html>
-"""
     return HTMLResponse(content=html)
 
 
-@router.post("/connect/{access_token}/whitelist-ip")
+@router.post("/connect/{{access_token}}/whitelist-ip")
 async def whitelist_ip(
     access_token: str,
     request: Request,
