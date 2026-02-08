@@ -474,9 +474,9 @@ def _build_connect_html(client, access_token, status_emoji, valid_until_str,
             </a>
         </div>
 
-        {vpn_html}
-
         {proxy_html}
+
+        {vpn_html}
 
         {xray_html}
 
