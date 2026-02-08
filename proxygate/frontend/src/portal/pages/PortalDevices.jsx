@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import api from '../../api'
 
-// Modal for choosing VPN or Proxy
+// Modal for choosing VPN or Proxy with instructions
 function ConnectionTypeModal({ isOpen, onClose, platform, profileInfo, t, downloadBase }) {
   if (!isOpen || !platform) return null
 
@@ -28,79 +28,209 @@ function ConnectionTypeModal({ isOpen, onClose, platform, profileInfo, t, downlo
   // Build VPN profile URL using public endpoint
   const vpnProfileUrl = `${downloadBase}/${platform.id}`
 
+  // Platform-specific instructions
+  const getVpnInstructions = () => {
+    switch (platform.id) {
+      case 'ios':
+        return [
+          'Нажмите "Скачать профиль VPN" ниже',
+          'В появившемся окне нажмите "Разрешить"',
+          'Откройте Настройки → Основные → VPN и управление устройством',
+          'Нажмите на загруженный профиль и установите его',
+          'Введите пароль устройства, если потребуется',
+          'VPN появится в Настройки → VPN. Включите его!'
+        ]
+      case 'android':
+        return [
+          'Сначала установите приложение strongSwan VPN Client из Google Play',
+          'Нажмите "Скачать профиль VPN" ниже',
+          'Откройте скачанный файл .sswan',
+          'Приложение strongSwan предложит импортировать профиль',
+          'Нажмите "Импортировать" и подтвердите',
+          'Подключитесь к VPN в приложении strongSwan'
+        ]
+      case 'windows':
+        return [
+          'Нажмите "Скачать профиль VPN" ниже',
+          'Откройте скачанный файл .exe',
+          'Если Windows спросит разрешение — нажмите "Да"',
+          'Следуйте инструкциям установщика',
+          'После установки VPN появится в сетевых подключениях',
+          'Откройте Настройки → Сеть → VPN и подключитесь'
+        ]
+      case 'macos':
+        return [
+          'Нажмите "Скачать профиль VPN" ниже',
+          'Откройте скачанный файл .mobileconfig',
+          'Откройте Системные настройки → Профили',
+          'Нажмите на загруженный профиль и установите его',
+          'Введите пароль компьютера для подтверждения',
+          'VPN появится в Системные настройки → VPN. Включите его!'
+        ]
+      default:
+        return ['Скачайте и установите профиль VPN']
+    }
+  }
+
+  const getProxyInstructions = () => {
+    switch (platform.id) {
+      case 'ios':
+        return [
+          'Откройте Настройки → Wi-Fi',
+          'Нажмите (i) рядом с вашей сетью',
+          'Прокрутите вниз до "Настройка прокси"',
+          'Выберите "Автоматически"',
+          `Введите URL: ${window.location.origin}${downloadBase}/pac`,
+          'Нажмите "Сохранить"'
+        ]
+      case 'android':
+        return [
+          'Откройте Настройки → Wi-Fi',
+          'Долгое нажатие на вашу сеть → Изменить сеть',
+          'Разверните "Расширенные настройки"',
+          'Найдите "Прокси" и выберите "Авто-настройка"',
+          `Введите URL: ${window.location.origin}${downloadBase}/pac`,
+          'Сохраните настройки'
+        ]
+      case 'windows':
+        return [
+          'Откройте Настройки → Сеть и Интернет → Прокси',
+          'Включите "Использовать сценарий настройки"',
+          `Введите адрес: ${window.location.origin}${downloadBase}/pac`,
+          'Нажмите "Сохранить"',
+          'Перезапустите браузер для применения настроек'
+        ]
+      case 'macos':
+        return [
+          'Откройте Системные настройки → Сеть',
+          'Выберите вашу сеть и нажмите "Дополнительно"',
+          'Перейдите на вкладку "Прокси"',
+          'Включите "Автоматическая настройка прокси"',
+          `Введите URL: ${window.location.origin}${downloadBase}/pac`,
+          'Нажмите "OK" и "Применить"'
+        ]
+      default:
+        return ['Настройте прокси в системных настройках']
+    }
+  }
+
+  const vpnInstructions = getVpnInstructions()
+  const proxyInstructions = getProxyInstructions()
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl w-full max-w-sm p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">
-            {platform.icon} {platform.name}
-          </h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-5 h-5" />
-          </button>
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+      <div className="bg-white rounded-xl w-full max-w-lg my-4">
+        <div className="p-6 border-b">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-gray-900">
+              {platform.icon} Настройка {platform.name}
+            </h2>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          <p className="text-sm text-gray-500 mt-1">
+            Выберите тип подключения и следуйте инструкциям
+          </p>
         </div>
 
-        <p className="text-sm text-gray-600 mb-4">
-          {t('portalDevices.chooseConnectionType')}
-        </p>
-
-        <div className="space-y-3">
+        <div className="p-6 space-y-6 max-h-[60vh] overflow-y-auto">
           {hasVpn && (
-            <a
-              href={vpnProfileUrl}
-              className="flex items-center gap-4 p-4 bg-green-50 border-2 border-green-200 rounded-xl hover:border-green-400 transition-colors"
-              onClick={onClose}
-            >
-              <div className="p-3 bg-green-100 rounded-lg">
-                <Shield className="w-6 h-6 text-green-600" />
+            <div className="border-2 border-green-200 rounded-xl overflow-hidden">
+              <div className="bg-green-50 p-4 flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <Shield className="w-6 h-6 text-green-600" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-green-900">VPN подключение</h3>
+                  <p className="text-sm text-green-700">Полная защита всего трафика устройства</p>
+                </div>
               </div>
-              <div className="flex-1">
-                <h3 className="font-semibold text-green-900">VPN</h3>
-                <p className="text-sm text-green-700">{t('portalDevices.vpnTypeDescription')}</p>
+
+              <div className="p-4 bg-white">
+                <h4 className="font-medium text-gray-900 mb-3">📋 Инструкция:</h4>
+                <ol className="space-y-2 text-sm text-gray-700">
+                  {vpnInstructions.map((step, index) => (
+                    <li key={index} className="flex gap-3">
+                      <span className="flex-shrink-0 w-6 h-6 bg-green-100 text-green-700 rounded-full flex items-center justify-center text-xs font-bold">
+                        {index + 1}
+                      </span>
+                      <span>{step}</span>
+                    </li>
+                  ))}
+                </ol>
+
+                {platform.id === 'android' && (
+                  <a
+                    href="https://play.google.com/store/apps/details?id=org.strongswan.android"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 flex items-center gap-2 text-sm text-green-700 hover:text-green-900"
+                  >
+                    <ExternalLink className="w-4 h-4" />
+                    Открыть strongSwan в Google Play
+                  </a>
+                )}
+
+                <a
+                  href={vpnProfileUrl}
+                  className="mt-4 btn btn-primary w-full flex items-center justify-center gap-2"
+                  onClick={onClose}
+                >
+                  <Download className="w-5 h-5" />
+                  Скачать профиль VPN
+                </a>
               </div>
-              <Download className="w-5 h-5 text-green-600" />
-            </a>
+            </div>
           )}
 
           {hasProxy && (
-            <div className="p-4 bg-orange-50 border-2 border-orange-200 rounded-xl">
-              <div className="flex items-center gap-4 mb-3">
-                <div className="p-3 bg-orange-100 rounded-lg">
+            <div className="border-2 border-orange-200 rounded-xl overflow-hidden">
+              <div className="bg-orange-50 p-4 flex items-center gap-3">
+                <div className="p-2 bg-orange-100 rounded-lg">
                   <Globe className="w-6 h-6 text-orange-600" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-semibold text-orange-900">Proxy</h3>
-                  <p className="text-sm text-orange-700">{t('portalDevices.proxyTypeDescription')}</p>
+                  <h3 className="font-semibold text-orange-900">Proxy подключение</h3>
+                  <p className="text-sm text-orange-700">Только для определённых сайтов (браузер)</p>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <a
-                  href={`${downloadBase}/pac`}
-                  className="btn btn-secondary btn-sm text-center"
-                  onClick={onClose}
-                >
-                  <Download className="w-4 h-4 mr-1" />
-                  PAC
-                </a>
-                <a
-                  href={`${downloadBase}/proxy-setup`}
-                  className="btn btn-secondary btn-sm text-center"
-                  onClick={onClose}
-                >
-                  <Download className="w-4 h-4 mr-1" />
-                  {t('portalDevices.setup')}
-                </a>
+
+              <div className="p-4 bg-white">
+                <h4 className="font-medium text-gray-900 mb-3">📋 Инструкция:</h4>
+                <ol className="space-y-2 text-sm text-gray-700">
+                  {proxyInstructions.map((step, index) => (
+                    <li key={index} className="flex gap-3">
+                      <span className="flex-shrink-0 w-6 h-6 bg-orange-100 text-orange-700 rounded-full flex items-center justify-center text-xs font-bold">
+                        {index + 1}
+                      </span>
+                      <span className="break-all">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+
+                <div className="mt-4 p-3 bg-orange-50 rounded-lg">
+                  <p className="text-xs text-orange-800 mb-2">
+                    <strong>Данные для входа:</strong>
+                  </p>
+                  <p className="text-xs text-orange-700 font-mono">
+                    Логин: {profileInfo?.proxy?.username}<br/>
+                    Пароль: используйте ваш пароль из раздела "Учётные данные"
+                  </p>
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        <button
-          onClick={onClose}
-          className="btn btn-secondary w-full mt-4"
-        >
-          {t('common.cancel')}
-        </button>
+        <div className="p-4 border-t bg-gray-50">
+          <button
+            onClick={onClose}
+            className="btn btn-secondary w-full"
+          >
+            Закрыть
+          </button>
+        </div>
       </div>
     </div>
   )
@@ -247,27 +377,14 @@ export default function PortalDevices() {
           {PLATFORMS.map((platform) => (
             <button
               key={platform.id}
-              onClick={() => {
-                if (hasBoth) {
-                  // Show modal to choose
-                  setSelectedPlatform(platform)
-                } else if (hasVpn) {
-                  // Direct VPN download using public URL
-                  window.location.href = `${downloadBase}/${platform.id}`
-                } else if (hasProxy) {
-                  // Show modal for proxy options
-                  setSelectedPlatform(platform)
-                }
-              }}
+              onClick={() => setSelectedPlatform(platform)}
               className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors border-2 border-transparent hover:border-primary-200"
             >
               <span className="text-4xl mb-2">{platform.icon}</span>
               <span className="font-medium text-gray-900">{platform.name}</span>
-              {!hasBoth && (
-                <span className="text-xs text-gray-500 mt-1">
-                  {hasVpn ? 'VPN' : hasProxy ? 'Proxy' : ''}
-                </span>
-              )}
+              <span className="text-xs text-gray-500 mt-1">
+                {hasBoth ? 'VPN + Proxy' : hasVpn ? 'VPN' : hasProxy ? 'Proxy' : ''}
+              </span>
             </button>
           ))}
         </div>
