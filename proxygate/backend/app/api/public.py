@@ -10,9 +10,11 @@ from sqlalchemy.orm import selectinload
 
 from app.api.deps import DBSession
 from app.config import settings
-from app.models import Client, IpWhitelistLog
+from app.models import Client, IpWhitelistLog, XrayConfig, XrayServerConfig, WireguardConfig, WireguardServerConfig
 from app.services.profile_generator import ProfileGenerator
 from app.services.proxy_manager import rebuild_proxy_config
+from app.services.xray_manager import XRayManager, XrayServerSettings
+from app.services.wireguard_manager import WireGuardManager, WgServerSettings
 from app.api.system import get_configured_domain, get_configured_ports
 from app.utils.security import is_access_token_expired
 
@@ -52,6 +54,8 @@ def _validate_csrf_token(access_token: str, token: str, max_age: int = 300) -> b
 
 router = APIRouter()
 profile_generator = ProfileGenerator()
+xray_manager = XRayManager()
+wg_manager = WireGuardManager()
 
 
 def get_client_ip(request: Request) -> str:
@@ -67,7 +71,10 @@ def get_client_ip(request: Request) -> str:
 
 def _build_connect_html(client, access_token, status_emoji, valid_until_str,
                         proxy_host, http_port, client_ip, csrf_token,
-                        ip_already_whitelisted):
+                        ip_already_whitelisted,
+                        vless_url=None, xray_available=False,
+                        wg_available=False, wg_server_ip=None,
+                        wg_server_port=None, wg_client_ip=None):
     """Build the full HTML page for client connect."""
 
     name = escape(client.name or "")
@@ -260,6 +267,105 @@ def _build_connect_html(client, access_token, status_emoji, valid_until_str,
         </div>
         """
 
+    # XRay card
+    xray_html = ""
+    if xray_available and vless_url:
+        escaped_vless = escape(vless_url)
+        xray_html = f"""
+        <div class="card">
+            <div class="card-header" style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);">
+                <div class="card-icon">\u26a1</div>
+                <div>
+                    <div class="card-title" style="color: white;">XRay (VLESS + REALITY)</div>
+                    <div class="card-desc" style="color: rgba(255,255,255,0.8);">Современный протокол с маскировкой</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div style="background:#f5f3ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px;margin-bottom:12px;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                        <span style="font-size:12px;font-weight:600;color:#7c3aed;">VLESS URL</span>
+                        <button class="copy-btn" onclick="copyText('vless-url')" title="Копировать">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                        </button>
+                    </div>
+                    <code id="vless-url" style="display:block;font-size:11px;word-break:break-all;color:#581c87;background:white;padding:8px;border-radius:6px;border:1px solid #e9d5ff;max-height:60px;overflow-y:auto;">{escaped_vless}</code>
+                </div>
+                <button onclick="toggleQr('xray')" class="action-btn" style="background:#f5f3ff;color:#7c3aed;border:1px solid #e9d5ff;width:100%;justify-content:center;">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                    <span id="xray-qr-label">Показать QR-код</span>
+                </button>
+                <div id="xray-qr-box" style="display:none;margin-top:12px;text-align:center;">
+                    <div id="xray-qr-content" style="color:#7c3aed;font-size:13px;">Загрузка...</div>
+                </div>
+
+                <div style="margin-top:16px;">
+                    <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:8px;">Приложения по платформам</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                        <a href="https://apps.apple.com/app/shadowrocket/id932747118" target="_blank" rel="noopener" class="action-btn" style="background:#f5f3ff;color:#7c3aed;border:1px solid #e9d5ff;justify-content:center;">\U0001f4f1 Shadowrocket</a>
+                        <a href="https://play.google.com/store/apps/details?id=com.v2ray.ang" target="_blank" rel="noopener" class="action-btn" style="background:#f5f3ff;color:#7c3aed;border:1px solid #e9d5ff;justify-content:center;">\U0001f916 v2rayNG</a>
+                        <a href="https://github.com/2dust/v2rayN/releases" target="_blank" rel="noopener" class="action-btn" style="background:#f5f3ff;color:#7c3aed;border:1px solid #e9d5ff;justify-content:center;">\U0001fa9f v2rayN</a>
+                        <a href="https://github.com/tzmax/V2RayXS/releases" target="_blank" rel="noopener" class="action-btn" style="background:#f5f3ff;color:#7c3aed;border:1px solid #e9d5ff;justify-content:center;">\U0001f34f V2RayXS</a>
+                    </div>
+                    <p style="font-size:11px;color:#9ca3af;margin-top:8px;text-align:center;">Скопируйте VLESS URL выше и вставьте в приложение</p>
+                </div>
+            </div>
+        </div>
+        """
+
+    # WireGuard card
+    wg_html = ""
+    if wg_available:
+        wg_html = f"""
+        <div class="card">
+            <div class="card-header" style="background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);">
+                <div class="card-icon">\U0001f4e1</div>
+                <div>
+                    <div class="card-title" style="color: white;">WireGuard</div>
+                    <div class="card-desc" style="color: rgba(255,255,255,0.8);">Быстрый VPN-протокол</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+                    <button onclick="downloadWgConf()" class="action-btn" style="background:#2563eb;color:white;border:none;flex:1;justify-content:center;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Скачать .conf
+                    </button>
+                    <button onclick="toggleQr('wg')" class="action-btn" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;flex:1;justify-content:center;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                        <span id="wg-qr-label">QR-код</span>
+                    </button>
+                </div>
+                <div id="wg-qr-box" style="display:none;margin-bottom:16px;text-align:center;">
+                    <div id="wg-qr-content" style="color:#2563eb;font-size:13px;">Загрузка...</div>
+                </div>
+                <div class="cred-row">
+                    <span class="cred-label">Сервер</span>
+                    <div class="cred-value-wrap">
+                        <code class="cred-value" id="wg-server">{escape(wg_server_ip or '')}:{wg_server_port or ''}</code>
+                        <button class="copy-btn" onclick="copyText('wg-server')" title="Копировать">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                        </button>
+                    </div>
+                </div>
+                <div class="cred-row">
+                    <span class="cred-label">Ваш IP</span>
+                    <code class="cred-value">{escape(wg_client_ip or '')}</code>
+                </div>
+
+                <div style="margin-top:16px;">
+                    <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:8px;">Приложение WireGuard</div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                        <a href="https://apps.apple.com/app/wireguard/id1441195209" target="_blank" rel="noopener" class="action-btn" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;justify-content:center;">\U0001f4f1 iPhone</a>
+                        <a href="https://play.google.com/store/apps/details?id=com.wireguard.android" target="_blank" rel="noopener" class="action-btn" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;justify-content:center;">\U0001f916 Android</a>
+                        <a href="https://www.wireguard.com/install/" target="_blank" rel="noopener" class="action-btn" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;justify-content:center;">\U0001fa9f Windows</a>
+                        <a href="https://apps.apple.com/app/wireguard/id1451685025" target="_blank" rel="noopener" class="action-btn" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;justify-content:center;">\U0001f34f macOS</a>
+                    </div>
+                    <p style="font-size:11px;color:#9ca3af;margin-top:8px;text-align:center;">Скачайте .conf файл или отсканируйте QR-код в приложении</p>
+                </div>
+            </div>
+        </div>
+        """
+
     # JavaScript — password stored separately to avoid HTML injection
     js_password = proxy_password if client.proxy_account else ""
 
@@ -372,6 +478,10 @@ def _build_connect_html(client, access_token, status_emoji, valid_until_str,
 
         {proxy_html}
 
+        {xray_html}
+
+        {wg_html}
+
         <div style="text-align:center;padding:16px 0;color:#9ca3af;font-size:13px;">
             Вопросы? Обратитесь к администратору
         </div>
@@ -418,6 +528,30 @@ def _build_connect_html(client, access_token, status_emoji, valid_until_str,
         function toggleAcc(b){{var d=b.nextElementSibling,w=b.classList.contains('open');document.querySelectorAll('.acc-head').forEach(function(h){{h.classList.remove('open')}});document.querySelectorAll('.acc-body').forEach(function(x){{x.classList.remove('open')}});if(!w){{b.classList.add('open');d.classList.add('open')}}}}
         function copyText(id){{var el=document.getElementById(id);if(!el)return;navigator.clipboard.writeText(el.textContent).then(function(){{var btn=el.parentElement.querySelector('.copy-btn');if(btn){{btn.classList.add('copied');setTimeout(function(){{btn.classList.remove('copied')}},1500)}}}})}};
         function revealAndCopy(){{var el=document.getElementById('proxy-pass');el.textContent=_pw;copyText('proxy-pass')}}
+        var _qrLoaded={{}};
+        function toggleQr(type){{
+            var box=document.getElementById(type+'-qr-box');
+            var label=document.getElementById(type+'-qr-label');
+            if(box.style.display==='none'){{
+                box.style.display='block';
+                label.textContent='Скрыть QR-код';
+                if(!_qrLoaded[type]){{
+                    _qrLoaded[type]=true;
+                    fetch('/api/connect/'+_at+'/'+type+'-qr').then(function(r){{return r.json()}}).then(function(d){{
+                        if(d.qrcode){{document.getElementById(type+'-qr-content').innerHTML='<img src="'+d.qrcode+'" style="width:200px;height:200px;border-radius:12px;border:1px solid #e5e7eb;" alt="QR">'}}
+                        else{{document.getElementById(type+'-qr-content').textContent='QR-код недоступен'}}
+                    }}).catch(function(){{document.getElementById(type+'-qr-content').textContent='Ошибка загрузки'}})
+                }}
+            }}else{{
+                box.style.display='none';
+                label.textContent=type==='wg'?'QR-код':'Показать QR-код';
+            }}
+        }}
+        function downloadWgConf(){{
+            fetch('/api/connect/'+_at+'/wg-conf').then(function(r){{return r.blob()}}).then(function(b){{
+                var u=URL.createObjectURL(b);var a=document.createElement('a');a.href=u;a.download='wireguard.conf';a.click();URL.revokeObjectURL(u);
+            }})
+        }}
         function addMyIp(){{var btn=document.getElementById('add-ip-btn');var res=document.getElementById('ip-whitelist-result');if(btn)btn.disabled=true;fetch('/api/connect/'+_at+'/whitelist-ip',{{method:'POST',headers:{{'Content-Type':'application/json','X-CSRF-Token':'{csrf_token}'}}}}).then(function(r){{return r.json()}}).then(function(d){{if(d.success){{document.getElementById('ip-whitelist-status').innerHTML='<div class="ip-ok"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Ваш IP добавлен</div>';res.innerHTML=''}}else{{res.innerHTML='<p style="color:#dc2626;font-size:13px;margin-top:8px;">'+(d.detail||'Ошибка')+'</p>';if(btn)btn.disabled=false}}}}).catch(function(e){{res.innerHTML='<p style="color:#dc2626;font-size:13px;margin-top:8px;">Ошибка: '+e.message+'</p>';if(btn)btn.disabled=false}})}};
     </script>
 </body>
@@ -436,7 +570,9 @@ async def client_connect_page(
         .options(
             selectinload(Client.vpn_config),
             selectinload(Client.proxy_account),
-            selectinload(Client.payments)
+            selectinload(Client.payments),
+            selectinload(Client.xray_config),
+            selectinload(Client.wireguard_config),
         )
         .where(Client.access_token == access_token)
     )
@@ -470,9 +606,44 @@ async def client_connect_page(
         whitelisted = [ip.strip() for ip in client.proxy_account.allowed_ips.split(",") if ip.strip()]
         ip_already_whitelisted = client_ip in whitelisted
 
+    # XRay data
+    vless_url = None
+    xray_available = False
+    if client.xray_config and client.xray_config.is_active:
+        xray_srv_result = await db.execute(select(XrayServerConfig).limit(1))
+        xray_srv = xray_srv_result.scalar_one_or_none()
+        if xray_srv and xray_srv.is_enabled:
+            xray_available = True
+            server_ip = xray_manager.get_server_ip()
+            xray_settings = XrayServerSettings(
+                port=xray_srv.port, private_key=xray_srv.private_key,
+                public_key=xray_srv.public_key, short_id=xray_srv.short_id,
+                dest_server=xray_srv.dest_server, dest_port=xray_srv.dest_port,
+                server_name=xray_srv.server_name
+            )
+            vless_url = xray_manager.generate_vless_url(
+                server_ip, xray_settings, client.xray_config.uuid,
+                client.xray_config.short_id, client.name
+            )
+
+    # WireGuard data
+    wg_available = False
+    wg_server_ip = wg_server_port = wg_client_ip = None
+    if client.wireguard_config and client.wireguard_config.is_active:
+        wg_srv_result = await db.execute(select(WireguardServerConfig).limit(1))
+        wg_srv = wg_srv_result.scalar_one_or_none()
+        if wg_srv and wg_srv.is_enabled:
+            wg_available = True
+            wg_server_ip = wg_manager.get_server_ip()
+            wg_server_port = wg_srv.wstunnel_port if wg_srv.wstunnel_enabled else wg_srv.listen_port
+            wg_client_ip = client.wireguard_config.assigned_ip
+
     html = _build_connect_html(
         client, access_token, status_emoji, valid_until_str,
-        proxy_host, http_port, client_ip, csrf_token, ip_already_whitelisted
+        proxy_host, http_port, client_ip, csrf_token, ip_already_whitelisted,
+        vless_url=vless_url, xray_available=xray_available,
+        wg_available=wg_available, wg_server_ip=wg_server_ip,
+        wg_server_port=wg_server_port, wg_client_ip=wg_client_ip
     )
     return HTMLResponse(content=html)
 
@@ -529,6 +700,139 @@ async def whitelist_ip(
     await rebuild_proxy_config(db)
 
     return {"success": True, "ip": ip}
+
+
+async def _load_client_by_token(db, access_token: str):
+    """Helper: load client by access_token, raise if not found or expired."""
+    result = await db.execute(
+        select(Client)
+        .options(
+            selectinload(Client.xray_config),
+            selectinload(Client.wireguard_config),
+        )
+        .where(Client.access_token == access_token)
+    )
+    client = result.scalar_one_or_none()
+    if client is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    if is_access_token_expired(client):
+        raise HTTPException(status_code=410, detail="Link expired")
+    return client
+
+
+@router.get("/connect/{access_token}/xray-qr")
+async def public_xray_qr(access_token: str, db: DBSession):
+    """Public XRay QR code endpoint."""
+    import base64, io
+    try:
+        import qrcode
+    except ImportError:
+        raise HTTPException(status_code=501, detail="QR not available")
+
+    client = await _load_client_by_token(db, access_token)
+    if not client.xray_config or not client.xray_config.is_active:
+        raise HTTPException(status_code=404, detail="XRay not enabled")
+
+    xray_srv_result = await db.execute(select(XrayServerConfig).limit(1))
+    xray_srv = xray_srv_result.scalar_one_or_none()
+    if not xray_srv or not xray_srv.is_enabled:
+        raise HTTPException(status_code=404, detail="XRay server not configured")
+
+    server_ip = xray_manager.get_server_ip()
+    xray_settings = XrayServerSettings(
+        port=xray_srv.port, private_key=xray_srv.private_key,
+        public_key=xray_srv.public_key, short_id=xray_srv.short_id,
+        dest_server=xray_srv.dest_server, dest_port=xray_srv.dest_port,
+        server_name=xray_srv.server_name
+    )
+    vless_url = xray_manager.generate_vless_url(
+        server_ip, xray_settings, client.xray_config.uuid,
+        client.xray_config.short_id, client.name
+    )
+
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(vless_url)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+    return {"qrcode": f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}"}
+
+
+@router.get("/connect/{access_token}/wg-qr")
+async def public_wg_qr(access_token: str, db: DBSession):
+    """Public WireGuard QR code endpoint."""
+    import base64, io
+    try:
+        import qrcode
+    except ImportError:
+        raise HTTPException(status_code=501, detail="QR not available")
+
+    client = await _load_client_by_token(db, access_token)
+    if not client.wireguard_config or not client.wireguard_config.is_active:
+        raise HTTPException(status_code=404, detail="WireGuard not enabled")
+
+    wg_srv_result = await db.execute(select(WireguardServerConfig).limit(1))
+    wg_srv = wg_srv_result.scalar_one_or_none()
+    if not wg_srv or not wg_srv.is_enabled:
+        raise HTTPException(status_code=404, detail="WireGuard not configured")
+
+    server_ip = wg_manager.get_server_ip()
+    wg_settings = WgServerSettings(
+        private_key=wg_srv.private_key, public_key=wg_srv.public_key,
+        interface=wg_srv.interface, listen_port=wg_srv.listen_port,
+        server_ip=wg_srv.server_ip, subnet=wg_srv.subnet,
+        dns=wg_srv.dns, mtu=wg_srv.mtu,
+        wstunnel_enabled=wg_srv.wstunnel_enabled,
+        wstunnel_port=wg_srv.wstunnel_port, wstunnel_path=wg_srv.wstunnel_path
+    )
+    config_text = wg_manager.generate_client_config(
+        server_ip, wg_settings, client.wireguard_config.private_key,
+        client.wireguard_config.assigned_ip, client.wireguard_config.preshared_key
+    )
+
+    qr = qrcode.QRCode(version=1, box_size=10, border=5)
+    qr.add_data(config_text)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    buf.seek(0)
+    return {"qrcode": f"data:image/png;base64,{base64.b64encode(buf.getvalue()).decode()}"}
+
+
+@router.get("/connect/{access_token}/wg-conf")
+async def public_wg_conf_download(access_token: str, db: DBSession):
+    """Public WireGuard .conf download."""
+    client = await _load_client_by_token(db, access_token)
+    if not client.wireguard_config or not client.wireguard_config.is_active:
+        raise HTTPException(status_code=404, detail="WireGuard not enabled")
+
+    wg_srv_result = await db.execute(select(WireguardServerConfig).limit(1))
+    wg_srv = wg_srv_result.scalar_one_or_none()
+    if not wg_srv or not wg_srv.is_enabled:
+        raise HTTPException(status_code=404, detail="WireGuard not configured")
+
+    server_ip = wg_manager.get_server_ip()
+    wg_settings = WgServerSettings(
+        private_key=wg_srv.private_key, public_key=wg_srv.public_key,
+        interface=wg_srv.interface, listen_port=wg_srv.listen_port,
+        server_ip=wg_srv.server_ip, subnet=wg_srv.subnet,
+        dns=wg_srv.dns, mtu=wg_srv.mtu,
+        wstunnel_enabled=wg_srv.wstunnel_enabled,
+        wstunnel_port=wg_srv.wstunnel_port, wstunnel_path=wg_srv.wstunnel_path
+    )
+    config_text = wg_manager.generate_client_config(
+        server_ip, wg_settings, client.wireguard_config.private_key,
+        client.wireguard_config.assigned_ip, client.wireguard_config.preshared_key
+    )
+
+    return Response(
+        content=config_text,
+        media_type="text/plain; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="wireguard.conf"'}
+    )
 
 
 @router.get("/download/{access_token}/windows")
