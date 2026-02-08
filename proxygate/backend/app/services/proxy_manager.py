@@ -1,7 +1,7 @@
 import subprocess
 import signal
 from typing import List
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from app.config import settings
 
@@ -12,6 +12,7 @@ class ProxyClient:
     password: str
     domains: List[str]
     is_active: bool
+    allowed_ips: List[str] = field(default_factory=list)
 
 
 class ProxyManager:
@@ -29,9 +30,10 @@ class ProxyManager:
         """
         Generate full 3proxy configuration.
 
-        Per-client ACL with domain whitelist.
+        Per-client ACL with domain whitelist and IP-based access.
         """
-        config = f'''# ProxyGate 3proxy configuration
+        config = f'''daemon
+# ProxyGate 3proxy configuration
 # Auto-generated - DO NOT EDIT MANUALLY
 
 nserver 1.1.1.1
@@ -43,18 +45,27 @@ log /var/log/3proxy/3proxy.log D
 logformat "L%d-%m-%Y %H:%M:%S %U %C:%c %R:%r %O %I %T"
 rotate 30
 
-auth strong
+auth iponly strong
 users ${self.PASSWD_PATH}
 
 # === Per-client ACL ===
 '''
 
         for client in clients:
-            if client.is_active and client.domains:
-                domains_str = ",".join(client.domains)
-                config += f'''
+            if client.is_active:
+                # IP-based allow rules (no auth required)
+                for ip in client.allowed_ips:
+                    config += f'''
+# IP whitelist for {client.username}
+allow * {ip} * * *
+'''
+
+                # Domain-based allow rules (auth required)
+                if client.domains:
+                    domains_str = ",".join(client.domains)
+                    config += f'''
 # {client.username}
-allow {client.username} * * {domains_str} *
+allow {client.username} * {domains_str} * *
 '''
 
         config += f'''
@@ -137,3 +148,40 @@ socks -p{settings.proxy_socks_port} -a
         """Full cycle: generate config + reload."""
         self.write_config(clients)
         return self.reload()
+
+
+async def rebuild_proxy_config(db):
+    """Load all active clients with proxy accounts and rebuild 3proxy config."""
+    from sqlalchemy import select
+    from sqlalchemy.orm import selectinload
+    from app.models import Client
+
+    result = await db.execute(
+        select(Client)
+        .options(
+            selectinload(Client.proxy_account),
+            selectinload(Client.domains),
+        )
+        .where(Client.is_active == True)
+    )
+    clients = result.scalars().all()
+
+    proxy_clients = []
+    for client in clients:
+        if client.proxy_account and client.proxy_account.is_active:
+            allowed_ips = []
+            if client.proxy_account.allowed_ips:
+                allowed_ips = [
+                    ip.strip()
+                    for ip in client.proxy_account.allowed_ips.split(",")
+                    if ip.strip()
+                ]
+            proxy_clients.append(ProxyClient(
+                username=client.proxy_account.username,
+                password=client.proxy_account.password_plain,
+                domains=[d.domain for d in client.domains if d.is_active],
+                is_active=True,
+                allowed_ips=allowed_ips,
+            ))
+
+    ProxyManager().apply_changes(proxy_clients)
