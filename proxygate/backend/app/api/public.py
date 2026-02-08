@@ -1,13 +1,51 @@
+import hmac
+import hashlib
+import time
+
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response, HTMLResponse
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import DBSession
+from app.config import settings
 from app.models import Client, IpWhitelistLog
 from app.services.profile_generator import ProfileGenerator
 from app.services.proxy_manager import rebuild_proxy_config
 from app.api.system import get_configured_domain, get_configured_ports
+
+
+def _generate_csrf_token(access_token: str) -> str:
+    """Generate HMAC-based CSRF token: timestamp:hmac_hex."""
+    ts = str(int(time.time()))
+    sig = hmac.new(
+        settings.secret_key.encode(),
+        f"{access_token}:{ts}".encode(),
+        hashlib.sha256
+    ).hexdigest()
+    return f"{ts}:{sig}"
+
+
+def _validate_csrf_token(access_token: str, token: str, max_age: int = 300) -> bool:
+    """Validate CSRF token: check timestamp window and HMAC signature."""
+    if not token or ":" not in token:
+        return False
+    parts = token.split(":", 1)
+    if len(parts) != 2:
+        return False
+    ts_str, sig = parts
+    try:
+        ts = int(ts_str)
+    except ValueError:
+        return False
+    if abs(time.time() - ts) > max_age:
+        return False
+    expected = hmac.new(
+        settings.secret_key.encode(),
+        f"{access_token}:{ts_str}".encode(),
+        hashlib.sha256
+    ).hexdigest()
+    return hmac.compare_digest(sig, expected)
 
 
 router = APIRouter()
@@ -63,6 +101,7 @@ async def client_connect_page(
 
     # Get client IP for whitelist feature
     client_ip = get_client_ip(request)
+    csrf_token = _generate_csrf_token(access_token)
     ip_already_whitelisted = False
     if client.proxy_account and client.proxy_account.allowed_ips:
         whitelisted = [ip.strip() for ip in client.proxy_account.allowed_ips.split(",") if ip.strip()]
@@ -488,7 +527,7 @@ async def client_connect_page(
             if (btn) btn.disabled = true;
             fetch('/api/connect/{access_token}/whitelist-ip', {{
                 method: 'POST',
-                headers: {{ 'Content-Type': 'application/json' }}
+                headers: {{ 'Content-Type': 'application/json', 'X-CSRF-Token': '{csrf_token}' }}
             }})
             .then(function(r) {{ return r.json(); }})
             .then(function(data) {{
@@ -520,6 +559,10 @@ async def whitelist_ip(
     db: DBSession
 ):
     """Add client's current IP to proxy whitelist (no auth required)."""
+    csrf_token = request.headers.get("X-CSRF-Token", "")
+    if not _validate_csrf_token(access_token, csrf_token):
+        raise HTTPException(status_code=403, detail="Invalid or expired CSRF token")
+
     result = await db.execute(
         select(Client)
         .options(selectinload(Client.proxy_account))
