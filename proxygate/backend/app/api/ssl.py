@@ -5,6 +5,7 @@ Handles SSL certificate management with Let's Encrypt
 
 import os
 import json
+import re
 import subprocess
 from datetime import datetime
 from typing import Optional, List
@@ -17,6 +18,16 @@ from app.api.deps import CurrentAdmin
 
 
 router = APIRouter()
+
+# Strict domain validation for subprocess safety
+_SAFE_DOMAIN_RE = re.compile(r'^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)+$')
+
+def _validate_domain_for_shell(domain: str) -> str:
+    """Validate domain is safe to use in subprocess calls."""
+    domain = domain.strip().lower()
+    if not _SAFE_DOMAIN_RE.match(domain) or len(domain) > 253:
+        raise ValueError(f"Invalid domain: {domain}")
+    return domain
 
 # Path to store SSL settings
 SSL_SETTINGS_FILE = Path("/opt/proxygate/.ssl_settings.json")
@@ -142,6 +153,7 @@ async def save_ssl_settings_endpoint(settings: SSLSettings, admin: CurrentAdmin)
 
 async def run_certbot_process(domain: str, email: str):
     """Background task to obtain SSL certificate."""
+    domain = _validate_domain_for_shell(domain)
     status_data = load_ssl_status()
     status_data["is_processing"] = True
     status_data["log"] = []
@@ -387,6 +399,7 @@ async def obtain_certificate(background_tasks: BackgroundTasks, admin: CurrentAd
 
 async def run_certbot_renew_process(domain: str):
     """Background task to renew SSL certificate."""
+    domain = _validate_domain_for_shell(domain)
     status_data = load_ssl_status()
     status_data["is_processing"] = True
     status_data["log"] = []

@@ -385,7 +385,7 @@ async def get_status(admin: CurrentAdmin):
 @router.post("/restart/{service_name}")
 async def restart_service(service_name: str, admin: CurrentAdmin):
     """Restart a specific service."""
-    allowed_services = ["nginx", "proxygate", "strongswan", "strongswan-starter", "3proxy", "postgresql"]
+    allowed_services = {"nginx", "proxygate", "strongswan", "strongswan-starter", "3proxy", "postgresql", "wg-quick@wg0", "xray"}
 
     if service_name not in allowed_services:
         raise HTTPException(

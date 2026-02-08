@@ -211,10 +211,12 @@ async def update_client(
     if client is None:
         raise HTTPException(status_code=404, detail="Client not found")
 
-    # Update fields
+    # Update fields (whitelist for defense in depth)
+    allowed_fields = {"name", "email", "phone", "telegram_id", "service_type", "notes", "is_active"}
     update_data = request.model_dump(exclude_unset=True)
     for field, value in update_data.items():
-        setattr(client, field, value)
+        if field in allowed_fields:
+            setattr(client, field, value)
 
     await db.commit()
     await db.refresh(client)

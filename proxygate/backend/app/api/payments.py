@@ -128,9 +128,11 @@ async def update_payment(
     if payment is None:
         raise HTTPException(status_code=404, detail="Payment not found")
 
+    allowed_fields = {"amount", "currency", "valid_from", "valid_until", "status", "notes"}
     update_data = request.model_dump(exclude_unset=True)
     for field, value in update_data.items():
-        setattr(payment, field, value)
+        if field in allowed_fields:
+            setattr(payment, field, value)
 
     await db.commit()
     await db.refresh(payment)

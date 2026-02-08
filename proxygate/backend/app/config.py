@@ -11,8 +11,8 @@ class Settings(BaseSettings):
 
     # Admin
     admin_username: str = Field(default="admin")
-    admin_password: str = Field(default="admin")
-    secret_key: str = Field(default="change-this-secret-key-in-production-64-chars-minimum")
+    admin_password: str = Field(...)  # Required — no insecure default
+    secret_key: str = Field(...)  # Required — no insecure default
 
     # JWT
     jwt_algorithm: str = Field(default="HS256")

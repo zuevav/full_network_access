@@ -24,7 +24,10 @@ app = FastAPI(
     title="ZETIT FNA",
     description="Full Network Access - VPN/Proxy Management System",
     version=get_app_version(),
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
 )
 
 # Security middleware (brute force protection)
@@ -33,10 +36,10 @@ app.add_middleware(SecurityMiddleware)
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Configure properly in production
+    allow_origins=[f"https://{settings.vps_domain}"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "PATCH"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Include API router
@@ -52,8 +55,4 @@ async def health_check():
 @app.get("/")
 async def root():
     """Root endpoint."""
-    return {
-        "name": "ProxyGate API",
-        "version": get_app_version(),
-        "docs": "/docs"
-    }
+    return {"status": "ok"}

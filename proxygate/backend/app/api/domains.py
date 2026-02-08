@@ -4,6 +4,8 @@ from sqlalchemy.orm import selectinload
 import json
 import httpx
 import re
+import socket
+import ipaddress
 from urllib.parse import urlparse
 from typing import Set
 
@@ -17,6 +19,30 @@ from app.utils.helpers import normalize_domain
 
 
 router = APIRouter()
+
+
+# SSRF protection: validate domain doesn't resolve to private/internal IPs
+DOMAIN_REGEX = re.compile(r'^[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*$')
+
+def is_safe_domain(domain: str) -> bool:
+    """Check that domain doesn't resolve to private/reserved IPs (SSRF protection)."""
+    if not DOMAIN_REGEX.match(domain):
+        return False
+    if len(domain) > 253:
+        return False
+    # Block obviously internal hostnames
+    blocked = {'localhost', 'metadata', 'metadata.google.internal', 'instance-data'}
+    if domain.lower() in blocked:
+        return False
+    try:
+        addrs = socket.getaddrinfo(domain, None)
+        for _family, _type, _proto, _canonname, sockaddr in addrs:
+            ip = ipaddress.ip_address(sockaddr[0])
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved:
+                return False
+    except socket.gaierror:
+        pass  # Domain doesn't resolve — allow, httpx will handle the error
+    return True
 
 
 def extract_domain_from_url(url: str) -> str | None:
@@ -63,6 +89,10 @@ async def analyze_domain_resources(domain: str) -> tuple[Set[str], Set[str], str
         return redirect_domains, resource_domains, "Invalid domain"
 
     base_domain = get_base_domain(normalized)
+
+    # SSRF protection
+    if not is_safe_domain(normalized):
+        return redirect_domains, resource_domains, "Domain resolves to internal address"
 
     try:
         async with httpx.AsyncClient(

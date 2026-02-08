@@ -1,11 +1,12 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import Response, HTMLResponse
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import DBSession
-from app.models import Client
+from app.models import Client, IpWhitelistLog
 from app.services.profile_generator import ProfileGenerator
+from app.services.proxy_manager import rebuild_proxy_config
 from app.api.system import get_configured_domain, get_configured_ports
 
 
@@ -13,9 +14,21 @@ router = APIRouter()
 profile_generator = ProfileGenerator()
 
 
+def get_client_ip(request: Request) -> str:
+    """Get client IP from X-Real-IP, X-Forwarded-For, or request.client.host."""
+    real_ip = request.headers.get("X-Real-IP")
+    if real_ip:
+        return real_ip.strip()
+    forwarded = request.headers.get("X-Forwarded-For")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
 @router.get("/connect/{access_token}", response_class=HTMLResponse)
 async def client_connect_page(
     access_token: str,
+    request: Request,
     db: DBSession
 ):
     """Public client connection page (no auth required)."""
@@ -47,6 +60,19 @@ async def client_connect_page(
     domain = get_configured_domain()
     proxy_host = domain if domain and domain != "localhost" else "127.0.0.1"
     http_port, _ = get_configured_ports()
+
+    # Get client IP for whitelist feature
+    client_ip = get_client_ip(request)
+    ip_already_whitelisted = False
+    if client.proxy_account and client.proxy_account.allowed_ips:
+        whitelisted = [ip.strip() for ip in client.proxy_account.allowed_ips.split(",") if ip.strip()]
+        ip_already_whitelisted = client_ip in whitelisted
+
+    ip_status_html = (
+        '<p style="color: #16a34a; font-weight: 600;">Ваш IP уже добавлен &#10003;</p>'
+        if ip_already_whitelisted
+        else '<button onclick="addMyIp()" id="add-ip-btn" style="padding: 10px 20px; background: #667eea; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">Добавить мой IP (работа без пароля)</button>'
+    )
 
     html = f"""
 <!DOCTYPE html>
@@ -127,6 +153,58 @@ async def client_connect_page(
         }}
         .download-btn:hover {{ background: #e8e8e8; }}
         .download-icon {{ font-size: 24px; margin-bottom: 8px; }}
+        /* Instructions accordion */
+        .instructions-section {{
+            margin-bottom: 24px;
+        }}
+        .instr-header {{
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            padding: 14px 16px;
+            background: #f5f5f5;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            text-align: left;
+            margin-bottom: 4px;
+        }}
+        .instr-header:hover {{ background: #e8e8e8; }}
+        .instr-header .arrow {{ margin-left: auto; transition: transform 0.2s; }}
+        .instr-header.active .arrow {{ transform: rotate(180deg); }}
+        .instr-body {{
+            display: none;
+            padding: 12px 16px;
+            background: #fafafa;
+            border-radius: 0 0 12px 12px;
+            margin-top: -4px;
+            margin-bottom: 4px;
+        }}
+        .instr-body.active {{ display: block; }}
+        .instr-body ol {{
+            padding-left: 20px;
+            margin: 0;
+        }}
+        .instr-body li {{
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #444;
+            line-height: 1.5;
+        }}
+        .instr-body .instr-link {{
+            display: inline-block;
+            margin-top: 8px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+        }}
+        .instr-body .instr-link:hover {{ text-decoration: underline; }}
         /* Modal styles */
         .modal-overlay {{
             display: none;
@@ -259,13 +337,84 @@ async def client_connect_page(
             </button>
         </div>
 
+        <div class="section-title">Инструкции по настройке</div>
+        <div class="instructions-section">
+            <button class="instr-header" onclick="toggleInstr(this)">
+                📱 iPhone / iPad <span class="arrow">▼</span>
+            </button>
+            <div class="instr-body">
+                <ol>
+                    <li>Нажмите кнопку «iPhone» выше — откроется выбор режима VPN</li>
+                    <li>Выберите режим (рекомендуем «Авто»)</li>
+                    <li>В появившемся окне нажмите «Разрешить»</li>
+                    <li>Откройте <strong>Настройки → Основные → VPN и управление устройством</strong></li>
+                    <li>Нажмите на загруженный профиль → «Установить»</li>
+                    <li>VPN появится в <strong>Настройки → VPN</strong> — включите его!</li>
+                </ol>
+            </div>
+
+            <button class="instr-header" onclick="toggleInstr(this)">
+                🤖 Android <span class="arrow">▼</span>
+            </button>
+            <div class="instr-body">
+                <ol>
+                    <li>Установите приложение <strong>strongSwan VPN Client</strong> из Google Play</li>
+                    <li>Нажмите кнопку «Android» выше — скачается файл .sswan</li>
+                    <li>Откройте скачанный файл</li>
+                    <li>Приложение strongSwan предложит импортировать профиль — нажмите «Импортировать»</li>
+                    <li>Подключитесь к VPN в приложении strongSwan</li>
+                </ol>
+                <a href="https://play.google.com/store/apps/details?id=org.strongswan.android" target="_blank" rel="noopener noreferrer" class="instr-link">↗ strongSwan в Google Play</a>
+            </div>
+
+            <button class="instr-header" onclick="toggleInstr(this)">
+                🪟 Windows <span class="arrow">▼</span>
+            </button>
+            <div class="instr-body">
+                <ol>
+                    <li><strong>VPN:</strong> нажмите кнопку «Windows» выше — скачается скрипт настройки VPN (.ps1)</li>
+                    <li>Нажмите правой кнопкой → «Выполнить с помощью PowerShell» (от имени администратора)</li>
+                    <li>Скрипт автоматически настроит VPN-подключение</li>
+                </ol>
+                {"" if not client.proxy_account else f'''<hr style="margin: 12px 0; border: none; border-top: 1px solid #ddd;">
+                <ol start="4">
+                    <li><strong>Proxy:</strong> скачайте скрипт авто-настройки прокси (ссылка ниже)</li>
+                    <li>Нажмите правой кнопкой → «Выполнить с помощью PowerShell»</li>
+                    <li>Скрипт автоматически настроит системный прокси для всех сайтов</li>
+                </ol>
+                <a href="/api/download/{access_token}/proxy-setup" class="instr-link">⬇ Скачать скрипт настройки прокси</a>'''}
+            </div>
+
+            <button class="instr-header" onclick="toggleInstr(this)">
+                🍏 macOS <span class="arrow">▼</span>
+            </button>
+            <div class="instr-body">
+                <ol>
+                    <li>Нажмите кнопку «macOS» выше — откроется выбор режима VPN</li>
+                    <li>Выберите режим (рекомендуем «Авто»)</li>
+                    <li>Откройте скачанный файл .mobileconfig</li>
+                    <li>Откройте <strong>Системные настройки → Профили</strong></li>
+                    <li>Нажмите на загруженный профиль → «Установить»</li>
+                    <li>VPN появится в <strong>Системные настройки → VPN</strong> — включите его!</li>
+                </ol>
+            </div>
+        </div>
+
         {"" if not client.proxy_account else f'''
         <div class="section-title">Прокси</div>
         <div class="proxy-info">
             <p>Адрес: <code>{proxy_host}:{http_port}</code></p>
             <p>Логин: <code>{client.proxy_account.username}</code></p>
-            <p>Пароль: <code>{client.proxy_account.password_plain}</code></p>
+            <p>Пароль: <code style="user-select:all; cursor:pointer" title="Нажмите, чтобы выделить">{"•" * 8}</code>
+               <button onclick="this.previousElementSibling.textContent='{client.proxy_account.password_plain}';this.remove()" style="background:#e0e0e0;border:none;border-radius:6px;padding:2px 10px;cursor:pointer;font-size:12px;">Показать</button></p>
             <p><a href="/api/download/{access_token}/pac">⬇ Скачать PAC-файл</a></p>
+        </div>
+        <div style="margin-top: 16px; background: #f5f5f5; border-radius: 12px; padding: 16px; font-size: 14px;">
+            <p style="margin-bottom: 8px;">Ваш текущий IP: <code>{client_ip}</code></p>
+            <div id="ip-whitelist-status">
+                {ip_status_html}
+            </div>
+            <div id="ip-whitelist-result" style="margin-top: 8px;"></div>
         </div>
         '''}
 
@@ -321,11 +470,95 @@ async def client_connect_page(
                 document.getElementById('vpnModal').classList.remove('active');
             }}
         }}
+        function toggleInstr(btn) {{
+            var body = btn.nextElementSibling;
+            var wasActive = btn.classList.contains('active');
+            // Close all
+            document.querySelectorAll('.instr-header').forEach(function(h) {{ h.classList.remove('active'); }});
+            document.querySelectorAll('.instr-body').forEach(function(b) {{ b.classList.remove('active'); }});
+            // Toggle clicked
+            if (!wasActive) {{
+                btn.classList.add('active');
+                body.classList.add('active');
+            }}
+        }}
+        function addMyIp() {{
+            var btn = document.getElementById('add-ip-btn');
+            var result = document.getElementById('ip-whitelist-result');
+            if (btn) btn.disabled = true;
+            fetch('/api/connect/{access_token}/whitelist-ip', {{
+                method: 'POST',
+                headers: {{ 'Content-Type': 'application/json' }}
+            }})
+            .then(function(r) {{ return r.json(); }})
+            .then(function(data) {{
+                if (data.success) {{
+                    document.getElementById('ip-whitelist-status').innerHTML =
+                        '<p style="color: #16a34a; font-weight: 600;">Ваш IP уже добавлен ✓</p>';
+                    result.innerHTML = '';
+                }} else {{
+                    result.innerHTML = '<p style="color: #dc2626;">' + (data.detail || 'Ошибка') + '</p>';
+                    if (btn) btn.disabled = false;
+                }}
+            }})
+            .catch(function(e) {{
+                result.innerHTML = '<p style="color: #dc2626;">Ошибка: ' + e.message + '</p>';
+                if (btn) btn.disabled = false;
+            }});
+        }}
     </script>
 </body>
 </html>
 """
     return HTMLResponse(content=html)
+
+
+@router.post("/connect/{access_token}/whitelist-ip")
+async def whitelist_ip(
+    access_token: str,
+    request: Request,
+    db: DBSession
+):
+    """Add client's current IP to proxy whitelist (no auth required)."""
+    result = await db.execute(
+        select(Client)
+        .options(selectinload(Client.proxy_account))
+        .where(Client.access_token == access_token)
+    )
+    client = result.scalar_one_or_none()
+
+    if client is None:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    if client.proxy_account is None:
+        raise HTTPException(status_code=400, detail="Proxy not configured")
+
+    ip = get_client_ip(request)
+
+    # Deduplicate
+    existing_ips = []
+    if client.proxy_account.allowed_ips:
+        existing_ips = [i.strip() for i in client.proxy_account.allowed_ips.split(",") if i.strip()]
+
+    if ip in existing_ips:
+        return {"success": True, "ip": ip, "message": "already_added"}
+
+    existing_ips.append(ip)
+    client.proxy_account.allowed_ips = ",".join(existing_ips)
+
+    # Log
+    log_entry = IpWhitelistLog(
+        client_id=client.id,
+        ip_address=ip,
+        action="added"
+    )
+    db.add(log_entry)
+    await db.flush()
+
+    # Rebuild 3proxy config
+    await rebuild_proxy_config(db)
+
+    return {"success": True, "ip": ip}
 
 
 @router.get("/download/{access_token}/windows")
