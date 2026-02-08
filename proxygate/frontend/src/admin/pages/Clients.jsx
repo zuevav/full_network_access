@@ -26,7 +26,12 @@ function NewClientModal({ isOpen, onClose, onSuccess, t }) {
     setLoading(true)
 
     try {
-      await api.createClient({ name, email, phone, service_type: serviceType })
+      await api.createClient({
+        name,
+        email: email || null,
+        phone: phone || null,
+        service_type: serviceType
+      })
       onSuccess()
       onClose()
       setName('')
