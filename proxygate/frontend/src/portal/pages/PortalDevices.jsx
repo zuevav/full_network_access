@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import {
@@ -151,7 +151,7 @@ function ConnectionTypeModal({ isOpen, onClose, platform, profileInfo, t, downlo
               </div>
 
               <div className="p-4 bg-white">
-                <h4 className="font-medium text-gray-900 mb-3">📋 Инструкция:</h4>
+                <h4 className="font-medium text-gray-900 mb-3">Инструкция:</h4>
                 <ol className="space-y-2 text-sm text-gray-700">
                   {vpnInstructions.map((step, index) => (
                     <li key={index} className="flex gap-3">
@@ -200,7 +200,7 @@ function ConnectionTypeModal({ isOpen, onClose, platform, profileInfo, t, downlo
               </div>
 
               <div className="p-4 bg-white">
-                <h4 className="font-medium text-gray-900 mb-3">📋 Инструкция:</h4>
+                <h4 className="font-medium text-gray-900 mb-3">Инструкция:</h4>
                 <ol className="space-y-2 text-sm text-gray-700">
                   {proxyInstructions.map((step, index) => (
                     <li key={index} className="flex gap-3">
@@ -252,6 +252,14 @@ function PlatformAccordion({ platforms, colorClass }) {
   const [openPlatform, setOpenPlatform] = useState(null)
 
   const colorMap = {
+    green: {
+      bg: 'bg-green-50', border: 'border-green-200', text: 'text-green-700',
+      stepBg: 'bg-green-100', stepText: 'text-green-700', linkText: 'text-green-600 hover:text-green-800'
+    },
+    orange: {
+      bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700',
+      stepBg: 'bg-orange-100', stepText: 'text-orange-700', linkText: 'text-orange-600 hover:text-orange-800'
+    },
     purple: {
       bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700',
       stepBg: 'bg-purple-100', stepText: 'text-purple-700', linkText: 'text-purple-600 hover:text-purple-800'
@@ -321,6 +329,401 @@ function PlatformAccordion({ platforms, colorClass }) {
   )
 }
 
+// Tab definitions
+const TAB_CONFIG = {
+  vpn: {
+    id: 'vpn',
+    label: 'VPN',
+    color: 'green',
+    Icon: Shield,
+  },
+  proxy: {
+    id: 'proxy',
+    label: 'Прокси',
+    color: 'orange',
+    Icon: Globe,
+  },
+  xray: {
+    id: 'xray',
+    label: 'XRay',
+    color: 'purple',
+    Icon: Zap,
+  },
+  wireguard: {
+    id: 'wireguard',
+    label: 'WireGuard',
+    color: 'blue',
+    Icon: Wifi,
+  },
+}
+
+// Tab color styles
+const TAB_COLORS = {
+  green: {
+    active: 'border-green-500 text-green-700',
+    inactive: 'border-transparent text-gray-500 hover:text-green-600 hover:border-green-300',
+    iconBg: 'bg-green-100',
+    iconText: 'text-green-600',
+  },
+  orange: {
+    active: 'border-orange-500 text-orange-700',
+    inactive: 'border-transparent text-gray-500 hover:text-orange-600 hover:border-orange-300',
+    iconBg: 'bg-orange-100',
+    iconText: 'text-orange-600',
+  },
+  purple: {
+    active: 'border-purple-500 text-purple-700',
+    inactive: 'border-transparent text-gray-500 hover:text-purple-600 hover:border-purple-300',
+    iconBg: 'bg-purple-100',
+    iconText: 'text-purple-600',
+  },
+  blue: {
+    active: 'border-blue-500 text-blue-700',
+    inactive: 'border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-300',
+    iconBg: 'bg-blue-100',
+    iconText: 'text-blue-600',
+  },
+}
+
+// ---- VPN Tab Content ----
+function VpnTabContent({ profileInfo, downloadBase, copied, copyToClipboard, t, setSelectedPlatform }) {
+  return (
+    <div className="card p-4 sm:p-6 border-2 border-green-200">
+      <p className="text-sm text-gray-600 mb-4">Полная защита всего трафика устройства</p>
+
+      {/* Platform grid 2x2 */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        {PLATFORMS.map((platform) => (
+          <button
+            key={platform.id}
+            onClick={() => setSelectedPlatform(platform)}
+            className="flex flex-col items-center justify-center p-4 bg-green-50 rounded-xl hover:bg-green-100 transition-colors border-2 border-transparent hover:border-green-200"
+          >
+            <span className="text-3xl mb-1">{platform.icon}</span>
+            <span className="font-medium text-gray-900 text-sm">{platform.name}</span>
+            <span className="text-xs text-green-600 mt-0.5">Скачать профиль</span>
+          </button>
+        ))}
+      </div>
+
+      {/* VPN Server info */}
+      <div className="p-3 bg-green-50 rounded-lg border border-green-100 mb-3">
+        <div className="flex justify-between items-center text-sm">
+          <span className="text-gray-600">{t('portalDevices.vpnServer')}</span>
+          <div className="flex items-center gap-2">
+            <code className="font-mono text-green-700">{profileInfo.vpn.server}</code>
+            <button
+              onClick={() => copyToClipboard(profileInfo.vpn.server, 'vpnserver')}
+              className="text-green-400 hover:text-green-600"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+            {copied === 'vpnserver' && <span className="text-xs text-green-600">{t('common.copied')}</span>}
+          </div>
+        </div>
+      </div>
+
+      {/* Android app link */}
+      <a
+        href="https://play.google.com/store/apps/details?id=org.strongswan.android"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">🤖</span>
+          <div className="flex-1">
+            <p className="font-medium text-gray-900 text-sm">{t('portalDevices.strongswanAndroid')}</p>
+            <p className="text-xs text-gray-500">{t('portalDevices.freeInPlayStore')}</p>
+          </div>
+          <ExternalLink className="w-5 h-5 text-gray-400" />
+        </div>
+      </a>
+    </div>
+  )
+}
+
+// ---- Proxy Tab Content ----
+function ProxyTabContent({ profileInfo, downloadBase, copied, copyToClipboard, t }) {
+  return (
+    <div className="card p-4 sm:p-6 border-2 border-orange-200">
+      <p className="text-sm text-gray-600 mb-4">Прокси для браузера — только выбранные сайты</p>
+
+      {/* Proxy addresses */}
+      <div className="space-y-3 text-sm mb-4">
+        <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg border border-orange-100">
+          <span className="text-gray-600">HTTP Proxy</span>
+          <div className="flex items-center gap-2">
+            <code className="font-mono text-orange-700">{profileInfo.proxy.host}:{profileInfo.proxy.http_port}</code>
+            <button
+              onClick={() => copyToClipboard(`${profileInfo.proxy.host}:${profileInfo.proxy.http_port}`, 'http')}
+              className="text-orange-400 hover:text-orange-600"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+            {copied === 'http' && <span className="text-xs text-green-600">{t('common.copied')}</span>}
+          </div>
+        </div>
+        <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg border border-orange-100">
+          <span className="text-gray-600">SOCKS5 Proxy</span>
+          <div className="flex items-center gap-2">
+            <code className="font-mono text-orange-700">{profileInfo.proxy.host}:{profileInfo.proxy.socks_port}</code>
+            <button
+              onClick={() => copyToClipboard(`${profileInfo.proxy.host}:${profileInfo.proxy.socks_port}`, 'socks')}
+              className="text-orange-400 hover:text-orange-600"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+            {copied === 'socks' && <span className="text-xs text-green-600">{t('common.copied')}</span>}
+          </div>
+        </div>
+      </div>
+
+      {/* Proxy setup buttons */}
+      <div className="space-y-3 mb-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <a
+            href={`${downloadBase}/pac`}
+            className="btn btn-secondary flex items-center justify-center gap-2"
+          >
+            <Download className="w-4 h-4" />
+            {t('portalDevices.downloadPac')}
+          </a>
+          <a
+            href={`${downloadBase}/proxy-setup`}
+            className="btn btn-secondary flex items-center justify-center gap-2"
+          >
+            <Monitor className="w-4 h-4" />
+            {t('portalDevices.downloadProxySetup')}
+          </a>
+        </div>
+        <p className="text-xs text-gray-500 text-center">
+          {t('portalDevices.pacDescription')}
+        </p>
+      </div>
+
+      {/* Platform instructions for proxy */}
+      <div>
+        <h3 className="text-sm font-medium text-gray-700 mb-2">Настройка по платформам</h3>
+        <PlatformAccordion
+          colorClass="orange"
+          platforms={PLATFORMS.map(p => ({
+            key: p.id,
+            label: p.name,
+            icon: p.icon,
+            data: {
+              app: p.id === 'ios' ? 'Настройки' : p.id === 'android' ? 'Настройки' : p.id === 'windows' ? 'Настройки Windows' : 'Системные настройки',
+              steps: getProxyPlatformSteps(p.id, downloadBase),
+            }
+          }))}
+        />
+      </div>
+    </div>
+  )
+}
+
+// Proxy platform-specific steps for PlatformAccordion
+function getProxyPlatformSteps(platformId, downloadBase) {
+  const pacUrl = `${window.location.origin}${downloadBase}/pac`
+  switch (platformId) {
+    case 'ios':
+      return [
+        'Откройте Настройки → Wi-Fi',
+        'Нажмите (i) рядом с вашей сетью',
+        'Прокрутите вниз до "Настройка прокси"',
+        'Выберите "Автоматически"',
+        `Введите URL: ${pacUrl}`,
+        'Нажмите "Сохранить"'
+      ]
+    case 'android':
+      return [
+        'Откройте Настройки → Wi-Fi',
+        'Долгое нажатие на вашу сеть → Изменить сеть',
+        'Разверните "Расширенные настройки"',
+        'Найдите "Прокси" и выберите "Авто-настройка"',
+        `Введите URL: ${pacUrl}`,
+        'Сохраните настройки'
+      ]
+    case 'windows':
+      return [
+        'Откройте Настройки → Сеть и Интернет → Прокси',
+        'Включите "Использовать сценарий настройки"',
+        `Введите адрес: ${pacUrl}`,
+        'Нажмите "Сохранить"',
+        'Перезапустите браузер для применения настроек'
+      ]
+    case 'macos':
+      return [
+        'Откройте Системные настройки → Сеть',
+        'Выберите вашу сеть и нажмите "Дополнительно"',
+        'Перейдите на вкладку "Прокси"',
+        'Включите "Автоматическая настройка прокси"',
+        `Введите URL: ${pacUrl}`,
+        'Нажмите "OK" и "Применить"'
+      ]
+    default:
+      return ['Настройте прокси в системных настройках']
+  }
+}
+
+// ---- XRay Tab Content ----
+function XrayTabContent({ xrayData, xrayQr, xrayQrLoading, showXrayQr, setShowXrayQr, copied, copyToClipboard }) {
+  return (
+    <div className="card p-4 sm:p-6 border-2 border-purple-200">
+      <p className="text-sm text-gray-600 mb-4">Современный протокол с маскировкой трафика</p>
+
+      {/* VLESS URL */}
+      <div className="p-3 bg-purple-50 rounded-lg border border-purple-100">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs font-medium text-purple-700">VLESS URL</span>
+          <button
+            onClick={() => copyToClipboard(xrayData.vless_url, 'vless')}
+            className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-800"
+          >
+            <Copy className="w-3.5 h-3.5" />
+            {copied === 'vless' ? 'Скопировано!' : 'Копировать'}
+          </button>
+        </div>
+        <code className="block text-xs text-purple-800 font-mono break-all bg-white p-2 rounded border border-purple-100 max-h-20 overflow-y-auto">
+          {xrayData.vless_url}
+        </code>
+      </div>
+
+      {/* QR Code toggle */}
+      <div className="mt-3">
+        <button
+          onClick={() => setShowXrayQr(!showXrayQr)}
+          className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-800 font-medium"
+        >
+          <QrCode className="w-4 h-4" />
+          {showXrayQr ? 'Скрыть QR-код' : 'Показать QR-код'}
+        </button>
+        {showXrayQr && (
+          <div className="mt-3 flex justify-center">
+            {xrayQrLoading ? (
+              <div className="w-48 h-48 bg-purple-50 rounded-lg flex items-center justify-center">
+                <span className="text-sm text-purple-500">Загрузка...</span>
+              </div>
+            ) : xrayQr?.qrcode ? (
+              <img src={xrayQr.qrcode} alt="XRay QR Code" className="w-48 h-48 rounded-lg border border-purple-200" />
+            ) : (
+              <p className="text-sm text-gray-500">QR-код недоступен</p>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Platform instructions */}
+      <div className="mt-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-2">Инструкции по платформам</h3>
+        <PlatformAccordion
+          colorClass="purple"
+          platforms={[
+            { key: 'ios', label: 'iPhone / iPad', icon: '📱', data: xrayData.instructions?.ios },
+            { key: 'android', label: 'Android', icon: '🤖', data: xrayData.instructions?.android },
+            { key: 'windows', label: 'Windows', icon: '🪟', data: xrayData.instructions?.windows },
+            { key: 'macos', label: 'macOS', icon: '🍏', data: xrayData.instructions?.mac },
+          ]}
+        />
+      </div>
+    </div>
+  )
+}
+
+// ---- WireGuard Tab Content ----
+function WireguardTabContent({ wgData, wgQr, wgQrLoading, showWgQr, setShowWgQr, copied, copyToClipboard }) {
+  return (
+    <div className="card p-4 sm:p-6 border-2 border-blue-200">
+      <p className="text-sm text-gray-600 mb-4">Быстрый и лёгкий VPN-протокол</p>
+
+      {/* Download .conf + QR */}
+      <div className="flex flex-wrap gap-3">
+        <a
+          href={`/api/portal/profiles/wireguard/config`}
+          onClick={(e) => {
+            e.preventDefault()
+            const token = localStorage.getItem('client_token')
+            fetch('/api/portal/profiles/wireguard/config', {
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
+              .then(r => r.blob())
+              .then(blob => {
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url
+                a.download = 'wireguard.conf'
+                a.click()
+                URL.revokeObjectURL(url)
+              })
+          }}
+          className="btn btn-primary flex items-center gap-2"
+        >
+          <Download className="w-4 h-4" />
+          Скачать .conf
+        </a>
+        <button
+          onClick={() => setShowWgQr(!showWgQr)}
+          className="btn btn-secondary flex items-center gap-2"
+        >
+          <QrCode className="w-4 h-4" />
+          {showWgQr ? 'Скрыть QR-код' : 'Показать QR-код'}
+        </button>
+      </div>
+
+      {/* QR Code */}
+      {showWgQr && (
+        <div className="mt-3 flex justify-center">
+          {wgQrLoading ? (
+            <div className="w-48 h-48 bg-blue-50 rounded-lg flex items-center justify-center">
+              <span className="text-sm text-blue-500">Загрузка...</span>
+            </div>
+          ) : wgQr?.qrcode ? (
+            <img src={wgQr.qrcode} alt="WireGuard QR Code" className="w-48 h-48 rounded-lg border border-blue-200" />
+          ) : (
+            <p className="text-sm text-gray-500">QR-код недоступен</p>
+          )}
+        </div>
+      )}
+
+      {/* Server info */}
+      <div className="mt-4 space-y-2">
+        <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm">
+          <span className="text-gray-600">Сервер</span>
+          <div className="flex items-center gap-2">
+            <code className="font-mono text-blue-700">{wgData.server_ip}:{wgData.server_port}</code>
+            <button
+              onClick={() => copyToClipboard(`${wgData.server_ip}:${wgData.server_port}`, 'wgserver')}
+              className="text-blue-400 hover:text-blue-600"
+            >
+              <Copy className="w-4 h-4" />
+            </button>
+            {copied === 'wgserver' && <span className="text-xs text-green-600">Скопировано!</span>}
+          </div>
+        </div>
+        <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm">
+          <span className="text-gray-600">Ваш IP</span>
+          <code className="font-mono text-blue-700">{wgData.client_ip}</code>
+        </div>
+      </div>
+
+      {/* Platform instructions */}
+      <div className="mt-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-2">Инструкции по платформам</h3>
+        <PlatformAccordion
+          colorClass="blue"
+          platforms={[
+            { key: 'ios', label: 'iPhone / iPad', icon: '📱', data: wgData.instructions?.ios },
+            { key: 'android', label: 'Android', icon: '🤖', data: wgData.instructions?.android },
+            { key: 'windows', label: 'Windows', icon: '🪟', data: wgData.instructions?.windows },
+            { key: 'macos', label: 'macOS', icon: '🍏', data: wgData.instructions?.mac },
+            { key: 'linux', label: 'Linux', icon: '🐧', data: wgData.instructions?.linux },
+          ]}
+        />
+      </div>
+    </div>
+  )
+}
+
 export default function PortalDevices() {
   const { t } = useTranslation()
   const [showPassword, setShowPassword] = useState(false)
@@ -328,6 +731,7 @@ export default function PortalDevices() {
   const [selectedPlatform, setSelectedPlatform] = useState(null)
   const [showXrayQr, setShowXrayQr] = useState(false)
   const [showWgQr, setShowWgQr] = useState(false)
+  const [activeTab, setActiveTab] = useState(null)
 
   const { data: profileInfo, isLoading, error } = useQuery({
     queryKey: ['portal-profiles'],
@@ -372,19 +776,29 @@ export default function PortalDevices() {
     setTimeout(() => setCopied(''), 2000)
   }
 
-  // Helper to safely get translation (returns string or fallback)
-  const safeT = (key, fallback = '') => {
-    const result = t(key)
-    return typeof result === 'string' ? result : fallback
-  }
-
   const hasVpn = !!profileInfo?.vpn
   const hasProxy = !!profileInfo?.proxy
-  const hasBoth = hasVpn && hasProxy
+  const hasXray = !!xrayData?.available
+  const hasWg = !!wgData?.available
 
   // Use public download URLs with access_token (no auth headers needed for direct links)
   const accessToken = profileInfo?.access_token
   const downloadBase = accessToken ? `/api/download/${accessToken}` : '/api/portal/profiles'
+
+  // Build available tabs
+  const availableTabs = useMemo(() => {
+    const tabs = []
+    if (hasVpn) tabs.push(TAB_CONFIG.vpn)
+    if (hasProxy) tabs.push(TAB_CONFIG.proxy)
+    if (hasXray) tabs.push(TAB_CONFIG.xray)
+    if (hasWg) tabs.push(TAB_CONFIG.wireguard)
+    return tabs
+  }, [hasVpn, hasProxy, hasXray, hasWg])
+
+  // Resolve active tab: use explicit selection if valid, otherwise first available
+  const currentTab = (activeTab && availableTabs.find(t => t.id === activeTab))
+    ? activeTab
+    : availableTabs[0]?.id || null
 
   if (isLoading) {
     return (
@@ -402,7 +816,7 @@ export default function PortalDevices() {
     )
   }
 
-  const hasAnyService = profileInfo?.vpn || profileInfo?.proxy
+  const hasAnyService = hasVpn || hasProxy || hasXray || hasWg
 
   return (
     <div className="space-y-6 pb-20 md:pb-0">
@@ -426,15 +840,15 @@ export default function PortalDevices() {
         </div>
       )}
 
-      {/* Unified credentials section */}
+      {/* Unified credentials section — shown when VPN or Proxy enabled */}
       {(hasVpn || hasProxy) && (
         <div className="card p-4 sm:p-6 border-2 border-primary-200 bg-primary-50/30">
-          <h2 className="font-semibold text-gray-900 mb-2 flex items-center gap-2">
+          <h2 className="font-semibold text-gray-900 mb-1 flex items-center gap-2">
             <span className="text-xl">🔑</span>
             {t('portalDevices.yourCredentials')}
           </h2>
           <p className="text-sm text-gray-500 mb-4">
-            {t('portalDevices.sameCredentialsNote')}
+            Используются для VPN (IKEv2) и Прокси
           </p>
 
           <div className="space-y-3 text-sm">
@@ -476,316 +890,80 @@ export default function PortalDevices() {
         </div>
       )}
 
-      {/* Quick Download Section */}
-      <div className="card p-4 sm:p-6">
-        <h2 className="font-semibold text-gray-900 mb-4 uppercase text-sm tracking-wide">
-          {t('portalDevices.quickDownload')}
-        </h2>
-
-        <div className="grid grid-cols-2 gap-3">
-          {PLATFORMS.map((platform) => (
-            <button
-              key={platform.id}
-              onClick={() => setSelectedPlatform(platform)}
-              className="flex flex-col items-center justify-center p-6 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors border-2 border-transparent hover:border-primary-200"
-            >
-              <span className="text-4xl mb-2">{platform.icon}</span>
-              <span className="font-medium text-gray-900">{platform.name}</span>
-              <span className="text-xs text-gray-500 mt-1">
-                {hasBoth ? 'VPN + Proxy' : hasVpn ? 'VPN' : hasProxy ? 'Proxy' : ''}
-              </span>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Proxy Section - detailed info */}
-      {hasProxy && (
-        <div className="card p-4 sm:p-6">
-          <h2 className="font-semibold text-gray-900 mb-2 uppercase text-sm tracking-wide">
-            {t('portalDevices.proxySection')}
-          </h2>
-          <p className="text-sm text-gray-600 mb-4">
-            {t('portalDevices.proxyDescription')}
-          </p>
-
-          {/* Proxy addresses */}
-          <div className="space-y-3 text-sm mb-4">
-            <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg border border-orange-100">
-              <span className="text-gray-600">HTTP Proxy</span>
-              <div className="flex items-center gap-2">
-                <code className="font-mono text-orange-700">{profileInfo.proxy.host}:{profileInfo.proxy.http_port}</code>
+      {/* Service tabs */}
+      {availableTabs.length > 1 && (
+        <div className="border-b border-gray-200 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          <nav className="flex gap-1 min-w-max" aria-label="Сервисы">
+            {availableTabs.map((tab) => {
+              const colors = TAB_COLORS[tab.color]
+              const isActive = currentTab === tab.id
+              const Icon = tab.Icon
+              return (
                 <button
-                  onClick={() => copyToClipboard(`${profileInfo.proxy.host}:${profileInfo.proxy.http_port}`, 'http')}
-                  className="text-orange-400 hover:text-orange-600"
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-3 border-b-2 text-sm font-medium transition-colors whitespace-nowrap ${
+                    isActive ? colors.active : colors.inactive
+                  }`}
                 >
-                  <Copy className="w-4 h-4" />
+                  <span className={`p-1 rounded ${isActive ? colors.iconBg : 'bg-gray-100'}`}>
+                    <Icon className={`w-4 h-4 ${isActive ? colors.iconText : 'text-gray-400'}`} />
+                  </span>
+                  {tab.label}
                 </button>
-                {copied === 'http' && <span className="text-xs text-green-600">{t('common.copied')}</span>}
-              </div>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-orange-50 rounded-lg border border-orange-100">
-              <span className="text-gray-600">SOCKS5 Proxy</span>
-              <div className="flex items-center gap-2">
-                <code className="font-mono text-orange-700">{profileInfo.proxy.host}:{profileInfo.proxy.socks_port}</code>
-                <button
-                  onClick={() => copyToClipboard(`${profileInfo.proxy.host}:${profileInfo.proxy.socks_port}`, 'socks')}
-                  className="text-orange-400 hover:text-orange-600"
-                >
-                  <Copy className="w-4 h-4" />
-                </button>
-                {copied === 'socks' && <span className="text-xs text-green-600">{t('common.copied')}</span>}
-              </div>
-            </div>
-          </div>
-
-          {/* Proxy setup options */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-medium text-gray-700">{t('portalDevices.proxySetupOptions')}</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <a
-                href={`${downloadBase}/pac`}
-                className="btn btn-secondary flex items-center justify-center gap-2"
-              >
-                <Download className="w-4 h-4" />
-                {t('portalDevices.downloadPac')}
-              </a>
-              <a
-                href={`${downloadBase}/proxy-setup`}
-                className="btn btn-secondary flex items-center justify-center gap-2"
-              >
-                <Monitor className="w-4 h-4" />
-                {t('portalDevices.downloadProxySetup')}
-              </a>
-            </div>
-            <p className="text-xs text-gray-500 text-center">
-              {t('portalDevices.pacDescription')}
-            </p>
-          </div>
+              )
+            })}
+          </nav>
         </div>
       )}
 
-      {/* VPN Section - detailed info */}
-      {hasVpn && (
-        <div className="card p-4 sm:p-6">
-          <h2 className="font-semibold text-gray-900 mb-2 uppercase text-sm tracking-wide">
-            {t('portalDevices.vpnSection')}
-          </h2>
-          <p className="text-sm text-gray-500 mb-4">
-            {t('portalDevices.vpnSectionDescription')}
-          </p>
-
-          {/* VPN Server info */}
-          <div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-100">
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-gray-600">{t('portalDevices.vpnServer')}</span>
-              <div className="flex items-center gap-2">
-                <code className="font-mono text-green-700">{profileInfo.vpn.server}</code>
-                <button
-                  onClick={() => copyToClipboard(profileInfo.vpn.server, 'vpnserver')}
-                  className="text-green-400 hover:text-green-600"
-                >
-                  <Copy className="w-4 h-4" />
-                </button>
-                {copied === 'vpnserver' && <span className="text-xs text-green-600">{t('common.copied')}</span>}
-              </div>
-            </div>
-          </div>
-
-          {/* Android app link */}
-          <a
-            href="https://play.google.com/store/apps/details?id=org.strongswan.android"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">🤖</span>
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">{t('portalDevices.strongswanAndroid')}</p>
-                <p className="text-sm text-gray-500">{t('portalDevices.freeInPlayStore')}</p>
-              </div>
-              <ExternalLink className="w-5 h-5 text-gray-400" />
-            </div>
-          </a>
-        </div>
+      {/* Tab content */}
+      {currentTab === 'vpn' && hasVpn && (
+        <VpnTabContent
+          profileInfo={profileInfo}
+          downloadBase={downloadBase}
+          copied={copied}
+          copyToClipboard={copyToClipboard}
+          t={t}
+          setSelectedPlatform={setSelectedPlatform}
+        />
       )}
 
-      {/* XRay (VLESS + REALITY) Section */}
-      {xrayData?.available && (
-        <div className="card p-4 sm:p-6 border-2 border-purple-200">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Zap className="w-6 h-6 text-purple-600" />
-            </div>
-            <div>
-              <h2 className="font-semibold text-gray-900 uppercase text-sm tracking-wide">
-                XRay (VLESS + REALITY)
-              </h2>
-              <p className="text-sm text-gray-500">Современный протокол с маскировкой трафика</p>
-            </div>
-          </div>
-
-          {/* VLESS URL */}
-          <div className="mt-4 p-3 bg-purple-50 rounded-lg border border-purple-100">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium text-purple-700">VLESS URL</span>
-              <button
-                onClick={() => copyToClipboard(xrayData.vless_url, 'vless')}
-                className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-800"
-              >
-                <Copy className="w-3.5 h-3.5" />
-                {copied === 'vless' ? 'Скопировано!' : 'Копировать'}
-              </button>
-            </div>
-            <code className="block text-xs text-purple-800 font-mono break-all bg-white p-2 rounded border border-purple-100 max-h-20 overflow-y-auto">
-              {xrayData.vless_url}
-            </code>
-          </div>
-
-          {/* QR Code toggle */}
-          <div className="mt-3">
-            <button
-              onClick={() => setShowXrayQr(!showXrayQr)}
-              className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-800 font-medium"
-            >
-              <QrCode className="w-4 h-4" />
-              {showXrayQr ? 'Скрыть QR-код' : 'Показать QR-код'}
-            </button>
-            {showXrayQr && (
-              <div className="mt-3 flex justify-center">
-                {xrayQrLoading ? (
-                  <div className="w-48 h-48 bg-purple-50 rounded-lg flex items-center justify-center">
-                    <span className="text-sm text-purple-500">Загрузка...</span>
-                  </div>
-                ) : xrayQr?.qrcode ? (
-                  <img src={xrayQr.qrcode} alt="XRay QR Code" className="w-48 h-48 rounded-lg border border-purple-200" />
-                ) : (
-                  <p className="text-sm text-gray-500">QR-код недоступен</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Platform instructions */}
-          <div className="mt-4">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Инструкции по платформам</h3>
-            <PlatformAccordion
-              colorClass="purple"
-              platforms={[
-                { key: 'ios', label: 'iPhone / iPad', icon: '📱', data: xrayData.instructions?.ios },
-                { key: 'android', label: 'Android', icon: '🤖', data: xrayData.instructions?.android },
-                { key: 'windows', label: 'Windows', icon: '🪟', data: xrayData.instructions?.windows },
-                { key: 'macos', label: 'macOS', icon: '🍏', data: xrayData.instructions?.mac },
-              ]}
-            />
-          </div>
-        </div>
+      {currentTab === 'proxy' && hasProxy && (
+        <ProxyTabContent
+          profileInfo={profileInfo}
+          downloadBase={downloadBase}
+          copied={copied}
+          copyToClipboard={copyToClipboard}
+          t={t}
+        />
       )}
 
-      {/* WireGuard VPN Section */}
-      {wgData?.available && (
-        <div className="card p-4 sm:p-6 border-2 border-blue-200">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <Wifi className="w-6 h-6 text-blue-600" />
-            </div>
-            <div>
-              <h2 className="font-semibold text-gray-900 uppercase text-sm tracking-wide">
-                WireGuard VPN
-              </h2>
-              <p className="text-sm text-gray-500">Быстрый и лёгкий VPN-протокол</p>
-            </div>
-          </div>
-
-          {/* Download .conf + QR */}
-          <div className="mt-4 flex flex-wrap gap-3">
-            <a
-              href={`/api/portal/profiles/wireguard/config`}
-              onClick={(e) => {
-                e.preventDefault()
-                const token = localStorage.getItem('client_token')
-                fetch('/api/portal/profiles/wireguard/config', {
-                  headers: { 'Authorization': `Bearer ${token}` }
-                })
-                  .then(r => r.blob())
-                  .then(blob => {
-                    const url = URL.createObjectURL(blob)
-                    const a = document.createElement('a')
-                    a.href = url
-                    a.download = 'wireguard.conf'
-                    a.click()
-                    URL.revokeObjectURL(url)
-                  })
-              }}
-              className="btn btn-primary flex items-center gap-2"
-            >
-              <Download className="w-4 h-4" />
-              Скачать .conf
-            </a>
-            <button
-              onClick={() => setShowWgQr(!showWgQr)}
-              className="btn btn-secondary flex items-center gap-2"
-            >
-              <QrCode className="w-4 h-4" />
-              {showWgQr ? 'Скрыть QR-код' : 'Показать QR-код'}
-            </button>
-          </div>
-
-          {/* QR Code */}
-          {showWgQr && (
-            <div className="mt-3 flex justify-center">
-              {wgQrLoading ? (
-                <div className="w-48 h-48 bg-blue-50 rounded-lg flex items-center justify-center">
-                  <span className="text-sm text-blue-500">Загрузка...</span>
-                </div>
-              ) : wgQr?.qrcode ? (
-                <img src={wgQr.qrcode} alt="WireGuard QR Code" className="w-48 h-48 rounded-lg border border-blue-200" />
-              ) : (
-                <p className="text-sm text-gray-500">QR-код недоступен</p>
-              )}
-            </div>
-          )}
-
-          {/* Server info */}
-          <div className="mt-4 space-y-2">
-            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm">
-              <span className="text-gray-600">Сервер</span>
-              <div className="flex items-center gap-2">
-                <code className="font-mono text-blue-700">{wgData.server_ip}:{wgData.server_port}</code>
-                <button
-                  onClick={() => copyToClipboard(`${wgData.server_ip}:${wgData.server_port}`, 'wgserver')}
-                  className="text-blue-400 hover:text-blue-600"
-                >
-                  <Copy className="w-4 h-4" />
-                </button>
-                {copied === 'wgserver' && <span className="text-xs text-green-600">Скопировано!</span>}
-              </div>
-            </div>
-            <div className="flex justify-between items-center p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm">
-              <span className="text-gray-600">Ваш IP</span>
-              <code className="font-mono text-blue-700">{wgData.client_ip}</code>
-            </div>
-          </div>
-
-          {/* Platform instructions */}
-          <div className="mt-4">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Инструкции по платформам</h3>
-            <PlatformAccordion
-              colorClass="blue"
-              platforms={[
-                { key: 'ios', label: 'iPhone / iPad', icon: '📱', data: wgData.instructions?.ios },
-                { key: 'android', label: 'Android', icon: '🤖', data: wgData.instructions?.android },
-                { key: 'windows', label: 'Windows', icon: '🪟', data: wgData.instructions?.windows },
-                { key: 'macos', label: 'macOS', icon: '🍏', data: wgData.instructions?.mac },
-                { key: 'linux', label: 'Linux', icon: '🐧', data: wgData.instructions?.linux },
-              ]}
-            />
-          </div>
-        </div>
+      {currentTab === 'xray' && hasXray && (
+        <XrayTabContent
+          xrayData={xrayData}
+          xrayQr={xrayQr}
+          xrayQrLoading={xrayQrLoading}
+          showXrayQr={showXrayQr}
+          setShowXrayQr={setShowXrayQr}
+          copied={copied}
+          copyToClipboard={copyToClipboard}
+        />
       )}
 
-      {/* Connection Type Modal */}
+      {currentTab === 'wireguard' && hasWg && (
+        <WireguardTabContent
+          wgData={wgData}
+          wgQr={wgQr}
+          wgQrLoading={wgQrLoading}
+          showWgQr={showWgQr}
+          setShowWgQr={setShowWgQr}
+          copied={copied}
+          copyToClipboard={copyToClipboard}
+        />
+      )}
+
+      {/* Connection Type Modal (for VPN tab platform buttons) */}
       <ConnectionTypeModal
         isOpen={!!selectedPlatform}
         onClose={() => setSelectedPlatform(null)}
