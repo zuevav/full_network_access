@@ -425,29 +425,84 @@ async def run_update_process():
 
         # Step 4: Install Python dependencies
         add_log("Installing Python dependencies...")
-        venv_pip = DEPLOY_DIR / "backend" / "venv" / "bin" / "pip"
-        result = subprocess.run(
-            [str(venv_pip), "install", "-r", "requirements.txt"],
-            cwd=DEPLOY_DIR / "backend",
-            capture_output=True,
-            text=True,
-            timeout=300
-        )
-        if result.returncode != 0:
-            add_log(f"WARNING: pip install had issues: {result.stderr[:200]}")
+        backend_dir = DEPLOY_DIR / "backend"
+        venv_dir = backend_dir / "venv"
+        venv_pip = venv_dir / "bin" / "pip"
+
+        # Create venv if it doesn't exist
+        if not venv_pip.exists():
+            add_log("Virtual environment not found, creating...")
+            result = subprocess.run(
+                ["/usr/bin/python3", "-m", "venv", str(venv_dir)],
+                cwd=backend_dir,
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
+            if result.returncode != 0:
+                add_log(f"WARNING: venv creation failed: {result.stderr[:200]}")
+                add_log("Trying to use global pip...")
+                # Fallback to global pip
+                result = subprocess.run(
+                    ["/usr/bin/pip3", "install", "-r", "requirements.txt"],
+                    cwd=backend_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=300
+                )
+                if result.returncode != 0:
+                    add_log(f"WARNING: global pip install had issues: {result.stderr[:200]}")
+                else:
+                    add_log("Python dependencies installed globally")
+            else:
+                add_log("Virtual environment created")
+                # Install dependencies in new venv
+                result = subprocess.run(
+                    [str(venv_pip), "install", "-r", "requirements.txt"],
+                    cwd=backend_dir,
+                    capture_output=True,
+                    text=True,
+                    timeout=300
+                )
+                if result.returncode != 0:
+                    add_log(f"WARNING: pip install had issues: {result.stderr[:200]}")
+                else:
+                    add_log("Python dependencies updated")
         else:
-            add_log("Python dependencies updated")
+            result = subprocess.run(
+                [str(venv_pip), "install", "-r", "requirements.txt"],
+                cwd=backend_dir,
+                capture_output=True,
+                text=True,
+                timeout=300
+            )
+            if result.returncode != 0:
+                add_log(f"WARNING: pip install had issues: {result.stderr[:200]}")
+            else:
+                add_log("Python dependencies updated")
 
         # Step 5: Run migrations
         add_log("Running database migrations...")
-        venv_alembic = DEPLOY_DIR / "backend" / "venv" / "bin" / "alembic"
-        result = subprocess.run(
-            [str(venv_alembic), "upgrade", "head"],
-            cwd=DEPLOY_DIR / "backend",
-            capture_output=True,
-            text=True,
-            timeout=120
-        )
+        venv_alembic = venv_dir / "bin" / "alembic"
+
+        if venv_alembic.exists():
+            result = subprocess.run(
+                [str(venv_alembic), "upgrade", "head"],
+                cwd=backend_dir,
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
+        else:
+            # Try global alembic
+            result = subprocess.run(
+                ["/usr/local/bin/alembic", "upgrade", "head"],
+                cwd=backend_dir,
+                capture_output=True,
+                text=True,
+                timeout=120
+            )
+
         if result.returncode != 0:
             add_log(f"WARNING: Migrations had issues: {result.stderr[:200]}")
         else:
