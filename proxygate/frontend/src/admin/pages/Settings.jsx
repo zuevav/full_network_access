@@ -74,6 +74,29 @@ export default function Settings() {
   const [vpnSyncing, setVpnSyncing] = useState(false)
   const [vpnSyncResult, setVpnSyncResult] = useState(null)
 
+  // XRay state
+  const [xrayStatus, setXrayStatus] = useState(null)
+  const [xrayLoading, setXrayLoading] = useState(true)
+  const [xraySaving, setXraySaving] = useState(false)
+  const [xraySettings, setXraySettings] = useState({
+    port: 443,
+    dest_server: 'www.microsoft.com',
+    dest_port: 443,
+    server_name: 'www.microsoft.com'
+  })
+
+  // WireGuard state
+  const [wgStatus, setWgStatus] = useState(null)
+  const [wgLoading, setWgLoading] = useState(true)
+  const [wgSaving, setWgSaving] = useState(false)
+  const [wgSettings, setWgSettings] = useState({
+    listen_port: 51820,
+    server_ip: '10.10.0.1',
+    subnet: '10.10.0.0/24',
+    dns: '1.1.1.1,8.8.8.8',
+    mtu: 1420
+  })
+
   // App version
   const [appVersion, setAppVersion] = useState('...')
 
@@ -84,6 +107,8 @@ export default function Settings() {
     loadSSLSettings()
     loadAdminProfile()
     loadVersion()
+    loadXrayStatus()
+    loadWireguardStatus()
   }, [])
 
   const loadVersion = async () => {
@@ -162,6 +187,69 @@ export default function Settings() {
       console.error('Error loading admin profile:', error)
     } finally {
       setProfileLoading(false)
+    }
+  }
+
+  const loadXrayStatus = async () => {
+    try {
+      const data = await api.getXrayStatus()
+      setXrayStatus(data)
+      if (data.port) {
+        setXraySettings(prev => ({
+          ...prev,
+          port: data.port,
+          server_name: data.server_name || prev.server_name
+        }))
+      }
+    } catch (error) {
+      console.error('Error loading XRay status:', error)
+    } finally {
+      setXrayLoading(false)
+    }
+  }
+
+  const loadWireguardStatus = async () => {
+    try {
+      const data = await api.getWireguardStatus()
+      setWgStatus(data)
+      if (data.listen_port) {
+        setWgSettings(prev => ({
+          ...prev,
+          listen_port: data.listen_port,
+          server_ip: data.server_ip || prev.server_ip,
+          subnet: data.subnet || prev.subnet
+        }))
+      }
+    } catch (error) {
+      console.error('Error loading WireGuard status:', error)
+    } finally {
+      setWgLoading(false)
+    }
+  }
+
+  const handleSetupXray = async () => {
+    setXraySaving(true)
+    try {
+      await api.setupXrayServer(xraySettings)
+      showMessage('XRay сервер настроен и запущен')
+      loadXrayStatus()
+    } catch (error) {
+      showMessage(error.message, 'error')
+    } finally {
+      setXraySaving(false)
+    }
+  }
+
+  const handleSetupWireguard = async () => {
+    setWgSaving(true)
+    try {
+      await api.setupWireguardServer(wgSettings)
+      showMessage('WireGuard сервер настроен и запущен')
+      loadWireguardStatus()
+    } catch (error) {
+      showMessage(error.message, 'error')
+    } finally {
+      setWgSaving(false)
     }
   }
 
@@ -554,6 +642,161 @@ export default function Settings() {
                   ))}
                 </div>
               )}
+            </div>
+          )}
+        </div>
+
+        {/* XRay VLESS + REALITY */}
+        <div className="card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+              <Server className="w-5 h-5" />
+              XRay (VLESS + REALITY)
+            </h3>
+            {xrayStatus?.is_running && (
+              <span className="px-2 py-1 text-xs rounded bg-green-100 text-green-700">
+                running
+              </span>
+            )}
+          </div>
+
+          {xrayLoading ? (
+            <div className="animate-pulse space-y-3">
+              <div className="h-10 bg-gray-200 rounded"></div>
+              <div className="h-10 bg-gray-200 rounded"></div>
+            </div>
+          ) : !xrayStatus?.is_installed ? (
+            <p className="text-sm text-gray-500">XRay не установлен на сервере</p>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Протокол VLESS + REALITY для обхода DPI. Маскируется под обычный HTTPS-трафик к популярным сайтам.
+              </p>
+
+              {xrayStatus?.is_enabled && (
+                <div className="p-3 bg-green-50 rounded-lg text-sm">
+                  <p><span className="text-gray-500">Public Key:</span> <code className="text-xs break-all">{xrayStatus.public_key}</code></p>
+                  {xrayStatus.short_id && <p><span className="text-gray-500">Short ID:</span> {xrayStatus.short_id}</p>}
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Порт</label>
+                <input
+                  type="number"
+                  value={xraySettings.port}
+                  onChange={(e) => setXraySettings({ ...xraySettings, port: parseInt(e.target.value) })}
+                  className="input"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Маскировка под сайт (SNI)</label>
+                <input
+                  type="text"
+                  value={xraySettings.server_name}
+                  onChange={(e) => setXraySettings({ ...xraySettings, server_name: e.target.value, dest_server: e.target.value })}
+                  className="input"
+                  placeholder="www.microsoft.com"
+                />
+                <p className="text-xs text-gray-500 mt-1">Рекомендуется использовать популярные сайты: microsoft.com, apple.com, cloudflare.com</p>
+              </div>
+
+              <button
+                onClick={handleSetupXray}
+                disabled={xraySaving}
+                className="btn btn-primary w-full"
+              >
+                {xraySaving ? 'Настройка...' : xrayStatus?.is_enabled ? 'Обновить настройки' : 'Настроить и запустить'}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* WireGuard VPN */}
+        <div className="card p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+              <Shield className="w-5 h-5" />
+              WireGuard VPN
+            </h3>
+            {wgStatus?.is_running && (
+              <span className="px-2 py-1 text-xs rounded bg-green-100 text-green-700">
+                running
+              </span>
+            )}
+          </div>
+
+          {wgLoading ? (
+            <div className="animate-pulse space-y-3">
+              <div className="h-10 bg-gray-200 rounded"></div>
+              <div className="h-10 bg-gray-200 rounded"></div>
+            </div>
+          ) : !wgStatus?.is_installed ? (
+            <p className="text-sm text-gray-500">WireGuard не установлен на сервере</p>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Быстрый и современный VPN протокол. Полный туннель для всего трафика.
+              </p>
+
+              {wgStatus?.is_enabled && wgStatus?.public_key && (
+                <div className="p-3 bg-green-50 rounded-lg text-sm">
+                  <p><span className="text-gray-500">Public Key:</span> <code className="text-xs break-all">{wgStatus.public_key}</code></p>
+                  <p><span className="text-gray-500">Подсеть:</span> {wgStatus.subnet}</p>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Порт</label>
+                  <input
+                    type="number"
+                    value={wgSettings.listen_port}
+                    onChange={(e) => setWgSettings({ ...wgSettings, listen_port: parseInt(e.target.value) })}
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">IP сервера</label>
+                  <input
+                    type="text"
+                    value={wgSettings.server_ip}
+                    onChange={(e) => setWgSettings({ ...wgSettings, server_ip: e.target.value })}
+                    className="input"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Подсеть</label>
+                <input
+                  type="text"
+                  value={wgSettings.subnet}
+                  onChange={(e) => setWgSettings({ ...wgSettings, subnet: e.target.value })}
+                  className="input"
+                  placeholder="10.10.0.0/24"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">DNS серверы</label>
+                <input
+                  type="text"
+                  value={wgSettings.dns}
+                  onChange={(e) => setWgSettings({ ...wgSettings, dns: e.target.value })}
+                  className="input"
+                  placeholder="1.1.1.1,8.8.8.8"
+                />
+              </div>
+
+              <button
+                onClick={handleSetupWireguard}
+                disabled={wgSaving}
+                className="btn btn-primary w-full"
+              >
+                {wgSaving ? 'Настройка...' : wgStatus?.is_enabled ? 'Обновить настройки' : 'Настроить и запустить'}
+              </button>
             </div>
           )}
         </div>

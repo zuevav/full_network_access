@@ -179,6 +179,21 @@ class ApiClient {
     return this.request('/admin/clients/xray/status')
   }
 
+  async setupXrayServer(data) {
+    return this.request('/admin/clients/xray/setup', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async startXrayServer() {
+    return this.request('/admin/clients/xray/start', { method: 'POST' })
+  }
+
+  async stopXrayServer() {
+    return this.request('/admin/clients/xray/stop', { method: 'POST' })
+  }
+
   async getClientXray(clientId) {
     return this.request(`/admin/clients/${clientId}/xray`)
   }
@@ -198,6 +213,21 @@ class ApiClient {
   // WireGuard API methods
   async getWireguardStatus() {
     return this.request('/admin/clients/wireguard/status')
+  }
+
+  async setupWireguardServer(data) {
+    return this.request('/admin/clients/wireguard/setup', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    })
+  }
+
+  async startWireguardServer() {
+    return this.request('/admin/clients/wireguard/start', { method: 'POST' })
+  }
+
+  async stopWireguardServer() {
+    return this.request('/admin/clients/wireguard/stop', { method: 'POST' })
   }
 
   async getClientWireguard(clientId) {
