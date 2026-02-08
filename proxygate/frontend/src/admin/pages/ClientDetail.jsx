@@ -166,7 +166,22 @@ export default function ClientDetail() {
 
 function ProfilesTab({ client, t }) {
   const [copied, setCopied] = useState(false)
+  const [showRegenerate, setShowRegenerate] = useState(false)
+  const [expiresInDays, setExpiresInDays] = useState('')
+  const queryClient2 = useQueryClient()
   const portalUrl = `${window.location.origin}/api/connect/${client.access_token}`
+
+  const regenerateMutation = useMutation({
+    mutationFn: () => {
+      const days = expiresInDays ? parseInt(expiresInDays) : null
+      return api.regenerateClientToken(client.id, days)
+    },
+    onSuccess: () => {
+      queryClient2.invalidateQueries(['client', String(client.id)])
+      setShowRegenerate(false)
+      setExpiresInDays('')
+    },
+  })
 
   const copyToClipboard = async (text) => {
     try {
@@ -244,9 +259,63 @@ function ProfilesTab({ client, t }) {
             {copied ? t('clients.copied') : t('clients.copy')}
           </button>
         </div>
-        <p className="text-xs sm:text-sm text-gray-500 mt-2">
-          {t('clients.portalLinkHint')}
-        </p>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-xs sm:text-sm text-gray-500">
+            {client.access_token_expires_at ? (
+              <span className={new Date(client.access_token_expires_at) < new Date() ? 'text-red-600' : ''}>
+                {new Date(client.access_token_expires_at) < new Date()
+                  ? `Ссылка истекла ${new Date(client.access_token_expires_at).toLocaleDateString()}`
+                  : `Действует до: ${new Date(client.access_token_expires_at).toLocaleDateString()}`
+                }
+              </span>
+            ) : (
+              <span>Бессрочная ссылка</span>
+            )}
+          </p>
+          <button
+            onClick={() => setShowRegenerate(!showRegenerate)}
+            className="text-xs text-primary-600 hover:text-primary-700 flex items-center gap-1"
+          >
+            <RefreshCw className="w-3 h-3" />
+            Перегенерировать
+          </button>
+        </div>
+        {showRegenerate && (
+          <div className="mt-3 p-3 bg-gray-50 rounded-lg space-y-2">
+            <div>
+              <label className="text-xs text-gray-500">Срок действия (дней, пусто = бессрочно)</label>
+              <input
+                type="number"
+                min="1"
+                max="3650"
+                className="input text-sm mt-1"
+                value={expiresInDays}
+                onChange={(e) => setExpiresInDays(e.target.value)}
+                placeholder="Бессрочно"
+              />
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  if (confirm('Старая ссылка перестанет работать. Продолжить?')) {
+                    regenerateMutation.mutate()
+                  }
+                }}
+                disabled={regenerateMutation.isPending}
+                className="btn btn-primary btn-sm flex items-center gap-1"
+              >
+                {regenerateMutation.isPending && <Loader className="w-3 h-3 animate-spin" />}
+                Создать новую ссылку
+              </button>
+              <button
+                onClick={() => setShowRegenerate(false)}
+                className="btn btn-secondary btn-sm"
+              >
+                Отмена
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* VPN credentials */}

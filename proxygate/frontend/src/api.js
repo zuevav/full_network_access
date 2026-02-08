@@ -246,6 +246,11 @@ class ApiClient {
     return this.request(`/admin/clients/${clientId}/wireguard/regenerate`, { method: 'POST' })
   }
 
+  async regenerateClientToken(clientId, expiresInDays = null) {
+    const params = expiresInDays ? `?expires_in_days=${expiresInDays}` : ''
+    return this.request(`/admin/clients/${clientId}/regenerate-token${params}`, { method: 'POST' })
+  }
+
   async getClientPayments(clientId) {
     return this.request(`/admin/clients/${clientId}/payments`)
   }
