@@ -4,6 +4,7 @@ WireGuard VPN API endpoints.
 Admin endpoints for managing WireGuard server and client configurations.
 """
 
+from datetime import datetime
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -42,6 +43,8 @@ class WireguardServerResponse(BaseModel):
     subnet: Optional[str] = None
     public_key: Optional[str] = None
     wstunnel_enabled: bool = False
+    wstunnel_port: Optional[int] = None
+    wstunnel_path: Optional[str] = None
 
 
 class WireguardClientResponse(BaseModel):
@@ -49,6 +52,9 @@ class WireguardClientResponse(BaseModel):
     assigned_ip: str
     is_active: bool
     config: Optional[str] = None
+    traffic_up: int = 0
+    traffic_down: int = 0
+    last_handshake: Optional[datetime] = None
 
 
 # === Admin Endpoints ===
@@ -74,7 +80,9 @@ async def get_wireguard_status(
             server_ip=server_config.server_ip,
             subnet=server_config.subnet,
             public_key=server_config.public_key,
-            wstunnel_enabled=server_config.wstunnel_enabled
+            wstunnel_enabled=server_config.wstunnel_enabled,
+            wstunnel_port=server_config.wstunnel_port,
+            wstunnel_path=server_config.wstunnel_path
         )
 
     return WireguardServerResponse(
@@ -243,7 +251,10 @@ async def get_client_wireguard_config(
             public_key=client.wireguard_config.public_key,
             assigned_ip=client.wireguard_config.assigned_ip,
             is_active=client.wireguard_config.is_active,
-            config=config_text
+            config=config_text,
+            traffic_up=client.wireguard_config.traffic_up,
+            traffic_down=client.wireguard_config.traffic_down,
+            last_handshake=client.wireguard_config.last_handshake
         )
 
     raise HTTPException(status_code=404, detail="WireGuard not configured for this client")

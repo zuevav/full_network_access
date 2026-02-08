@@ -5,11 +5,13 @@ Cron tasks for ProxyGate.
 Usage:
   python scripts/cron_tasks.py check_payments
   python scripts/cron_tasks.py resolve_domains
+  python scripts/cron_tasks.py collect_traffic_stats
   python scripts/cron_tasks.py backup
 
 Recommended crontab:
   */15 * * * * /opt/proxygate/venv/bin/python /opt/proxygate/backend/scripts/cron_tasks.py check_payments
   */30 * * * * /opt/proxygate/venv/bin/python /opt/proxygate/backend/scripts/cron_tasks.py resolve_domains
+  */5 * * * * /opt/proxygate/venv/bin/python /opt/proxygate/backend/scripts/cron_tasks.py collect_traffic_stats
   0 3 * * * /opt/proxygate/venv/bin/python /opt/proxygate/backend/scripts/cron_tasks.py backup
 """
 
@@ -83,6 +85,47 @@ async def resolve_domains():
     print(f"Updated routes for {updated} clients")
 
 
+async def collect_traffic_stats():
+    """Collect WireGuard peer traffic statistics and update DB."""
+    from sqlalchemy import select
+    from app.database import async_session_maker
+    from app.models import WireguardConfig
+    from app.services.wireguard_manager import WireGuardManager
+
+    print(f"[{datetime.now()}] Collecting WireGuard traffic stats...")
+
+    wg_manager = WireGuardManager()
+
+    if not wg_manager.is_running():
+        print("WireGuard is not running, skipping")
+        return
+
+    stats = wg_manager.get_peer_stats()
+    if not stats:
+        print("No peer stats available")
+        return
+
+    updated = 0
+    async with async_session_maker() as db:
+        result = await db.execute(
+            select(WireguardConfig).where(WireguardConfig.is_active == True)
+        )
+        configs = result.scalars().all()
+
+        for config in configs:
+            peer_stat = stats.get(config.public_key)
+            if peer_stat:
+                config.traffic_up = peer_stat["tx"]
+                config.traffic_down = peer_stat["rx"]
+                if peer_stat["last_handshake"]:
+                    config.last_handshake = datetime.utcfromtimestamp(peer_stat["last_handshake"])
+                updated += 1
+
+        await db.commit()
+
+    print(f"Updated traffic stats for {updated}/{len(stats)} peers")
+
+
 def backup():
     """Backup database file."""
     from app.config import settings
@@ -122,7 +165,7 @@ def backup():
 def main():
     if len(sys.argv) < 2:
         print("Usage: python cron_tasks.py <task>")
-        print("Tasks: check_payments, resolve_domains, backup")
+        print("Tasks: check_payments, resolve_domains, collect_traffic_stats, backup")
         sys.exit(1)
 
     task = sys.argv[1]
@@ -131,6 +174,8 @@ def main():
         asyncio.run(check_payments())
     elif task == "resolve_domains":
         asyncio.run(resolve_domains())
+    elif task == "collect_traffic_stats":
+        asyncio.run(collect_traffic_stats())
     elif task == "backup":
         backup()
     else:

@@ -24,6 +24,29 @@ import {
 } from 'lucide-react'
 import api from '../../api'
 
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return '0 B'
+  const units = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(1024))
+  const value = bytes / Math.pow(1024, i)
+  return `${value.toFixed(i > 0 ? 1 : 0)} ${units[i]}`
+}
+
+function formatRelativeTime(dateStr) {
+  if (!dateStr) return null
+  const date = new Date(dateStr)
+  const now = new Date()
+  const diffMs = now - date
+  const diffSec = Math.floor(diffMs / 1000)
+  if (diffSec < 60) return `${diffSec} сек. назад`
+  const diffMin = Math.floor(diffSec / 60)
+  if (diffMin < 60) return `${diffMin} мин. назад`
+  const diffHour = Math.floor(diffMin / 60)
+  if (diffHour < 24) return `${diffHour} ч. назад`
+  const diffDay = Math.floor(diffHour / 24)
+  return `${diffDay} дн. назад`
+}
+
 export default function ClientDetail() {
   const { t } = useTranslation()
   const { id } = useParams()
@@ -496,6 +519,10 @@ function XrayCredentials({ clientId, t }) {
           <div className="space-y-2 text-sm mb-4">
             <p><span className="text-gray-500">UUID:</span> <code className="bg-gray-100 px-1 rounded text-xs">{data.uuid}</code></p>
             {data.short_id && <p><span className="text-gray-500">Short ID:</span> {data.short_id}</p>}
+            <div className="flex gap-4 pt-1">
+              <p><span className="text-gray-500">Upload:</span> {formatBytes(data.traffic_up)}</p>
+              <p><span className="text-gray-500">Download:</span> {formatBytes(data.traffic_down)}</p>
+            </div>
           </div>
 
           {data.vless_url && (
@@ -647,6 +674,13 @@ function WireguardCredentials({ clientId, t }) {
           <div className="space-y-2 text-sm mb-4">
             <p><span className="text-gray-500">IP:</span> {data.assigned_ip}</p>
             <p><span className="text-gray-500">Public Key:</span> <code className="bg-gray-100 px-1 rounded text-xs break-all">{data.public_key}</code></p>
+            <div className="flex gap-4 pt-1">
+              <p><span className="text-gray-500">Upload:</span> {formatBytes(data.traffic_up)}</p>
+              <p><span className="text-gray-500">Download:</span> {formatBytes(data.traffic_down)}</p>
+            </div>
+            {data.last_handshake && (
+              <p><span className="text-gray-500">Last handshake:</span> {formatRelativeTime(data.last_handshake)}</p>
+            )}
           </div>
 
           {data.config && (

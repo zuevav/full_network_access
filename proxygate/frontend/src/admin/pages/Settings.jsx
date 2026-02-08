@@ -94,7 +94,10 @@ export default function Settings() {
     server_ip: '10.10.0.1',
     subnet: '10.10.0.0/24',
     dns: '1.1.1.1,8.8.8.8',
-    mtu: 1420
+    mtu: 1420,
+    wstunnel_enabled: false,
+    wstunnel_port: 443,
+    wstunnel_path: '/ws'
   })
 
   // App version
@@ -217,7 +220,10 @@ export default function Settings() {
           ...prev,
           listen_port: data.listen_port,
           server_ip: data.server_ip || prev.server_ip,
-          subnet: data.subnet || prev.subnet
+          subnet: data.subnet || prev.subnet,
+          wstunnel_enabled: data.wstunnel_enabled || false,
+          wstunnel_port: data.wstunnel_port || prev.wstunnel_port,
+          wstunnel_path: data.wstunnel_path || prev.wstunnel_path
         }))
       }
     } catch (error) {
@@ -788,6 +794,46 @@ export default function Settings() {
                   className="input"
                   placeholder="1.1.1.1,8.8.8.8"
                 />
+              </div>
+
+              {/* wstunnel obfuscation */}
+              <div className="pt-3 border-t border-gray-200">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={wgSettings.wstunnel_enabled}
+                    onChange={(e) => setWgSettings({ ...wgSettings, wstunnel_enabled: e.target.checked })}
+                    className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">wstunnel (обфускация)</span>
+                </label>
+                <p className="text-xs text-gray-500 mt-1 ml-6">
+                  Оборачивает WireGuard трафик в WebSocket, маскируя его под обычный HTTPS
+                </p>
+
+                {wgSettings.wstunnel_enabled && (
+                  <div className="mt-3 ml-6 space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Порт wstunnel</label>
+                      <input
+                        type="number"
+                        value={wgSettings.wstunnel_port}
+                        onChange={(e) => setWgSettings({ ...wgSettings, wstunnel_port: parseInt(e.target.value) })}
+                        className="input"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Путь WebSocket</label>
+                      <input
+                        type="text"
+                        value={wgSettings.wstunnel_path}
+                        onChange={(e) => setWgSettings({ ...wgSettings, wstunnel_path: e.target.value })}
+                        className="input"
+                        placeholder="/ws"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <button

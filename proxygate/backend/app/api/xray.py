@@ -45,6 +45,8 @@ class XrayClientResponse(BaseModel):
     short_id: Optional[str]
     is_active: bool
     vless_url: Optional[str] = None
+    traffic_up: int = 0
+    traffic_down: int = 0
 
 
 class XrayConnectionInfo(BaseModel):
@@ -266,7 +268,9 @@ async def get_client_xray_config(
             uuid=client.xray_config.uuid,
             short_id=client.xray_config.short_id,
             is_active=client.xray_config.is_active,
-            vless_url=vless_url
+            vless_url=vless_url,
+            traffic_up=client.xray_config.traffic_up,
+            traffic_down=client.xray_config.traffic_down
         )
 
     raise HTTPException(status_code=404, detail="XRay not configured for this client")
