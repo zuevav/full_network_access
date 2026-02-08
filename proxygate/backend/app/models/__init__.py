@@ -8,6 +8,7 @@ from app.models.admin import AdminUser
 from app.models.security import FailedLogin, BlockedIP, SecurityEvent
 from app.models.xray import XrayConfig, XrayServerConfig
 from app.models.wireguard import WireguardConfig, WireguardServerConfig
+from app.models.ip_whitelist import IpWhitelistLog
 
 __all__ = [
     "Client",
@@ -25,4 +26,5 @@ __all__ = [
     "XrayServerConfig",
     "WireguardConfig",
     "WireguardServerConfig",
+    "IpWhitelistLog",
 ]

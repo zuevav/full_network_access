@@ -1,18 +1,56 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
+from pydantic import BaseModel, Field
+from typing import List, Optional
 import json
 
 from app.api.deps import DBSession, CurrentClient
-from app.models import Client, DomainRequest, DomainTemplate
+from app.models import Client, ClientDomain, DomainRequest, DomainTemplate
 from app.schemas.portal import (
     PortalDomainsResponse, DomainItem, DomainRequestCreate, DomainRequestResponse
 )
+from app.schemas.domain import DomainAnalyzeResponse
+from app.api.domains import analyze_domain_resources, get_base_domain
 from app.utils.helpers import normalize_domain
 
 
 router = APIRouter()
 
+
+# --- Portal-specific schemas ---
+
+class PortalTemplateItem(BaseModel):
+    id: int
+    name: str
+    description: Optional[str]
+    icon: Optional[str]
+    domains: List[str]
+    domains_count: int
+
+class PortalApplyTemplateRequest(BaseModel):
+    template_id: int
+
+class PortalApplyTemplateResponse(BaseModel):
+    added_count: int
+    domains: List[str]
+
+class PortalAddDomainsRequest(BaseModel):
+    domains: List[str] = Field(..., min_length=1)
+    include_subdomains: bool = True
+
+class PortalAddDomainResponse(BaseModel):
+    id: int
+    domain: str
+    include_subdomains: bool
+
+    model_config = {"from_attributes": True}
+
+class PortalAnalyzeRequest(BaseModel):
+    domain: str = Field(..., min_length=1)
+
+
+# --- Existing endpoints ---
 
 @router.get("", response_model=PortalDomainsResponse)
 async def get_my_domains(
@@ -116,3 +154,151 @@ async def get_my_domain_requests(
         )
         for r in requests
     ]
+
+
+# --- New portal endpoints ---
+
+@router.get("/templates", response_model=List[PortalTemplateItem])
+async def get_public_templates(
+    client: CurrentClient,
+    db: DBSession
+):
+    """Get list of public domain templates available for self-service."""
+    result = await db.execute(
+        select(DomainTemplate)
+        .where(DomainTemplate.is_active == True, DomainTemplate.is_public == True)
+        .order_by(DomainTemplate.name)
+    )
+    templates = result.scalars().all()
+
+    return [
+        PortalTemplateItem(
+            id=t.id,
+            name=t.name,
+            description=t.description,
+            icon=t.icon,
+            domains=json.loads(t.domains_json),
+            domains_count=len(json.loads(t.domains_json))
+        )
+        for t in templates
+    ]
+
+
+@router.post("/apply-template", response_model=PortalApplyTemplateResponse)
+async def apply_template(
+    request: PortalApplyTemplateRequest,
+    client: CurrentClient,
+    db: DBSession
+):
+    """Apply a public template — adds template domains to client directly."""
+    # Verify template is public and active
+    result = await db.execute(
+        select(DomainTemplate)
+        .where(
+            DomainTemplate.id == request.template_id,
+            DomainTemplate.is_active == True,
+            DomainTemplate.is_public == True
+        )
+    )
+    template = result.scalar_one_or_none()
+    if template is None:
+        raise HTTPException(status_code=404, detail="Template not found or not available")
+
+    template_domains = json.loads(template.domains_json)
+
+    # Get existing client domains
+    result = await db.execute(
+        select(ClientDomain).where(ClientDomain.client_id == client.id)
+    )
+    existing_domains = {d.domain for d in result.scalars().all()}
+
+    added = []
+    for domain in template_domains:
+        normalized = normalize_domain(domain)
+        if normalized and normalized not in existing_domains:
+            client_domain = ClientDomain(
+                client_id=client.id,
+                domain=normalized,
+                include_subdomains=True,
+                is_active=True
+            )
+            db.add(client_domain)
+            added.append(normalized)
+            existing_domains.add(normalized)
+
+    await db.commit()
+
+    return PortalApplyTemplateResponse(
+        added_count=len(added),
+        domains=added
+    )
+
+
+@router.post("/add", response_model=List[PortalAddDomainResponse])
+async def add_domains(
+    request: PortalAddDomainsRequest,
+    client: CurrentClient,
+    db: DBSession
+):
+    """Add custom domains directly (self-service, no approval needed)."""
+    # Get existing client domains
+    result = await db.execute(
+        select(ClientDomain).where(ClientDomain.client_id == client.id)
+    )
+    existing_domains = {d.domain for d in result.scalars().all()}
+
+    added = []
+    for domain in request.domains:
+        normalized = normalize_domain(domain)
+        if normalized and normalized not in existing_domains:
+            client_domain = ClientDomain(
+                client_id=client.id,
+                domain=normalized,
+                include_subdomains=request.include_subdomains,
+                is_active=True
+            )
+            db.add(client_domain)
+            added.append(client_domain)
+            existing_domains.add(normalized)
+
+    await db.commit()
+
+    return [
+        PortalAddDomainResponse(
+            id=d.id,
+            domain=d.domain,
+            include_subdomains=d.include_subdomains
+        )
+        for d in added
+    ]
+
+
+@router.post("/analyze", response_model=DomainAnalyzeResponse)
+async def analyze_domain(
+    request: PortalAnalyzeRequest,
+    client: CurrentClient
+):
+    """Analyze a domain to find related domains (redirects, CDNs, APIs)."""
+    original = normalize_domain(request.domain)
+    if not original:
+        raise HTTPException(status_code=400, detail="Invalid domain")
+
+    redirect_domains, resource_domains, error = await analyze_domain_resources(request.domain)
+
+    all_suggested = redirect_domains | resource_domains
+
+    common_skip = {
+        'google-analytics.com', 'googletagmanager.com', 'doubleclick.net',
+        'facebook.net', 'fbcdn.net', 'twitter.com', 'twimg.com',
+        'addthis.com', 'sharethis.com', 'disqus.com'
+    }
+
+    suggested = sorted([d for d in all_suggested if get_base_domain(d) not in common_skip])
+
+    return DomainAnalyzeResponse(
+        original_domain=original,
+        redirects=sorted(redirect_domains),
+        resources=sorted(resource_domains - redirect_domains),
+        suggested=suggested,
+        error=error
+    )

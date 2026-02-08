@@ -31,6 +31,7 @@ async def list_templates(
             icon=t.icon,
             domains=json.loads(t.domains_json),
             is_active=t.is_active,
+            is_public=t.is_public,
             created_at=t.created_at
         )
         for t in templates
@@ -56,7 +57,8 @@ async def create_template(
         description=request.description,
         icon=request.icon,
         domains_json=json.dumps(request.domains),
-        is_active=True
+        is_active=True,
+        is_public=request.is_public
     )
 
     db.add(template)
@@ -70,6 +72,7 @@ async def create_template(
         icon=template.icon,
         domains=request.domains,
         is_active=template.is_active,
+        is_public=template.is_public,
         created_at=template.created_at
     )
 
@@ -96,6 +99,7 @@ async def get_template(
         icon=template.icon,
         domains=json.loads(template.domains_json),
         is_active=template.is_active,
+        is_public=template.is_public,
         created_at=template.created_at
     )
 
@@ -134,6 +138,7 @@ async def update_template(
         icon=template.icon,
         domains=json.loads(template.domains_json),
         is_active=template.is_active,
+        is_public=template.is_public,
         created_at=template.created_at
     )
 

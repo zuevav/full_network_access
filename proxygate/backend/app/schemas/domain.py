@@ -23,6 +23,7 @@ class DomainTemplateCreate(BaseModel):
     description: Optional[str] = Field(None, max_length=500)
     icon: Optional[str] = Field(None, max_length=10)
     domains: List[str] = Field(..., min_length=1)
+    is_public: bool = False
 
 
 class DomainTemplateUpdate(BaseModel):
@@ -31,6 +32,7 @@ class DomainTemplateUpdate(BaseModel):
     icon: Optional[str] = Field(None, max_length=10)
     domains: Optional[List[str]] = None
     is_active: Optional[bool] = None
+    is_public: Optional[bool] = None
 
 
 class DomainTemplateResponse(BaseModel):
@@ -40,6 +42,7 @@ class DomainTemplateResponse(BaseModel):
     icon: Optional[str]
     domains: List[str]
     is_active: bool
+    is_public: bool
     created_at: datetime
 
     model_config = {"from_attributes": True}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { Plus, Edit, Trash2, X, Search, Loader, Check } from 'lucide-react'
+import { Plus, Edit, Trash2, X, Search, Loader, Check, Globe } from 'lucide-react'
 import api from '../../api'
 
 function TemplateModal({ isOpen, onClose, template, onSuccess, t }) {
@@ -9,6 +9,7 @@ function TemplateModal({ isOpen, onClose, template, onSuccess, t }) {
   const [icon, setIcon] = useState('')
   const [description, setDescription] = useState('')
   const [domainsText, setDomainsText] = useState('')
+  const [isPublic, setIsPublic] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -25,6 +26,7 @@ function TemplateModal({ isOpen, onClose, template, onSuccess, t }) {
       setIcon(template?.icon || '')
       setDescription(template?.description || '')
       setDomainsText(template?.domains?.join('\n') || '')
+      setIsPublic(template?.is_public || false)
       setError('')
       setDomainInput('')
       setSuggestions(null)
@@ -41,9 +43,9 @@ function TemplateModal({ isOpen, onClose, template, onSuccess, t }) {
 
     try {
       if (template) {
-        await api.updateTemplate(template.id, { name, icon, description, domains })
+        await api.updateTemplate(template.id, { name, icon, description, domains, is_public: isPublic })
       } else {
-        await api.createTemplate({ name, icon, description, domains })
+        await api.createTemplate({ name, icon, description, domains, is_public: isPublic })
       }
       onSuccess()
       onClose()
@@ -176,6 +178,25 @@ function TemplateModal({ isOpen, onClose, template, onSuccess, t }) {
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
+
+          {/* Public toggle */}
+          <label className="flex items-center gap-3 cursor-pointer">
+            <div className="relative">
+              <input
+                type="checkbox"
+                checked={isPublic}
+                onChange={(e) => setIsPublic(e.target.checked)}
+                className="sr-only"
+              />
+              <div className={`w-10 h-6 rounded-full transition-colors ${isPublic ? 'bg-blue-500' : 'bg-gray-300'}`}>
+                <div className={`w-4 h-4 bg-white rounded-full shadow-sm transform transition-transform mt-1 ${isPublic ? 'translate-x-5' : 'translate-x-1'}`} />
+              </div>
+            </div>
+            <div>
+              <span className="text-sm font-medium text-gray-700">Публичный шаблон</span>
+              <p className="text-xs text-gray-500">Клиенты смогут подключать этот шаблон самостоятельно</p>
+            </div>
+          </label>
 
           {/* Domain analyzer */}
           <div>
@@ -373,9 +394,17 @@ export default function Templates() {
                   <span className="text-3xl">{template.icon}</span>
                   <div>
                     <h3 className="font-semibold text-gray-900">{template.name}</h3>
-                    <p className="text-sm text-gray-500">
-                      {template.domains.length} {t('clients.domainsCount')}
-                    </p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm text-gray-500">
+                        {template.domains.length} {t('clients.domainsCount')}
+                      </p>
+                      {template.is_public && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 bg-blue-50 text-blue-700 rounded text-xs font-medium">
+                          <Globe className="w-3 h-3" />
+                          Публичный
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex gap-1">

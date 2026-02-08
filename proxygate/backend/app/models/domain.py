@@ -33,4 +33,5 @@ class DomainTemplate(Base):
     icon: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
     domains_json: Mapped[str] = mapped_column(Text)  # JSON array
     is_active: Mapped[bool] = mapped_column(default=True)
+    is_public: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(default=func.now())

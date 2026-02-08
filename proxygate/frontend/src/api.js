@@ -288,6 +288,10 @@ class ApiClient {
     return this.request(`/admin/domain-requests${query}`)
   }
 
+  async getIpWhitelistLogs() {
+    return this.request('/admin/domain-requests/ip-whitelist-logs')
+  }
+
   async approveDomainRequest(id, comment) {
     return this.request(`/admin/domain-requests/${id}/approve`, {
       method: 'PUT',
@@ -445,6 +449,31 @@ class ApiClient {
 
   async getPortalDomainRequests() {
     return this.request('/portal/domains/requests', {}, 'client')
+  }
+
+  async getPortalTemplates() {
+    return this.request('/portal/domains/templates', {}, 'client')
+  }
+
+  async applyPortalTemplate(templateId) {
+    return this.request('/portal/domains/apply-template', {
+      method: 'POST',
+      body: JSON.stringify({ template_id: templateId }),
+    }, 'client')
+  }
+
+  async addPortalDomains(domains, includeSubdomains = true) {
+    return this.request('/portal/domains/add', {
+      method: 'POST',
+      body: JSON.stringify({ domains, include_subdomains: includeSubdomains }),
+    }, 'client')
+  }
+
+  async analyzePortalDomain(domain) {
+    return this.request('/portal/domains/analyze', {
+      method: 'POST',
+      body: JSON.stringify({ domain }),
+    }, 'client')
   }
 
   async getPortalPayments() {
