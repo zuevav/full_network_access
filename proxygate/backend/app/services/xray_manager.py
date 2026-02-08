@@ -64,10 +64,13 @@ class XRayManager:
             private_key = None
             public_key = None
             for line in lines:
-                if "Private key:" in line:
-                    private_key = line.split(": ")[1].strip()
-                elif "Public key:" in line:
-                    public_key = line.split(": ")[1].strip()
+                key, _, value = line.partition(":")
+                key = key.strip().lower()
+                value = value.strip()
+                if key in ("private key", "privatekey"):
+                    private_key = value
+                elif key in ("public key", "publickey", "password"):
+                    public_key = value
             return private_key, public_key
         except (subprocess.CalledProcessError, FileNotFoundError):
             # Fallback: generate using openssl (less secure but works)
