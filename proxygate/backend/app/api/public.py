@@ -985,7 +985,7 @@ async def download_pac_public(
     """Download PAC file by access token."""
     result = await db.execute(
         select(Client)
-        .options(selectinload(Client.domains))
+        .options(selectinload(Client.domains), selectinload(Client.vpn_config))
         .where(Client.access_token == access_token)
     )
     client = result.scalar_one_or_none()
@@ -1014,7 +1014,7 @@ async def get_pac_file(
     """Get PAC file for proxy auto-configuration."""
     result = await db.execute(
         select(Client)
-        .options(selectinload(Client.domains))
+        .options(selectinload(Client.domains), selectinload(Client.vpn_config))
         .where(Client.access_token == access_token)
     )
     client = result.scalar_one_or_none()
