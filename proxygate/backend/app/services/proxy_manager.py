@@ -145,9 +145,9 @@ socks -p{settings.proxy_socks_port} -a
             return False
 
     def apply_changes(self, clients: List[ProxyClient]) -> bool:
-        """Full cycle: generate config + reload."""
+        """Full cycle: generate config + restart."""
         self.write_config(clients)
-        return self.reload()
+        return self.restart()
 
 
 async def rebuild_proxy_config(db):
