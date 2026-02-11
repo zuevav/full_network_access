@@ -13,6 +13,7 @@ from app.schemas.portal import (
 from app.schemas.domain import DomainAnalyzeResponse
 from app.api.domains import analyze_domain_resources, get_base_domain
 from app.utils.helpers import normalize_domain
+from app.services.proxy_manager import rebuild_proxy_config
 
 
 router = APIRouter()
@@ -228,6 +229,9 @@ async def apply_template(
 
     await db.commit()
 
+    if added:
+        await rebuild_proxy_config(db)
+
     return PortalApplyTemplateResponse(
         added_count=len(added),
         domains=added
@@ -262,6 +266,9 @@ async def add_domains(
             existing_domains.add(normalized)
 
     await db.commit()
+
+    if added:
+        await rebuild_proxy_config(db)
 
     return [
         PortalAddDomainResponse(

@@ -4,10 +4,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 from datetime import datetime
 
+from pydantic import BaseModel
 from app.api.deps import DBSession, CurrentAdmin
-from app.models import DomainRequest, ClientDomain, Client
+from app.models import DomainRequest, ClientDomain, Client, IpWhitelistLog
 from app.schemas.portal import DomainRequestResponse
 from app.utils.helpers import normalize_domain
+from app.services.proxy_manager import rebuild_proxy_config
 
 
 router = APIRouter()
@@ -106,6 +108,8 @@ async def approve_domain_request(
     await db.commit()
     await db.refresh(request)
 
+    await rebuild_proxy_config(db)
+
     return DomainRequestResponse(
         id=request.id,
         domain=request.domain,
@@ -152,3 +156,36 @@ async def reject_domain_request(
         created_at=request.created_at,
         resolved_at=request.resolved_at
     )
+
+
+class IpWhitelistLogResponse(BaseModel):
+    id: int
+    client_name: str
+    ip_address: str
+    action: str
+    created_at: datetime
+
+
+@router.get("/ip-whitelist-logs", response_model=list[IpWhitelistLogResponse])
+async def list_ip_whitelist_logs(
+    db: DBSession,
+    admin: CurrentAdmin,
+):
+    """List all IP whitelist log entries."""
+    result = await db.execute(
+        select(IpWhitelistLog)
+        .options(selectinload(IpWhitelistLog.client))
+        .order_by(IpWhitelistLog.created_at.desc())
+    )
+    logs = result.scalars().all()
+
+    return [
+        IpWhitelistLogResponse(
+            id=log.id,
+            client_name=log.client.name,
+            ip_address=log.ip_address,
+            action=log.action,
+            created_at=log.created_at,
+        )
+        for log in logs
+    ]

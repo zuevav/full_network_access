@@ -16,6 +16,7 @@ from app.schemas.domain import (
     DomainAnalyzeRequest, DomainAnalyzeResponse
 )
 from app.utils.helpers import normalize_domain
+from app.services.proxy_manager import rebuild_proxy_config
 
 
 router = APIRouter()
@@ -270,6 +271,9 @@ async def add_client_domains(
 
     await db.commit()
 
+    if added_domains:
+        await rebuild_proxy_config(db)
+
     return [
         DomainResponse(
             id=d.id,
@@ -301,6 +305,7 @@ async def delete_client_domain(
 
     await db.delete(domain)
     await db.commit()
+    await rebuild_proxy_config(db)
 
 
 @router.post("/{client_id}/domains/template", response_model=list[DomainResponse])
@@ -349,6 +354,9 @@ async def apply_template(
             existing_domains.add(normalized)
 
     await db.commit()
+
+    if added_domains:
+        await rebuild_proxy_config(db)
 
     return [
         DomainResponse(
