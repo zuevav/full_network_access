@@ -62,21 +62,25 @@ users ${self.PASSWD_PATH}
 
         for client in clients:
             if client.is_active:
-                # IP-based allow rules (no auth required)
-                for ip in client.allowed_ips:
-                    config += f'''
-# IP whitelist for {client.username}
-allow * {ip} * * *
-'''
-
-                # Domain-based allow rules (auth required)
+                # Build domain list for this client
+                expanded = []
                 if client.domains:
-                    expanded = []
                     for d in client.domains:
                         expanded.append(d.domain)
                         if d.include_subdomains:
                             expanded.append(f"*.{d.domain}")
-                    domains_str = ",".join(expanded)
+                domains_str = ",".join(expanded) if expanded else None
+
+                # IP-based allow rules (no auth, restricted to client's domains)
+                if domains_str and client.allowed_ips:
+                    for ip in client.allowed_ips:
+                        config += f'''
+# IP whitelist for {client.username}
+allow * {ip} {domains_str} * *
+'''
+
+                # Username-based allow rules (auth required)
+                if domains_str:
                     config += f'''
 # {client.username}
 allow {client.username} * {domains_str} * *

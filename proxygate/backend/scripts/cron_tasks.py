@@ -162,10 +162,141 @@ def backup():
         print(f"Removed old backup")
 
 
+def _add_iptables_block(ip: str):
+    """Add iptables DROP rules for an IP on proxy ports (idempotent)."""
+    import subprocess
+    for port in ("3128", "1080"):
+        # Check if rule already exists
+        check = subprocess.run(
+            ["iptables", "-C", "INPUT", "-s", ip, "-p", "tcp", "--dport", port, "-j", "DROP"],
+            capture_output=True
+        )
+        if check.returncode != 0:
+            subprocess.run(
+                ["iptables", "-I", "INPUT", "-s", ip, "-p", "tcp", "--dport", port, "-j", "DROP"],
+                capture_output=True
+            )
+            print(f"  iptables: blocked {ip}:{port}")
+
+
+async def monitor_proxy_auth():
+    """Parse 3proxy logs for failed auth attempts and record in security DB."""
+    import re
+    from pathlib import Path
+    from app.database import async_session_maker
+    from app.services.security_service import SecurityService
+
+    LOG_DIR = Path("/var/log/3proxy")
+    STATE_FILE = LOG_DIR / ".monitor_state"
+
+    # Find today's log file
+    today = datetime.now().strftime("%Y.%m.%d")
+    log_file = LOG_DIR / f"3proxy.log.{today}"
+
+    if not log_file.exists():
+        print(f"[{datetime.now()}] No log file: {log_file}")
+        return
+
+    # Read last processed position
+    last_pos = 0
+    last_file = ""
+    if STATE_FILE.exists():
+        try:
+            data = STATE_FILE.read_text().strip()
+            parts = data.rsplit(":", 1)
+            if len(parts) == 2:
+                last_file = parts[0]
+                last_pos = int(parts[1])
+        except (ValueError, IOError):
+            pass
+
+    # Reset position if log file changed (new day)
+    if last_file != str(log_file):
+        last_pos = 0
+
+    # Read new entries
+    with open(log_file) as f:
+        f.seek(last_pos)
+        new_lines = f.readlines()
+        new_pos = f.tell()
+
+    if not new_lines:
+        return
+
+    # Parse failed attempts: entries with 0.0.0.0:0 as destination
+    # Log format: date time username client_ip:port dest_ip:port bytes_out bytes_in request
+    # Failed: 0.0.0.0:0 and 0 0
+    failed_pattern = re.compile(
+        r'\d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2} (\S+) (\d+\.\d+\.\d+\.\d+):\d+ 0\.0\.0\.0:0 0 0 (.+)'
+    )
+
+    # Skip local/private IPs
+    SKIP_IPS = {'127.0.0.1', '0.0.0.0', '::1'}
+
+    def _is_private(ip):
+        parts = ip.split('.')
+        if len(parts) != 4:
+            return True
+        first, second = int(parts[0]), int(parts[1])
+        return first == 10 or (first == 172 and 16 <= second <= 31) or (first == 192 and second == 168)
+
+    # Aggregate by IP
+    failed_by_ip = {}
+    for line in new_lines:
+        line = line.strip()
+        if not line or "Accepting connections" in line or "Exiting thread" in line:
+            continue
+        m = failed_pattern.match(line)
+        if m:
+            username, client_ip, request = m.groups()
+            if client_ip in SKIP_IPS or _is_private(client_ip):
+                continue
+            if username == '-':
+                username = None
+            if client_ip not in failed_by_ip:
+                failed_by_ip[client_ip] = []
+            failed_by_ip[client_ip].append({
+                'username': username,
+                'request': request,
+            })
+
+    if not failed_by_ip:
+        # Save position even if no failed attempts
+        STATE_FILE.write_text(f"{log_file}:{new_pos}")
+        return
+
+    total_attempts = sum(len(v) for v in failed_by_ip.values())
+    print(f"[{datetime.now()}] Found {total_attempts} failed proxy auth attempts from {len(failed_by_ip)} IPs")
+
+    async with async_session_maker() as db:
+        svc = SecurityService(db)
+        for ip, attempts in failed_by_ip.items():
+            # Record up to 10 individual attempts per IP (avoid flooding DB)
+            for attempt in attempts[:10]:
+                blocked = await svc.record_failed_attempt(
+                    ip_address=ip,
+                    username=attempt['username'],
+                    endpoint="3proxy",
+                    user_agent=attempt['request'][:255] if attempt['request'] else None
+                )
+                if blocked:
+                    print(f"  Blocked IP: {ip} ({blocked.reason})")
+                    # Add iptables rule (only once per IP)
+                    _add_iptables_block(ip)
+                    break  # Stop recording more attempts for this IP
+
+            if len(attempts) > 10:
+                print(f"  IP {ip}: {len(attempts)} attempts (recorded first 10)")
+
+    # Save position
+    STATE_FILE.write_text(f"{log_file}:{new_pos}")
+    print(f"Proxy auth monitoring complete")
+
+
 def main():
     if len(sys.argv) < 2:
         print("Usage: python cron_tasks.py <task>")
-        print("Tasks: check_payments, resolve_domains, collect_traffic_stats, backup")
+        print("Tasks: check_payments, resolve_domains, collect_traffic_stats, backup, monitor_proxy_auth")
         sys.exit(1)
 
     task = sys.argv[1]
@@ -176,6 +307,8 @@ def main():
         asyncio.run(resolve_domains())
     elif task == "collect_traffic_stats":
         asyncio.run(collect_traffic_stats())
+    elif task == "monitor_proxy_auth":
+        asyncio.run(monitor_proxy_auth())
     elif task == "backup":
         backup()
     else:
