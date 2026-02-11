@@ -1100,12 +1100,22 @@ if ($UsePAC -or (-not $UseManual)) {{
     Write-Host "Configuring PAC (Automatic Configuration)..." -ForegroundColor Yellow
     Write-Host "PAC URL: $PacUrl" -ForegroundColor Gray
 
-    # Set PAC URL
+    # Set PAC URL and disable manual proxy
     Set-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" -Name AutoConfigURL -Value $PacUrl
     Set-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" -Name ProxyEnable -Value 0
 
+    # Disable auto-detect (WPAD) and enable PAC only via DefaultConnectionSettings
+    $regPath = "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings\\Connections"
+    $settings = (Get-ItemProperty -Path $regPath -Name DefaultConnectionSettings -ErrorAction SilentlyContinue).DefaultConnectionSettings
+    if ($settings -and $settings.Length -gt 8) {{
+        # Byte 8: 1=direct, 2=proxy, 4=PAC, 8=auto-detect. Set to 5 (direct+PAC)
+        $settings[8] = 5
+        Set-ItemProperty -Path $regPath -Name DefaultConnectionSettings -Value $settings
+    }}
+
     Write-Host ""
     Write-Host "PAC configured successfully!" -ForegroundColor Green
+    Write-Host "Auto-detect (WPAD) disabled." -ForegroundColor Gray
     Write-Host "Only sites from your domain list will use proxy." -ForegroundColor Gray
 }}
 
