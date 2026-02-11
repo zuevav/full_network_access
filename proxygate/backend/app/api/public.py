@@ -1052,7 +1052,7 @@ async def download_proxy_setup_public(
 
     domain = get_configured_domain()
     http_port, _ = get_configured_ports()
-    pac_url = f"https://{domain}/pac/{client.access_token}"
+    pac_url = f"https://{domain}/api/pac/{client.access_token}"
 
     script = f'''# ZETIT FNA - Windows Proxy Setup Script
 # Run as Administrator
