@@ -648,7 +648,7 @@ async def client_connect_page(
     return HTMLResponse(content=html)
 
 
-@router.post("/connect/{{access_token}}/whitelist-ip")
+@router.post("/connect/{access_token}/whitelist-ip")
 async def whitelist_ip(
     access_token: str,
     request: Request,
