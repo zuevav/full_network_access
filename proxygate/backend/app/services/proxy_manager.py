@@ -39,7 +39,10 @@ class ProxyManager:
 nserver 1.1.1.1
 nserver 8.8.8.8
 nscache 65536
-timeouts 1 5 30 60 180 1800 15 60
+timeouts 10 10 60 180 180 1800 15 60
+
+maxconn 500
+stacksize 65536
 
 log /var/log/3proxy/3proxy.log D
 logformat "L%d-%m-%Y %H:%M:%S %U %C:%c %R:%r %O %I %T"
@@ -73,8 +76,8 @@ allow {client.username} * {domains_str} * *
 deny *
 
 # === Proxy servers ===
-proxy -p{settings.proxy_http_port} -a
-socks -p{settings.proxy_socks_port} -a
+proxy -p{settings.proxy_http_port} -a -n
+socks -p{settings.proxy_socks_port} -a -n
 '''
         return config
 
