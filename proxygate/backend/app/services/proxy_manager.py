@@ -7,10 +7,16 @@ from app.config import settings
 
 
 @dataclass
+class ProxyDomain:
+    domain: str
+    include_subdomains: bool = True
+
+
+@dataclass
 class ProxyClient:
     username: str
     password: str
-    domains: List[str]
+    domains: List[ProxyDomain]
     is_active: bool
     allowed_ips: List[str] = field(default_factory=list)
 
@@ -65,7 +71,12 @@ allow * {ip} * * *
 
                 # Domain-based allow rules (auth required)
                 if client.domains:
-                    domains_str = ",".join(client.domains)
+                    expanded = []
+                    for d in client.domains:
+                        expanded.append(d.domain)
+                        if d.include_subdomains:
+                            expanded.append(f"*.{d.domain}")
+                    domains_str = ",".join(expanded)
                     config += f'''
 # {client.username}
 allow {client.username} * {domains_str} * *
@@ -182,7 +193,10 @@ async def rebuild_proxy_config(db):
             proxy_clients.append(ProxyClient(
                 username=client.proxy_account.username,
                 password=client.proxy_account.password_plain,
-                domains=[d.domain for d in client.domains if d.is_active],
+                domains=[
+                    ProxyDomain(domain=d.domain, include_subdomains=d.include_subdomains)
+                    for d in client.domains if d.is_active
+                ],
                 is_active=True,
                 allowed_ips=allowed_ips,
             ))
