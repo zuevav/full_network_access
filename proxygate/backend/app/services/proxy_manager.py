@@ -45,10 +45,10 @@ class ProxyManager:
 nserver 1.1.1.1
 nserver 8.8.8.8
 nscache 65536
-timeouts 10 10 60 180 180 1800 15 60
+timeouts 10 10 120 300 600 60 5 60
 
 maxconn 500
-stacksize 65536
+stacksize 262144
 
 log /var/log/3proxy/3proxy.log D
 logformat "L%d-%m-%Y %H:%M:%S %U %C:%c %R:%r %O %I %T"
