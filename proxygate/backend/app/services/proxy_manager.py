@@ -91,8 +91,8 @@ allow {client.username} * {domains_str} * *
 deny *
 
 # === Proxy servers ===
-proxy -p{settings.proxy_http_port} -a -n
-socks -p{settings.proxy_socks_port} -a -n
+proxy -p3128 -i127.0.0.1 -a -n
+socks -p1080 -i127.0.0.1 -a -n
 '''
         return config
 

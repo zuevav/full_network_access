@@ -1001,7 +1001,8 @@ async def download_pac_public(
         content=content,
         media_type="application/x-ns-proxy-autoconfig",
         headers={
-            "Content-Disposition": 'attachment; filename="zetit-fna.pac"'
+            "Content-Disposition": 'attachment; filename="zetit-fna.pac"',
+            "Cache-Control": "public, max-age=300",
         }
     )
 
@@ -1028,7 +1029,10 @@ async def get_pac_file(
 
     return Response(
         content=content,
-        media_type="application/x-ns-proxy-autoconfig"
+        media_type="application/x-ns-proxy-autoconfig",
+        headers={
+            "Cache-Control": "public, max-age=300",
+        }
     )
 
 
