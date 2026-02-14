@@ -329,7 +329,7 @@ function ProfilesTab({ client, t }) {
       )}
 
       {/* XRay VLESS */}
-      <XrayCredentials clientId={client.id} t={t} />
+      <XrayCredentials clientId={client.id} accessToken={client.access_token} t={t} />
 
       {/* WireGuard */}
       <WireguardCredentials clientId={client.id} t={t} />
@@ -486,7 +486,7 @@ function ProxyCredentials({ clientId, t }) {
   )
 }
 
-function XrayCredentials({ clientId, t }) {
+function XrayCredentials({ clientId, accessToken, t }) {
   const queryClient = useQueryClient()
   const [copied, setCopied] = useState(false)
   const [enableError, setEnableError] = useState('')
@@ -622,6 +622,47 @@ function XrayCredentials({ clientId, t }) {
                 </a>
               </div>
               <p className="text-xs text-gray-400 mt-2">Portable, без прав администратора. Скопируйте VLESS URL → v2rayN → Servers → Import from clipboard</p>
+
+              {accessToken && (
+                <div className="mt-3 pt-3 border-t space-y-2">
+                  <p className="text-xs text-gray-500 font-medium">Автообновление (v2rayN):</p>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Subscription URL:</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        className="input flex-1 text-xs font-mono"
+                        value={`${window.location.origin}/api/xray-sub/${accessToken}`}
+                        readOnly
+                      />
+                      <button
+                        onClick={() => copyToClipboard(`${window.location.origin}/api/xray-sub/${accessToken}`)}
+                        className="btn btn-secondary btn-sm"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Routing URL (маршрутизация):</p>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        className="input flex-1 text-xs font-mono"
+                        value={`${window.location.origin}/api/xray-routing/${accessToken}`}
+                        readOnly
+                      />
+                      <button
+                        onClick={() => copyToClipboard(`${window.location.origin}/api/xray-routing/${accessToken}`)}
+                        className="btn btn-secondary btn-sm"
+                      >
+                        <Copy className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400">Домены клиента автоматически обновляются в v2rayN через эти URL</p>
+                </div>
+              )}
             </div>
           )}
 

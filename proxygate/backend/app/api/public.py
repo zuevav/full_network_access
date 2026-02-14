@@ -74,7 +74,8 @@ def _build_connect_html(client, access_token, status_emoji, valid_until_str,
                         ip_already_whitelisted,
                         vless_url=None, xray_available=False,
                         wg_available=False, wg_server_ip=None,
-                        wg_server_port=None, wg_client_ip=None):
+                        wg_server_port=None, wg_client_ip=None,
+                        web_port=None):
     """Build the full HTML page for client connect."""
 
     name = escape(client.name or "")
@@ -319,6 +320,34 @@ def _build_connect_html(client, access_token, status_emoji, valid_until_str,
                         <a href="https://apps.apple.com/app/shadowrocket/id932747118" target="_blank" rel="noopener" class="action-btn" style="background:#f5f3ff;color:#7c3aed;border:1px solid #e9d5ff;justify-content:center;">\U0001f4f1 Shadowrocket</a>
                         <a href="https://play.google.com/store/apps/details?id=com.v2ray.ang" target="_blank" rel="noopener" class="action-btn" style="background:#f5f3ff;color:#7c3aed;border:1px solid #e9d5ff;justify-content:center;">\U0001f916 v2rayNG</a>
                         <a href="https://github.com/tzmax/V2RayXS/releases" target="_blank" rel="noopener" class="action-btn" style="background:#f5f3ff;color:#7c3aed;border:1px solid #e9d5ff;justify-content:center;">\U0001f34f V2RayXS</a>
+                    </div>
+                </div>
+
+                <div style="margin-top:16px;padding-top:16px;border-top:1px solid #e9d5ff;">
+                    <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:8px;">\u0410\u0432\u0442\u043e\u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435 (v2rayN)</div>
+                    <div style="background:#f5f3ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px;margin-bottom:8px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                            <span style="font-size:12px;font-weight:600;color:#7c3aed;">Subscription URL</span>
+                            <button class="copy-btn" onclick="copyText('sub-url')" title="\u041a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                            </button>
+                        </div>
+                        <code id="sub-url" style="display:block;font-size:11px;word-break:break-all;color:#581c87;background:white;padding:8px;border-radius:6px;border:1px solid #e9d5ff;">https://{escape(proxy_host)}:{web_port or 8443}/api/xray-sub/{access_token}</code>
+                    </div>
+                    <div style="background:#f5f3ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px;margin-bottom:8px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                            <span style="font-size:12px;font-weight:600;color:#7c3aed;">Routing URL (\u043c\u0430\u0440\u0448\u0440\u0443\u0442\u0438\u0437\u0430\u0446\u0438\u044f)</span>
+                            <button class="copy-btn" onclick="copyText('routing-url')" title="\u041a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                            </button>
+                        </div>
+                        <code id="routing-url" style="display:block;font-size:11px;word-break:break-all;color:#581c87;background:white;padding:8px;border-radius:6px;border:1px solid #e9d5ff;">https://{escape(proxy_host)}:{web_port or 8443}/api/xray-routing/{access_token}</code>
+                    </div>
+                    <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;padding:12px;font-size:12px;color:#581c87;line-height:1.8;">
+                        <strong>\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0430 \u0430\u0432\u0442\u043e\u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u044f:</strong><br>
+                        1. v2rayN \u2192 <strong>Subscription Group</strong> \u2192 Add \u2192 \u0432\u0441\u0442\u0430\u0432\u044c\u0442\u0435 Subscription URL<br>
+                        2. v2rayN \u2192 <strong>Settings \u2192 Routing</strong> \u2192 Advanced \u2192 Import from URL \u2192 \u0432\u0441\u0442\u0430\u0432\u044c\u0442\u0435 Routing URL<br>
+                        3. \u0421\u0435\u0440\u0432\u0435\u0440 \u0438 \u0441\u043f\u0438\u0441\u043e\u043a \u0441\u0430\u0439\u0442\u043e\u0432 \u0431\u0443\u0434\u0443\u0442 \u043e\u0431\u043d\u043e\u0432\u043b\u044f\u0442\u044c\u0441\u044f \u0430\u0432\u0442\u043e\u043c\u0430\u0442\u0438\u0447\u0435\u0441\u043a\u0438
                     </div>
                 </div>
             </div>
@@ -651,12 +680,15 @@ async def client_connect_page(
             wg_server_port = wg_srv.wstunnel_port if wg_srv.wstunnel_enabled else wg_srv.listen_port
             wg_client_ip = client.wireguard_config.assigned_ip
 
+    web_port = get_configured_web_port()
+
     html = _build_connect_html(
         client, access_token, status_emoji, valid_until_str,
         proxy_host, http_port, client_ip, csrf_token, ip_already_whitelisted,
         vless_url=vless_url, xray_available=xray_available,
         wg_available=wg_available, wg_server_ip=wg_server_ip,
-        wg_server_port=wg_server_port, wg_client_ip=wg_client_ip
+        wg_server_port=wg_server_port, wg_client_ip=wg_client_ip,
+        web_port=web_port
     )
     return HTMLResponse(content=html)
 
@@ -1181,4 +1213,87 @@ Write-Host "  .\\proxy-setup.ps1 -Disable   - Disable proxy" -ForegroundColor Gr
         headers={
             "Content-Disposition": 'attachment; filename="zetit-fna-proxy-setup.ps1"'
         }
+    )
+
+
+@router.get("/xray-sub/{access_token}")
+async def xray_subscription(access_token: str, db: DBSession):
+    """XRay subscription URL for v2rayN — returns base64-encoded VLESS URL.
+    v2rayN auto-updates server config from this URL."""
+    import base64
+
+    client = await _load_client_by_token(db, access_token)
+    if not client.xray_config or not client.xray_config.is_active:
+        raise HTTPException(status_code=404, detail="XRay not enabled")
+
+    xray_srv_result = await db.execute(select(XrayServerConfig).limit(1))
+    xray_srv = xray_srv_result.scalar_one_or_none()
+    if not xray_srv or not xray_srv.is_enabled:
+        raise HTTPException(status_code=404, detail="XRay server not configured")
+
+    server_ip = xray_manager.get_server_ip()
+    xray_settings = XrayServerSettings(
+        port=xray_srv.port, private_key=xray_srv.private_key,
+        public_key=xray_srv.public_key, short_id=xray_srv.short_id,
+        dest_server=xray_srv.dest_server, dest_port=xray_srv.dest_port,
+        server_name=xray_srv.server_name
+    )
+    vless_url = xray_manager.generate_vless_url(
+        server_ip, xray_settings, client.xray_config.uuid,
+        client.xray_config.short_id, client.name
+    )
+
+    encoded = base64.b64encode(vless_url.encode()).decode()
+
+    return Response(
+        content=encoded,
+        media_type="text/plain; charset=utf-8",
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
+@router.get("/xray-routing/{access_token}")
+async def xray_routing_rules(access_token: str, db: DBSession):
+    """XRay routing rules for v2rayN — returns JSON with client's domains.
+    Import in v2rayN: Settings → Routing → Import from URL."""
+    import json as json_module
+
+    result = await db.execute(
+        select(Client)
+        .options(selectinload(Client.domains), selectinload(Client.xray_config))
+        .where(Client.access_token == access_token)
+    )
+    client = result.scalar_one_or_none()
+    if client is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    if is_access_token_expired(client):
+        raise HTTPException(status_code=410, detail="Link expired")
+
+    # Build domain list with subdomains
+    domains = []
+    for d in client.domains:
+        if d.is_active:
+            domains.append(f"domain:{d.domain}")
+
+    rules = [
+        {
+            "type": "field",
+            "outboundTag": "proxy",
+            "domain": domains,
+            "enabled": True,
+            "remarks": f"ProxyGate - {client.name}"
+        },
+        {
+            "type": "field",
+            "outboundTag": "direct",
+            "domain": ["geosite:private"],
+            "enabled": True,
+            "remarks": "Direct - private"
+        }
+    ]
+
+    return Response(
+        content=json_module.dumps(rules, ensure_ascii=False, indent=2),
+        media_type="application/json",
+        headers={"Cache-Control": "no-cache"},
     )
