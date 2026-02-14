@@ -7,7 +7,7 @@ from app.api.deps import DBSession, CurrentClient
 from app.models import Client
 from app.schemas.portal import PortalProfileInfoResponse, VpnInfo, ProxyInfo
 from app.services.profile_generator import ProfileGenerator
-from app.api.system import get_configured_domain, get_configured_ports
+from app.api.system import get_configured_domain, get_configured_ports, get_configured_web_port
 
 
 router = APIRouter()
@@ -54,7 +54,8 @@ async def get_profile_info(
 
     pac_url = None
     if client.proxy_account:
-        pac_url = f"https://{domain}/pac/{client.access_token}"
+        web_port = get_configured_web_port()
+        pac_url = f"https://{domain}:{web_port}/pac/{client.access_token}"
 
     return PortalProfileInfoResponse(
         vpn=vpn_info,
@@ -228,7 +229,8 @@ async def download_proxy_setup_script(
 
     domain = get_configured_domain()
     http_port, _ = get_configured_ports()
-    pac_url = f"https://{domain}/pac/{client.access_token}"
+    web_port = get_configured_web_port()
+    pac_url = f"https://{domain}:{web_port}/pac/{client.access_token}"
 
     script = f'''# ZETIT FNA - Windows Proxy Setup Script
 # Run as Administrator
