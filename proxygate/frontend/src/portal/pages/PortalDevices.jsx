@@ -276,7 +276,7 @@ function PlatformAccordion({ platforms, colorClass }) {
       {platforms.map(({ key, label, icon, data }) => {
         if (!data) return null
         const isOpen = openPlatform === key
-        const appLink = data.app_store || data.play_store || data.github || data.download
+        const appLink = data.download || data.app_store || data.play_store || data.github
         return (
           <div key={key} className={`rounded-lg border ${c.border} overflow-hidden`}>
             <button

@@ -123,15 +123,15 @@ async def get_xray_connection_info(
         },
         "windows": {
             "app": "v2rayN",
-            "github": "https://github.com/2dust/v2rayN/releases",
+            "download": "/downloads/v2rayN.zip",
             "steps": [
-                "Скачайте v2rayN с GitHub",
-                "Распакуйте архив",
+                "Нажмите «Скачать v2rayN» ниже (portable, без установки)",
+                "Распакуйте архив в любую папку",
                 "Запустите v2rayN.exe",
-                "Клик правой кнопкой на иконке в трее → Импорт из буфера",
-                "Скопируйте VLESS URL и вставьте",
-                "Выберите сервер → Клик правой кнопкой → Установить как активный",
-                "Включите системный прокси"
+                "Скопируйте VLESS URL выше",
+                "Клик правой кнопкой на иконке v2rayN в трее → Import from clipboard",
+                "Выберите сервер → Клик правой кнопкой → Set as active server",
+                "Включите системный прокси (System Proxy → Set System Proxy)"
             ],
             "alternative_apps": ["Nekoray", "Qv2ray"]
         },
