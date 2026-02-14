@@ -15,7 +15,7 @@ from app.services.profile_generator import ProfileGenerator
 from app.services.proxy_manager import rebuild_proxy_config
 from app.services.xray_manager import XRayManager, XrayServerSettings
 from app.services.wireguard_manager import WireGuardManager, WgServerSettings
-from app.api.system import get_configured_domain, get_configured_ports
+from app.api.system import get_configured_domain, get_configured_ports, get_configured_web_port
 from app.utils.security import is_access_token_expired
 
 
@@ -1056,7 +1056,8 @@ async def download_proxy_setup_public(
 
     domain = get_configured_domain()
     http_port, _ = get_configured_ports()
-    pac_url = f"https://{domain}/api/pac/{client.access_token}"
+    web_port = get_configured_web_port()
+    pac_url = f"https://{domain}:{web_port}/api/pac/{client.access_token}"
 
     script = f'''# ZETIT FNA - Windows Proxy Setup Script
 # Run as Administrator

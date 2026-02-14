@@ -106,6 +106,12 @@ def get_configured_ports() -> tuple:
     )
 
 
+def get_configured_web_port() -> int:
+    """Get the web/admin panel port from system settings."""
+    settings = load_system_settings()
+    return settings.get("web_port", 8443)
+
+
 def save_system_settings(data: dict):
     """Save system settings."""
     SYSTEM_SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
