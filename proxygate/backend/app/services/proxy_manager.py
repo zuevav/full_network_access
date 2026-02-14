@@ -1,9 +1,12 @@
 import subprocess
 import signal
+import logging
 from typing import List
 from dataclasses import dataclass, field
 
 from app.config import settings
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -37,6 +40,8 @@ class ProxyManager:
         Generate full 3proxy configuration.
 
         Per-client ACL with domain whitelist and IP-based access.
+        Connections from 127.0.0.1 (stunnel) are allowed without auth —
+        IP filtering is handled by iptables on stunnel ports.
         """
         config = f'''daemon
 # ProxyGate 3proxy configuration
@@ -58,6 +63,32 @@ auth iponly strong
 users ${self.PASSWD_PATH}
 
 # === Per-client ACL ===
+'''
+
+        # Collect all domains from all active clients for stunnel access
+        all_domains_expanded = []
+        for client in clients:
+            if client.is_active and client.domains:
+                for d in client.domains:
+                    all_domains_expanded.append(d.domain)
+                    if d.include_subdomains:
+                        all_domains_expanded.append(f"*.{d.domain}")
+
+        # Deduplicate while preserving order
+        seen = set()
+        unique_domains = []
+        for d in all_domains_expanded:
+            if d not in seen:
+                seen.add(d)
+                unique_domains.append(d)
+
+        # Allow stunnel connections (127.0.0.1) without auth
+        # IP access control is enforced by iptables on stunnel ports (443/8080)
+        if unique_domains:
+            all_domains_str = ",".join(unique_domains)
+            config += f'''
+# Stunnel passthrough — IP filtering done by iptables on ports 443/8080
+allow * 127.0.0.1 {all_domains_str} * *
 '''
 
         for client in clients:
@@ -163,9 +194,86 @@ socks -p1080 -i127.0.0.1 -a -n
             return False
 
     def apply_changes(self, clients: List[ProxyClient]) -> bool:
-        """Full cycle: generate config + restart."""
+        """Full cycle: generate config + restart + update iptables."""
         self.write_config(clients)
-        return self.restart()
+        result = self.restart()
+        # Sync iptables PROXYGATE chain with all whitelisted IPs
+        all_ips = set()
+        for client in clients:
+            if client.is_active:
+                all_ips.update(client.allowed_ips)
+        self.sync_iptables_whitelist(all_ips)
+        return result
+
+    @staticmethod
+    def sync_iptables_whitelist(allowed_ips: set) -> None:
+        """
+        Sync PROXYGATE iptables chain with whitelisted IPs.
+
+        Only whitelisted IPs can reach stunnel ports (443/8080).
+        This replaces password auth — 3proxy allows 127.0.0.1 without auth.
+        """
+        chain = "PROXYGATE"
+        try:
+            # Ensure chain exists
+            subprocess.run(
+                ["iptables", "-N", chain],
+                capture_output=True
+            )
+            # Flush existing rules
+            subprocess.run(
+                ["iptables", "-F", chain],
+                capture_output=True, check=True
+            )
+            # Always allow localhost and server's own IP
+            subprocess.run(
+                ["iptables", "-A", chain, "-s", "127.0.0.1", "-j", "ACCEPT"],
+                capture_output=True, check=True
+            )
+            # Get server IP
+            try:
+                from app.api.system import get_configured_server_ip
+                server_ip = get_configured_server_ip()
+                if server_ip and server_ip != "127.0.0.1":
+                    subprocess.run(
+                        ["iptables", "-A", chain, "-s", server_ip, "-j", "ACCEPT"],
+                        capture_output=True, check=True
+                    )
+            except Exception:
+                pass
+            # Add whitelisted IPs
+            for ip in sorted(allowed_ips):
+                ip = ip.strip()
+                if ip and ip != "127.0.0.1":
+                    subprocess.run(
+                        ["iptables", "-A", chain, "-s", ip, "-j", "ACCEPT"],
+                        capture_output=True, check=True
+                    )
+            # Drop all other
+            subprocess.run(
+                ["iptables", "-A", chain, "-j", "DROP"],
+                capture_output=True, check=True
+            )
+            # Ensure chain is referenced from INPUT for stunnel ports
+            for port in ["443", "8080"]:
+                # Check if rule already exists
+                check = subprocess.run(
+                    ["iptables", "-C", "INPUT", "-p", "tcp", "--dport", port, "-j", chain],
+                    capture_output=True
+                )
+                if check.returncode != 0:
+                    subprocess.run(
+                        ["iptables", "-I", "INPUT", "1", "-p", "tcp", "--dport", port, "-j", chain],
+                        capture_output=True, check=True
+                    )
+            # Save iptables for persistence
+            subprocess.run(
+                "iptables-save > /etc/iptables.rules",
+                shell=True, capture_output=True
+            )
+            logger.info(f"PROXYGATE iptables synced: {len(allowed_ips)} IPs")
+        except Exception as e:
+            logger.error(f"Failed to sync iptables: {e}")
 
 
 async def rebuild_proxy_config(db):
