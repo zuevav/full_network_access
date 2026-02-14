@@ -301,7 +301,7 @@ def _build_connect_html(client, access_token, status_emoji, valid_until_str,
 
                 <div style="margin-top:16px;">
                     <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:8px;">Windows (v2rayN) \u2014 быстрый старт</div>
-                    <a href="/downloads/v2rayN.zip" class="action-btn" style="background:#7c3aed;color:white;border:none;width:100%;justify-content:center;padding:12px;font-size:14px;margin-bottom:8px;">
+                    <a href="https://disk.yandex.ru/d/F5Kf1kiYJhM1Wg" target="_blank" rel="noopener noreferrer" class="action-btn" style="background:#7c3aed;color:white;border:none;width:100%;justify-content:center;padding:12px;font-size:14px;margin-bottom:8px;">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         \U0001fa9f \u0421\u043a\u0430\u0447\u0430\u0442\u044c v2rayN (Windows, portable)
                     </a>
