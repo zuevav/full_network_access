@@ -40,8 +40,8 @@ class ProxyManager:
         Generate full 3proxy configuration.
 
         Per-client ACL with domain whitelist and IP-based access.
-        Connections from 127.0.0.1 (stunnel) are allowed without auth —
-        IP filtering is handled by iptables on stunnel ports.
+        Connections from 127.0.0.1 (nginx TLS proxy) are allowed without auth —
+        IP filtering is handled by iptables on nginx TLS ports.
         """
         config = f'''daemon
 # ProxyGate 3proxy configuration
@@ -65,7 +65,7 @@ users ${self.PASSWD_PATH}
 # === Per-client ACL ===
 '''
 
-        # Collect all domains from all active clients for stunnel access
+        # Collect all domains from all active clients for TLS proxy access
         all_domains_expanded = []
         for client in clients:
             if client.is_active and client.domains:
@@ -73,6 +73,16 @@ users ${self.PASSWD_PATH}
                     all_domains_expanded.append(d.domain)
                     if d.include_subdomains:
                         all_domains_expanded.append(f"*.{d.domain}")
+
+        # Add server's own domain for PAC re-fetch through proxy
+        try:
+            from app.api.system import get_configured_domain
+            server_domain = get_configured_domain()
+            if server_domain and server_domain != "localhost":
+                all_domains_expanded.append(server_domain)
+                all_domains_expanded.append(f"*.{server_domain}")
+        except Exception:
+            pass
 
         # Deduplicate while preserving order
         seen = set()
@@ -82,12 +92,12 @@ users ${self.PASSWD_PATH}
                 seen.add(d)
                 unique_domains.append(d)
 
-        # Allow stunnel connections (127.0.0.1) without auth
-        # IP access control is enforced by iptables on stunnel ports (443/8080)
+        # Allow TLS proxy connections (127.0.0.1) without auth
+        # IP access control is enforced by iptables on nginx TLS ports (443/8080)
         if unique_domains:
             all_domains_str = ",".join(unique_domains)
             config += f'''
-# Stunnel passthrough — IP filtering done by iptables on ports 443/8080
+# TLS proxy passthrough — IP filtering done by iptables on ports 443/8080
 allow * 127.0.0.1 {all_domains_str} * *
 '''
 
@@ -210,7 +220,7 @@ socks -p1080 -i127.0.0.1 -a -n
         """
         Sync PROXYGATE iptables chain with whitelisted IPs.
 
-        Only whitelisted IPs can reach stunnel ports (443/8080).
+        Only whitelisted IPs can reach nginx TLS proxy ports (443/8080).
         This replaces password auth — 3proxy allows 127.0.0.1 without auth.
         """
         chain = "PROXYGATE"
