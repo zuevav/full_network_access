@@ -123,9 +123,9 @@ async def get_xray_connection_info(
         },
         "windows": {
             "app": "v2rayN",
-            "download": "/downloads/v2rayN.zip",
+            "download": "https://disk.yandex.ru/d/F5Kf1kiYJhM1Wg",
             "steps": [
-                "Нажмите «Скачать v2rayN» ниже (portable, без установки)",
+                "Нажмите «Скачать v2rayN» ниже (Яндекс.Диск, portable, без установки)",
                 "Распакуйте архив в любую папку",
                 "Запустите v2rayN.exe",
                 "Скопируйте VLESS URL выше",
