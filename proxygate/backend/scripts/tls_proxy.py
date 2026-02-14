@@ -18,6 +18,8 @@ import signal
 import sys
 import os
 import logging
+import random
+import string
 
 LISTEN_HOST = "0.0.0.0"
 LISTEN_PORT = int(os.environ.get("TLS_PROXY_PORT", "8443"))
@@ -123,9 +125,21 @@ def handle_connect(client_ssl, target_host, target_port):
     # Check if 3proxy accepted
     first_line = resp.split(b"\r\n")[0]
     if b"200" in first_line:
-        # Send success to client
+        # Send padded success response to disguise CONNECT from DPI.
+        # Normal "200 Connection established" is ~40 bytes — very distinctive.
+        # We pad it to ~4-8KB to look like a normal HTTP page response.
+        pad_size = random.randint(3000, 7000)
+        pad_data = ''.join(random.choices(string.ascii_letters + string.digits, k=pad_size))
+        padded_resp = (
+            "HTTP/1.1 200 Connection established\r\n"
+            f"X-Request-Id: {''.join(random.choices(string.hexdigits[:16], k=32))}\r\n"
+            f"X-Cache-Status: HIT\r\n"
+            f"X-Edge-Location: FRA\r\n"
+            f"X-Pad: {pad_data}\r\n"
+            "\r\n"
+        )
         try:
-            client_ssl.sendall(b"HTTP/1.1 200 Connection established\r\n\r\n")
+            client_ssl.sendall(padded_resp.encode())
         except Exception:
             backend.close()
             return

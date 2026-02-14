@@ -299,14 +299,27 @@ def _build_connect_html(client, access_token, status_emoji, valid_until_str,
                 </div>
 
                 <div style="margin-top:16px;">
-                    <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:8px;">Приложения по платформам</div>
+                    <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:8px;">Windows (v2rayN) \u2014 быстрый старт</div>
+                    <a href="/downloads/v2rayN.zip" class="action-btn" style="background:#7c3aed;color:white;border:none;width:100%;justify-content:center;padding:12px;font-size:14px;margin-bottom:8px;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        \U0001fa9f \u0421\u043a\u0430\u0447\u0430\u0442\u044c v2rayN (Windows, portable)
+                    </a>
+                    <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;padding:12px;font-size:12px;color:#581c87;line-height:1.8;">
+                        <strong>\u0418\u043d\u0441\u0442\u0440\u0443\u043a\u0446\u0438\u044f:</strong><br>
+                        1. \u0421\u043a\u0430\u0447\u0430\u0439\u0442\u0435 \u0438 \u0440\u0430\u0441\u043f\u0430\u043a\u0443\u0439\u0442\u0435 \u0430\u0440\u0445\u0438\u0432 \u0432 \u043b\u044e\u0431\u0443\u044e \u043f\u0430\u043f\u043a\u0443<br>
+                        2. \u0417\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 <strong>v2rayN.exe</strong> (\u043f\u0440\u0430\u0432\u0430 \u0430\u0434\u043c\u0438\u043d\u0430 \u043d\u0435 \u043d\u0443\u0436\u043d\u044b)<br>
+                        3. \u041d\u0430\u0436\u043c\u0438\u0442\u0435 \u043a\u043d\u043e\u043f\u043a\u0443 \u00ab\u041a\u043e\u043f\u0438\u0440\u043e\u0432\u0430\u0442\u044c\u00bb \u0440\u044f\u0434\u043e\u043c \u0441 VLESS URL \u0432\u044b\u0448\u0435<br>
+                        4. \u0412 v2rayN: <strong>Servers \u2192 Import from clipboard</strong><br>
+                        5. \u041d\u0430\u0436\u043c\u0438\u0442\u0435 \u25b6 \u0434\u043b\u044f \u043f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u044f
+                    </div>
+                </div>
+                <div style="margin-top:12px;">
+                    <div style="font-size:13px;font-weight:600;color:#374151;margin-bottom:8px;">\u0414\u0440\u0443\u0433\u0438\u0435 \u043f\u043b\u0430\u0442\u0444\u043e\u0440\u043c\u044b</div>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                         <a href="https://apps.apple.com/app/shadowrocket/id932747118" target="_blank" rel="noopener" class="action-btn" style="background:#f5f3ff;color:#7c3aed;border:1px solid #e9d5ff;justify-content:center;">\U0001f4f1 Shadowrocket</a>
                         <a href="https://play.google.com/store/apps/details?id=com.v2ray.ang" target="_blank" rel="noopener" class="action-btn" style="background:#f5f3ff;color:#7c3aed;border:1px solid #e9d5ff;justify-content:center;">\U0001f916 v2rayNG</a>
-                        <a href="https://github.com/2dust/v2rayN/releases" target="_blank" rel="noopener" class="action-btn" style="background:#f5f3ff;color:#7c3aed;border:1px solid #e9d5ff;justify-content:center;">\U0001fa9f v2rayN</a>
                         <a href="https://github.com/tzmax/V2RayXS/releases" target="_blank" rel="noopener" class="action-btn" style="background:#f5f3ff;color:#7c3aed;border:1px solid #e9d5ff;justify-content:center;">\U0001f34f V2RayXS</a>
                     </div>
-                    <p style="font-size:11px;color:#9ca3af;margin-top:8px;text-align:center;">Скопируйте VLESS URL выше и вставьте в приложение</p>
                 </div>
             </div>
         </div>
