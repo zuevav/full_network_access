@@ -50,7 +50,7 @@ class ProxyManager:
 nserver 1.1.1.1
 nserver 8.8.8.8
 nscache 65536
-timeouts 10 10 120 300 600 60 5 60
+timeouts 10 10 120 300 600 1800 5 60
 
 maxconn 500
 stacksize 262144
