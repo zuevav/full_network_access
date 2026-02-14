@@ -143,6 +143,9 @@ def handle_connect(client_ssl, target_host, target_port):
         except Exception:
             backend.close()
             return
+        # Remove timeout for relay phase — slow ISP needs unlimited time
+        client_ssl.settimeout(None)
+        backend.settimeout(None)
         # Relay bidirectionally
         relay(client_ssl, backend)
     else:
@@ -172,6 +175,10 @@ def handle_http(client_ssl, initial_data):
     except Exception:
         backend.close()
         return
+
+    # Remove timeout for relay phase — large files through slow ISP need unlimited time
+    client_ssl.settimeout(None)
+    backend.settimeout(None)
 
     # Relay the rest
     relay(client_ssl, backend)
