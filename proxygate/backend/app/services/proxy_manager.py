@@ -132,8 +132,8 @@ allow {client.username} * {domains_str} * *
 deny *
 
 # === Proxy servers ===
-proxy -p3128 -i127.0.0.1 -a -n
-socks -p1080 -i127.0.0.1 -a -n
+proxy -p3128 -a -n
+socks -p1080 -a -n
 '''
         return config
 
@@ -264,8 +264,8 @@ socks -p1080 -i127.0.0.1 -a -n
                 ["iptables", "-A", chain, "-j", "DROP"],
                 capture_output=True, check=True
             )
-            # Ensure chain is referenced from INPUT for stunnel ports
-            for port in ["443", "8080"]:
+            # Ensure chain is referenced from INPUT for proxy ports
+            for port in ["443", "8080", "3128", "1080"]:
                 # Check if rule already exists
                 check = subprocess.run(
                     ["iptables", "-C", "INPUT", "-p", "tcp", "--dport", port, "-j", chain],
