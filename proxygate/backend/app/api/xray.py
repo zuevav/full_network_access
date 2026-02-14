@@ -1,5 +1,5 @@
 """
-XRay VLESS + REALITY API endpoints.
+XRay VLESS + WebSocket (CDN) API endpoints.
 
 Admin endpoints for managing XRay server and client configurations.
 Portal endpoints for clients to get their connection info.
@@ -13,6 +13,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
 from app.api.deps import DBSession, CurrentAdmin
+from app.api.system import get_configured_domain
 from app.models import Client, XrayConfig, XrayServerConfig
 from app.services.xray_manager import XRayManager, XrayClient, XrayServerSettings
 
@@ -246,7 +247,7 @@ async def get_client_xray_config(
     if client.xray_config:
         vless_url = None
         if server_config:
-            server_ip = xray_manager.get_server_ip()
+            xray_domain = get_configured_domain() or xray_manager.get_server_ip()
             server_settings = XrayServerSettings(
                 port=server_config.port,
                 private_key=server_config.private_key,
@@ -257,7 +258,7 @@ async def get_client_xray_config(
                 server_name=server_config.server_name
             )
             vless_url = xray_manager.generate_vless_url(
-                server_ip,
+                xray_domain,
                 server_settings,
                 client.xray_config.uuid,
                 client.xray_config.short_id,

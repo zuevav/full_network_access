@@ -277,8 +277,8 @@ def _build_connect_html(client, access_token, status_emoji, valid_until_str,
             <div class="card-header" style="background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);">
                 <div class="card-icon">\u26a1</div>
                 <div>
-                    <div class="card-title" style="color: white;">XRay (VLESS + REALITY)</div>
-                    <div class="card-desc" style="color: rgba(255,255,255,0.8);">Современный протокол с маскировкой</div>
+                    <div class="card-title" style="color: white;">XRay (VLESS + CDN)</div>
+                    <div class="card-desc" style="color: rgba(255,255,255,0.8);">Через Cloudflare, обход DPI</div>
                 </div>
             </div>
             <div class="card-body">
@@ -656,7 +656,7 @@ async def client_connect_page(
         xray_srv = xray_srv_result.scalar_one_or_none()
         if xray_srv and xray_srv.is_enabled:
             xray_available = True
-            server_ip = xray_manager.get_server_ip()
+            xray_domain = domain if domain and domain != "localhost" else xray_manager.get_server_ip()
             xray_settings = XrayServerSettings(
                 port=xray_srv.port, private_key=xray_srv.private_key,
                 public_key=xray_srv.public_key, short_id=xray_srv.short_id,
@@ -664,7 +664,7 @@ async def client_connect_page(
                 server_name=xray_srv.server_name
             )
             vless_url = xray_manager.generate_vless_url(
-                server_ip, xray_settings, client.xray_config.uuid,
+                xray_domain, xray_settings, client.xray_config.uuid,
                 client.xray_config.short_id, client.name
             )
 
@@ -783,7 +783,7 @@ async def public_xray_qr(access_token: str, db: DBSession):
     if not xray_srv or not xray_srv.is_enabled:
         raise HTTPException(status_code=404, detail="XRay server not configured")
 
-    server_ip = xray_manager.get_server_ip()
+    xray_domain = get_configured_domain() or xray_manager.get_server_ip()
     xray_settings = XrayServerSettings(
         port=xray_srv.port, private_key=xray_srv.private_key,
         public_key=xray_srv.public_key, short_id=xray_srv.short_id,
@@ -791,7 +791,7 @@ async def public_xray_qr(access_token: str, db: DBSession):
         server_name=xray_srv.server_name
     )
     vless_url = xray_manager.generate_vless_url(
-        server_ip, xray_settings, client.xray_config.uuid,
+        xray_domain, xray_settings, client.xray_config.uuid,
         client.xray_config.short_id, client.name
     )
 
@@ -1231,7 +1231,7 @@ async def xray_subscription(access_token: str, db: DBSession):
     if not xray_srv or not xray_srv.is_enabled:
         raise HTTPException(status_code=404, detail="XRay server not configured")
 
-    server_ip = xray_manager.get_server_ip()
+    xray_domain = get_configured_domain() or xray_manager.get_server_ip()
     xray_settings = XrayServerSettings(
         port=xray_srv.port, private_key=xray_srv.private_key,
         public_key=xray_srv.public_key, short_id=xray_srv.short_id,
@@ -1239,7 +1239,7 @@ async def xray_subscription(access_token: str, db: DBSession):
         server_name=xray_srv.server_name
     )
     vless_url = xray_manager.generate_vless_url(
-        server_ip, xray_settings, client.xray_config.uuid,
+        xray_domain, xray_settings, client.xray_config.uuid,
         client.xray_config.short_id, client.name
     )
 

@@ -26,15 +26,17 @@ class XrayServerSettings:
 
 class XRayManager:
     """
-    Manages XRay VLESS + REALITY server.
+    Manages XRay VLESS + WebSocket server (behind Cloudflare CDN).
 
-    XRay is a modern proxy protocol that can bypass deep packet inspection
-    by masquerading as legitimate HTTPS traffic.
+    XRay listens locally on WS, nginx terminates TLS on port 443,
+    Cloudflare CDN hides the server IP from ISP DPI.
     """
 
     XRAY_DIR = "/usr/local/etc/xray"
     CONFIG_FILE = "/usr/local/etc/xray/config.json"
     CLIENT_CONFIG_DIR = "/root/xray-client"
+    WS_PATH = "/ray"
+    WS_LOCAL_PORT = 10443
 
     @staticmethod
     def generate_uuid() -> str:
@@ -107,25 +109,14 @@ class XRayManager:
 
     def generate_config(self, server_settings: XrayServerSettings, clients: List[XrayClient]) -> dict:
         """
-        Generate XRay server configuration.
+        Generate XRay server configuration (VLESS + WebSocket).
 
-        Returns the configuration as a dictionary.
+        XRay listens locally, nginx handles TLS termination.
         """
-        # Build client list with only active clients
         client_list = []
         for client in clients:
             if client.is_active:
-                client_entry = {
-                    "id": client.uuid,
-                    "flow": "xtls-rprx-vision"
-                }
-                client_list.append(client_entry)
-
-        # Short IDs - include server default and client-specific ones
-        short_ids = [server_settings.short_id, ""]
-        for client in clients:
-            if client.is_active and client.short_id and client.short_id not in short_ids:
-                short_ids.append(client.short_id)
+                client_list.append({"id": client.uuid})
 
         config = {
             "log": {
@@ -133,26 +124,17 @@ class XRayManager:
             },
             "inbounds": [
                 {
-                    "listen": "0.0.0.0",
-                    "port": server_settings.port,
+                    "listen": "127.0.0.1",
+                    "port": self.WS_LOCAL_PORT,
                     "protocol": "vless",
                     "settings": {
                         "clients": client_list,
                         "decryption": "none"
                     },
                     "streamSettings": {
-                        "network": "tcp",
-                        "security": "reality",
-                        "realitySettings": {
-                            "show": False,
-                            "dest": f"{server_settings.dest_server}:{server_settings.dest_port}",
-                            "xver": 0,
-                            "serverNames": [
-                                server_settings.server_name,
-                                server_settings.dest_server
-                            ],
-                            "privateKey": server_settings.private_key,
-                            "shortIds": short_ids
+                        "network": "ws",
+                        "wsSettings": {
+                            "path": self.WS_PATH
                         }
                     },
                     "sniffing": {
@@ -187,18 +169,12 @@ class XRayManager:
 
     def generate_client_config(
             self,
-            server_ip: str,
+            domain: str,
             server_settings: XrayServerSettings,
             client_uuid: str,
             client_short_id: Optional[str] = None
     ) -> dict:
-        """
-        Generate client configuration for connection.
-
-        This can be used by v2rayN, v2rayNG, etc.
-        """
-        short_id = client_short_id or server_settings.short_id
-
+        """Generate client configuration for VLESS+WS+TLS connection."""
         return {
             "log": {
                 "loglevel": "warning"
@@ -224,26 +200,28 @@ class XRayManager:
                     "settings": {
                         "vnext": [
                             {
-                                "address": server_ip,
+                                "address": domain,
                                 "port": server_settings.port,
                                 "users": [
                                     {
                                         "id": client_uuid,
-                                        "encryption": "none",
-                                        "flow": "xtls-rprx-vision"
+                                        "encryption": "none"
                                     }
                                 ]
                             }
                         ]
                     },
                     "streamSettings": {
-                        "network": "tcp",
-                        "security": "reality",
-                        "realitySettings": {
-                            "fingerprint": "chrome",
-                            "serverName": server_settings.server_name,
-                            "publicKey": server_settings.public_key,
-                            "shortId": short_id
+                        "network": "ws",
+                        "security": "tls",
+                        "tlsSettings": {
+                            "serverName": domain
+                        },
+                        "wsSettings": {
+                            "path": self.WS_PATH,
+                            "headers": {
+                                "Host": domain
+                            }
                         }
                     },
                     "tag": "proxy"
@@ -267,33 +245,26 @@ class XRayManager:
 
     def generate_vless_url(
             self,
-            server_ip: str,
+            domain: str,
             server_settings: XrayServerSettings,
             client_uuid: str,
             client_short_id: Optional[str] = None,
             name: str = "ProxyGate"
     ) -> str:
         """
-        Generate VLESS URL for easy import into clients.
+        Generate VLESS+WS+TLS URL for easy import into clients.
 
-        This URL can be imported directly into:
-        - Shadowrocket (iOS)
-        - v2rayNG (Android)
-        - v2rayN (Windows)
-        - V2RayXS (Mac)
+        Traffic: client → Cloudflare CDN (TLS) → nginx (TLS) → XRay (WS)
         """
-        short_id = client_short_id or server_settings.short_id
-
+        from urllib.parse import quote
         url = (
-            f"vless://{client_uuid}@{server_ip}:{server_settings.port}"
+            f"vless://{client_uuid}@{domain}:{server_settings.port}"
             f"?encryption=none"
-            f"&flow=xtls-rprx-vision"
-            f"&security=reality"
-            f"&sni={server_settings.server_name}"
-            f"&fp=chrome"
-            f"&pbk={server_settings.public_key}"
-            f"&sid={short_id}"
-            f"&type=tcp"
+            f"&security=tls"
+            f"&sni={domain}"
+            f"&type=ws"
+            f"&host={domain}"
+            f"&path={quote(self.WS_PATH)}"
             f"#{name}"
         )
         return url
@@ -408,31 +379,23 @@ class XRayManager:
 
     def get_connection_info(
             self,
+            domain: str,
             server_settings: XrayServerSettings,
             client_uuid: str,
             client_short_id: Optional[str] = None,
             client_name: str = "ProxyGate"
     ) -> Dict:
-        """
-        Get all connection information for a client.
-
-        Returns a dict with all info needed to connect.
-        """
-        server_ip = self.get_server_ip()
-        short_id = client_short_id or server_settings.short_id
-
+        """Get all connection information for a client (VLESS+WS+TLS via CDN)."""
         return {
-            "server_ip": server_ip,
+            "domain": domain,
             "port": server_settings.port,
             "uuid": client_uuid,
-            "flow": "xtls-rprx-vision",
-            "security": "reality",
-            "sni": server_settings.server_name,
-            "fingerprint": "chrome",
-            "public_key": server_settings.public_key,
-            "short_id": short_id,
+            "transport": "ws",
+            "security": "tls",
+            "sni": domain,
+            "ws_path": self.WS_PATH,
             "vless_url": self.generate_vless_url(
-                server_ip, server_settings, client_uuid, client_short_id, client_name
+                domain, server_settings, client_uuid, client_short_id, client_name
             ),
             "apps": {
                 "ios": ["Shadowrocket", "Streisand", "V2Box"],
