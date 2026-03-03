@@ -93,11 +93,11 @@ users ${self.PASSWD_PATH}
                 unique_domains.append(d)
 
         # Allow TLS proxy connections (127.0.0.1) without auth
-        # IP access control is enforced by iptables on nginx TLS ports (443/8080)
+        # IP access control is enforced by iptables on proxy ports (2053/8080/3128/1080)
         if unique_domains:
             all_domains_str = ",".join(unique_domains)
             config += f'''
-# TLS proxy passthrough — IP filtering done by iptables on ports 443/8080
+# TLS proxy passthrough — IP filtering done by iptables on proxy ports
 allow * 127.0.0.1 {all_domains_str} * *
 '''
 
@@ -220,7 +220,8 @@ socks -p1080 -a -n
         """
         Sync PROXYGATE iptables chain with whitelisted IPs.
 
-        Only whitelisted IPs can reach nginx TLS proxy ports (443/2053/8080).
+        Only whitelisted IPs can reach proxy ports (2053/8080/3128/1080/2096).
+        Port 443 is NOT filtered — it serves the public web panel + XRay WS.
         This replaces password auth — 3proxy allows 127.0.0.1 without auth.
         """
         chain = "PROXYGATE"
@@ -265,7 +266,7 @@ socks -p1080 -a -n
                 capture_output=True, check=True
             )
             # Ensure chain is referenced from INPUT for proxy ports
-            for port in ["443", "2053", "8080", "3128", "1080"]:
+            for port in ["2053", "8080", "3128", "1080", "2096"]:
                 # Check if rule already exists
                 check = subprocess.run(
                     ["iptables", "-C", "INPUT", "-p", "tcp", "--dport", port, "-j", chain],
