@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import {
@@ -9,7 +10,11 @@ import {
   CreditCard,
   Settings,
   ChevronRight,
-  MessageSquare
+  ChevronDown,
+  ChevronUp,
+  MessageSquare,
+  Monitor,
+  Laptop
 } from 'lucide-react'
 import api from '../../api'
 
@@ -103,7 +108,63 @@ const quickActions = [
   },
 ]
 
+const platformInstructions = [
+  {
+    id: 'ios',
+    name: 'iPhone / iPad',
+    icon: Smartphone,
+    steps: [
+      'Перейдите в раздел «Настроить устройство»',
+      'Выберите платформу iOS и нажмите «Скачать профиль VPN»',
+      'В появившемся окне нажмите «Разрешить»',
+      'Откройте Настройки → Основные → VPN и управление устройством',
+      'Нажмите на загруженный профиль и установите его',
+      'VPN появится в Настройки → VPN. Включите его!',
+    ],
+  },
+  {
+    id: 'android',
+    name: 'Android',
+    icon: Smartphone,
+    steps: [
+      'Установите приложение strongSwan VPN Client из Google Play',
+      'Перейдите в раздел «Настроить устройство»',
+      'Выберите платформу Android и нажмите «Скачать профиль VPN»',
+      'Откройте скачанный файл .sswan',
+      'Приложение strongSwan предложит импортировать профиль — нажмите «Импортировать»',
+      'Подключитесь к VPN в приложении strongSwan',
+    ],
+  },
+  {
+    id: 'windows',
+    name: 'Windows',
+    icon: Monitor,
+    steps: [
+      'Перейдите в раздел «Настроить устройство»',
+      'VPN: скачайте скрипт .ps1, нажмите ПКМ → «Выполнить с помощью PowerShell» (от имени администратора)',
+      'Proxy: скачайте скрипт авто-настройки прокси и запустите аналогично',
+      'Скрипт автоматически настроит системный прокси для всех сайтов',
+      'Перезапустите браузер для применения настроек',
+    ],
+  },
+  {
+    id: 'macos',
+    name: 'macOS',
+    icon: Laptop,
+    steps: [
+      'Перейдите в раздел «Настроить устройство»',
+      'Выберите платформу macOS и нажмите «Скачать профиль VPN»',
+      'Откройте скачанный файл .mobileconfig',
+      'Откройте Системные настройки → Профили',
+      'Нажмите на загруженный профиль и установите его',
+      'VPN появится в Системные настройки → VPN. Включите его!',
+    ],
+  },
+]
+
 export default function PortalHome() {
+  const [expandedPlatform, setExpandedPlatform] = useState(null)
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['portal-me'],
     queryFn: () => api.getPortalMe(),
@@ -129,6 +190,78 @@ export default function PortalHome() {
 
       {/* Status card */}
       <StatusCard subscription={data.subscription} />
+
+      {/* How to connect */}
+      <div className="card p-5">
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">Как подключиться</h2>
+        <ol className="space-y-2 text-sm text-gray-700">
+          <li className="flex gap-2">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-bold">1</span>
+            <span>Перейдите в раздел «Настроить устройство»</span>
+          </li>
+          <li className="flex gap-2">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-bold">2</span>
+            <span>Выберите платформу и скачайте профиль</span>
+          </li>
+          <li className="flex gap-2">
+            <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-bold">3</span>
+            <span>Установите профиль и подключитесь</span>
+          </li>
+        </ol>
+        <Link
+          to="/my/devices"
+          className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700"
+        >
+          Настроить устройство
+          <ChevronRight className="w-4 h-4" />
+        </Link>
+      </div>
+
+      {/* Platform instructions */}
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 mb-3">
+          Инструкции по платформам
+        </h2>
+        <div className="space-y-2">
+          {platformInstructions.map((platform) => {
+            const isExpanded = expandedPlatform === platform.id
+            const Icon = platform.icon
+            return (
+              <div key={platform.id} className="card overflow-hidden">
+                <button
+                  onClick={() => setExpandedPlatform(isExpanded ? null : platform.id)}
+                  className="w-full flex items-center gap-3 p-4 text-left hover:bg-gray-50 transition-colors"
+                >
+                  <div className="p-2 bg-primary-50 rounded-lg">
+                    <Icon className="w-5 h-5 text-primary-600" />
+                  </div>
+                  <span className="flex-1 font-medium text-gray-900">{platform.name}</span>
+                  {isExpanded
+                    ? <ChevronUp className="w-5 h-5 text-gray-400" />
+                    : <ChevronDown className="w-5 h-5 text-gray-400" />
+                  }
+                </button>
+                {isExpanded && (
+                  <div className="px-4 pb-4 border-t border-gray-100">
+                    <ol className="mt-3 space-y-2 text-sm text-gray-700 list-decimal list-inside">
+                      {platform.steps.map((step, i) => (
+                        <li key={i}>{step}</li>
+                      ))}
+                    </ol>
+                    <Link
+                      to="/my/devices"
+                      className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-primary-600 hover:text-primary-700"
+                    >
+                      Перейти к настройке
+                      <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
       {/* Quick actions */}
       <div>

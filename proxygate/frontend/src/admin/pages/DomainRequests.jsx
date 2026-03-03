@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { CheckCircle, XCircle, Clock, X } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, X, Globe } from 'lucide-react'
 import api from '../../api'
 
 function ActionModal({ isOpen, onClose, request, action, onSuccess, t }) {
@@ -84,6 +84,67 @@ function ActionModal({ isOpen, onClose, request, action, onSuccess, t }) {
   )
 }
 
+function IpWhitelistTable() {
+  const { t } = useTranslation()
+
+  const { data: logs, isLoading } = useQuery({
+    queryKey: ['ip-whitelist-logs'],
+    queryFn: () => api.getIpWhitelistLogs(),
+  })
+
+  return (
+    <div className="card overflow-hidden">
+      <table className="w-full">
+        <thead className="bg-gray-50 border-b border-gray-100">
+          <tr>
+            <th className="text-left p-4 font-medium text-gray-600">{t('domainRequests.clientName')}</th>
+            <th className="text-left p-4 font-medium text-gray-600">IP</th>
+            <th className="text-left p-4 font-medium text-gray-600">{t('domainRequests.status')}</th>
+            <th className="text-left p-4 font-medium text-gray-600">{t('common.date')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {isLoading ? (
+            <tr>
+              <td colSpan={4} className="p-8 text-center text-gray-500">
+                {t('common.loading')}
+              </td>
+            </tr>
+          ) : logs?.length === 0 ? (
+            <tr>
+              <td colSpan={4} className="p-8 text-center text-gray-500">
+                {t('domainRequests.noRequests')}
+              </td>
+            </tr>
+          ) : (
+            logs?.map((log) => (
+              <tr key={log.id} className="border-b border-gray-50 hover:bg-gray-50">
+                <td className="p-4 font-medium">{log.client_name}</td>
+                <td className="p-4 font-mono text-sm">{log.ip_address}</td>
+                <td className="p-4">
+                  <span className={`inline-flex items-center gap-1 ${
+                    log.action === 'added' ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {log.action === 'added' ? (
+                      <CheckCircle className="w-4 h-4" />
+                    ) : (
+                      <XCircle className="w-4 h-4" />
+                    )}
+                    {log.action === 'added' ? 'Добавлен' : 'Удалён'}
+                  </span>
+                </td>
+                <td className="p-4 text-gray-500">
+                  {new Date(log.created_at).toLocaleString()}
+                </td>
+              </tr>
+            ))
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export default function DomainRequests() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
@@ -95,6 +156,7 @@ export default function DomainRequests() {
   const { data: requests, isLoading } = useQuery({
     queryKey: ['domain-requests', filter],
     queryFn: () => api.getDomainRequests(filter || undefined),
+    enabled: filter !== 'ip-whitelist',
   })
 
   const handleAction = (request, actionType) => {
@@ -141,7 +203,7 @@ export default function DomainRequests() {
 
       {/* Filter tabs */}
       <div className="flex gap-2 mb-6">
-        {['pending', 'approved', 'rejected', ''].map((status) => (
+        {['pending', 'approved', 'rejected', '', 'ip-whitelist'].map((status) => (
           <button
             key={status || 'all'}
             onClick={() => setFilter(status)}
@@ -151,94 +213,100 @@ export default function DomainRequests() {
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            {status === '' ? t('common.all') : getStatusLabel(status)}
+            {status === '' ? t('common.all') : status === 'ip-whitelist' ? 'IP-адреса' : getStatusLabel(status)}
           </button>
         ))}
       </div>
 
-      {/* Table */}
-      <div className="card overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b border-gray-100">
-            <tr>
-              <th className="text-left p-4 font-medium text-gray-600">{t('domainRequests.clientName')}</th>
-              <th className="text-left p-4 font-medium text-gray-600">{t('domainRequests.domain')}</th>
-              <th className="text-left p-4 font-medium text-gray-600">{t('domainRequests.reason')}</th>
-              <th className="text-left p-4 font-medium text-gray-600">{t('domainRequests.status')}</th>
-              <th className="text-left p-4 font-medium text-gray-600">{t('common.date')}</th>
-              <th className="p-4"></th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={6} className="p-8 text-center text-gray-500">
-                  {t('common.loading')}
-                </td>
-              </tr>
-            ) : requests?.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="p-8 text-center text-gray-500">
-                  {t('domainRequests.noRequests')}
-                </td>
-              </tr>
-            ) : (
-              requests?.map((request) => (
-                <tr key={request.id} className="border-b border-gray-50 hover:bg-gray-50">
-                  <td className="p-4 font-medium">{request.client_name}</td>
-                  <td className="p-4">{request.domain}</td>
-                  <td className="p-4 text-gray-600 max-w-xs truncate">
-                    {request.reason || '-'}
-                  </td>
-                  <td className="p-4">
-                    <span className="inline-flex items-center gap-1">
-                      {getStatusIcon(request.status)}
-                      {getStatusLabel(request.status)}
-                    </span>
-                  </td>
-                  <td className="p-4 text-gray-500">
-                    {new Date(request.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="p-4">
-                    {request.status === 'pending' && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleAction(request, 'approve')}
-                          className="p-2 text-green-600 hover:bg-green-50 rounded"
-                          title={t('domainRequests.approve')}
-                        >
-                          <CheckCircle className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => handleAction(request, 'reject')}
-                          className="p-2 text-red-600 hover:bg-red-50 rounded"
-                          title={t('domainRequests.reject')}
-                        >
-                          <XCircle className="w-5 h-5" />
-                        </button>
-                      </div>
-                    )}
-                    {request.admin_comment && (
-                      <span className="text-sm text-gray-500" title={request.admin_comment}>
-                        ...
-                      </span>
-                    )}
-                  </td>
+      {filter === 'ip-whitelist' ? (
+        <IpWhitelistTable />
+      ) : (
+        <>
+          {/* Table */}
+          <div className="card overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="text-left p-4 font-medium text-gray-600">{t('domainRequests.clientName')}</th>
+                  <th className="text-left p-4 font-medium text-gray-600">{t('domainRequests.domain')}</th>
+                  <th className="text-left p-4 font-medium text-gray-600">{t('domainRequests.reason')}</th>
+                  <th className="text-left p-4 font-medium text-gray-600">{t('domainRequests.status')}</th>
+                  <th className="text-left p-4 font-medium text-gray-600">{t('common.date')}</th>
+                  <th className="p-4"></th>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-gray-500">
+                      {t('common.loading')}
+                    </td>
+                  </tr>
+                ) : requests?.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="p-8 text-center text-gray-500">
+                      {t('domainRequests.noRequests')}
+                    </td>
+                  </tr>
+                ) : (
+                  requests?.map((request) => (
+                    <tr key={request.id} className="border-b border-gray-50 hover:bg-gray-50">
+                      <td className="p-4 font-medium">{request.client_name}</td>
+                      <td className="p-4">{request.domain}</td>
+                      <td className="p-4 text-gray-600 max-w-xs truncate">
+                        {request.reason || '-'}
+                      </td>
+                      <td className="p-4">
+                        <span className="inline-flex items-center gap-1">
+                          {getStatusIcon(request.status)}
+                          {getStatusLabel(request.status)}
+                        </span>
+                      </td>
+                      <td className="p-4 text-gray-500">
+                        {new Date(request.created_at).toLocaleDateString()}
+                      </td>
+                      <td className="p-4">
+                        {request.status === 'pending' && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleAction(request, 'approve')}
+                              className="p-2 text-green-600 hover:bg-green-50 rounded"
+                              title={t('domainRequests.approve')}
+                            >
+                              <CheckCircle className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleAction(request, 'reject')}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded"
+                              title={t('domainRequests.reject')}
+                            >
+                              <XCircle className="w-5 h-5" />
+                            </button>
+                          </div>
+                        )}
+                        {request.admin_comment && (
+                          <span className="text-sm text-gray-500" title={request.admin_comment}>
+                            ...
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-      <ActionModal
-        isOpen={showModal}
-        onClose={() => setShowModal(false)}
-        request={selectedRequest}
-        action={action}
-        onSuccess={handleSuccess}
-        t={t}
-      />
+          <ActionModal
+            isOpen={showModal}
+            onClose={() => setShowModal(false)}
+            request={selectedRequest}
+            action={action}
+            onSuccess={handleSuccess}
+            t={t}
+          />
+        </>
+      )}
     </div>
   )
 }
