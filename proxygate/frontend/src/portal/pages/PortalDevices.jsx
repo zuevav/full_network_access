@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import {
   Smartphone,
@@ -17,7 +17,10 @@ import {
   Globe,
   QrCode,
   Zap,
-  Wifi
+  Wifi,
+  Plus,
+  Trash2,
+  CheckCircle
 } from 'lucide-react'
 import api from '../../api'
 
@@ -443,6 +446,89 @@ function VpnTabContent({ profileInfo, downloadBase, copied, copyToClipboard, t, 
   )
 }
 
+// ---- IP Whitelist Section ----
+function IpWhitelistSection() {
+  const queryClient = useQueryClient()
+
+  const { data: ipData, isLoading } = useQuery({
+    queryKey: ['portal-ip-whitelist'],
+    queryFn: () => api.getPortalIpWhitelist(),
+    staleTime: 30000,
+  })
+
+  const addMutation = useMutation({
+    mutationFn: () => api.addPortalIpWhitelist(),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['portal-ip-whitelist'] }),
+  })
+
+  const removeMutation = useMutation({
+    mutationFn: (ip) => api.removePortalIpWhitelist(ip),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['portal-ip-whitelist'] }),
+  })
+
+  if (isLoading) return null
+
+  return (
+    <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-200">
+      <div className="flex items-center gap-2 mb-3">
+        <Shield className="w-5 h-5 text-blue-600" />
+        <h3 className="font-semibold text-gray-900">Доступ по IP</h3>
+      </div>
+      <p className="text-sm text-gray-600 mb-3">
+        Добавьте ваш IP — прокси будет работать без логина и пароля
+      </p>
+
+      {/* Current IP */}
+      <div className="flex items-center justify-between p-3 bg-white rounded-lg border border-blue-100 mb-3">
+        <div className="text-sm">
+          <span className="text-gray-600">Ваш IP: </span>
+          <code className="font-mono text-blue-700 bg-blue-50 px-2 py-0.5 rounded">{ipData?.client_ip}</code>
+        </div>
+        {ipData?.ip_already_whitelisted ? (
+          <span className="flex items-center gap-1 text-sm text-green-600 font-medium">
+            <CheckCircle className="w-4 h-4" />
+            Добавлен
+          </span>
+        ) : (
+          <button
+            onClick={() => addMutation.mutate()}
+            disabled={addMutation.isPending}
+            className="btn btn-primary text-sm flex items-center gap-1 py-1.5 px-3"
+          >
+            <Plus className="w-4 h-4" />
+            {addMutation.isPending ? 'Добавление...' : 'Добавить'}
+          </button>
+        )}
+      </div>
+
+      {/* Error */}
+      {addMutation.isError && (
+        <p className="text-sm text-red-600 mb-3">{addMutation.error.message}</p>
+      )}
+
+      {/* Whitelisted IPs list */}
+      {ipData?.allowed_ips?.length > 0 && (
+        <div className="space-y-1">
+          <p className="text-xs text-gray-500 font-medium mb-1">Разрешённые IP:</p>
+          {ipData.allowed_ips.map((ip) => (
+            <div key={ip} className="flex items-center justify-between p-2 bg-white rounded-lg border border-gray-100 text-sm">
+              <code className="font-mono text-gray-700">{ip}</code>
+              <button
+                onClick={() => removeMutation.mutate(ip)}
+                disabled={removeMutation.isPending}
+                className="text-red-400 hover:text-red-600 p-1"
+                title="Удалить"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ---- Proxy Tab Content ----
 function ProxyTabContent({ profileInfo, downloadBase, copied, copyToClipboard, t }) {
   return (
@@ -501,6 +587,9 @@ function ProxyTabContent({ profileInfo, downloadBase, copied, copyToClipboard, t
           {t('portalDevices.pacDescription')}
         </p>
       </div>
+
+      {/* IP Whitelist */}
+      <IpWhitelistSection />
 
       {/* Platform instructions for proxy */}
       <div>

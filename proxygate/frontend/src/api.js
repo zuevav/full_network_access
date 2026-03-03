@@ -481,6 +481,18 @@ class ApiClient {
     }, 'client')
   }
 
+  async getPortalIpWhitelist() {
+    return this.request('/portal/proxy/ip-whitelist', {}, 'client')
+  }
+
+  async addPortalIpWhitelist() {
+    return this.request('/portal/proxy/ip-whitelist', { method: 'POST' }, 'client')
+  }
+
+  async removePortalIpWhitelist(ip) {
+    return this.request(`/portal/proxy/ip-whitelist/${encodeURIComponent(ip)}`, { method: 'DELETE' }, 'client')
+  }
+
   async getPortalXray() {
     return this.request('/portal/profiles/xray', {}, 'client')
   }

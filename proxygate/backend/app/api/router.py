@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
 from app.api import auth, clients, domains, templates, payments, dashboard, vpn, proxy, profiles
-from app.api import portal_auth, portal_profile, portal_domains, portal_account
+from app.api import portal_auth, portal_profile, portal_domains, portal_account, portal_proxy
 from app.api import domain_requests, public, security, updates, ssl, system
 from app.api import xray, portal_xray, wireguard, portal_wireguard
 
@@ -30,6 +30,7 @@ api_router.include_router(portal_auth.router, prefix="/portal/auth", tags=["Port
 api_router.include_router(portal_profile.router, prefix="/portal/profiles", tags=["Portal Profiles"])
 api_router.include_router(portal_domains.router, prefix="/portal/domains", tags=["Portal Domains"])
 api_router.include_router(portal_account.router, prefix="/portal", tags=["Portal Account"])
+api_router.include_router(portal_proxy.router, prefix="/portal", tags=["Portal Proxy"])
 api_router.include_router(portal_xray.router, prefix="/portal/profiles", tags=["Portal XRay"])
 api_router.include_router(portal_wireguard.router, prefix="/portal/profiles", tags=["Portal WireGuard"])
 
