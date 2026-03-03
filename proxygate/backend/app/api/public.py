@@ -332,7 +332,7 @@ def _build_connect_html(client, access_token, status_emoji, valid_until_str,
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                             </button>
                         </div>
-                        <code id="sub-url" style="display:block;font-size:11px;word-break:break-all;color:#581c87;background:white;padding:8px;border-radius:6px;border:1px solid #e9d5ff;">https://{escape(proxy_host)}:{web_port or 8443}/api/xray-sub/{access_token}</code>
+                        <code id="sub-url" style="display:block;font-size:11px;word-break:break-all;color:#581c87;background:white;padding:8px;border-radius:6px;border:1px solid #e9d5ff;">https://{escape(proxy_host)}{"" if web_port == 443 else f":{web_port or 8443}"}/api/xray-sub/{access_token}</code>
                     </div>
                     <div style="background:#f5f3ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px;margin-bottom:8px;">
                         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
@@ -341,7 +341,7 @@ def _build_connect_html(client, access_token, status_emoji, valid_until_str,
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
                             </button>
                         </div>
-                        <code id="routing-url" style="display:block;font-size:11px;word-break:break-all;color:#581c87;background:white;padding:8px;border-radius:6px;border:1px solid #e9d5ff;">https://{escape(proxy_host)}:{web_port or 8443}/api/xray-routing/{access_token}</code>
+                        <code id="routing-url" style="display:block;font-size:11px;word-break:break-all;color:#581c87;background:white;padding:8px;border-radius:6px;border:1px solid #e9d5ff;">https://{escape(proxy_host)}{"" if web_port == 443 else f":{web_port or 8443}"}/api/xray-routing/{access_token}</code>
                     </div>
                     <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;padding:12px;font-size:12px;color:#581c87;line-height:1.8;">
                         <strong>\u041d\u0430\u0441\u0442\u0440\u043e\u0439\u043a\u0430 \u0430\u0432\u0442\u043e\u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u044f:</strong><br>
@@ -1102,7 +1102,8 @@ async def download_proxy_setup_public(
     domain = get_configured_domain()
     http_port, _ = get_configured_ports()
     web_port = get_configured_web_port()
-    pac_url = f"https://{domain}:{web_port}/api/pac/{client.access_token}"
+    port_suffix = "" if web_port == 443 else f":{web_port}"
+    pac_url = f"https://{domain}{port_suffix}/api/pac/{client.access_token}"
 
     script = f'''# ZETIT FNA - Windows Proxy Setup Script
 # Run as Administrator

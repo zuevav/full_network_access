@@ -204,7 +204,7 @@ socks -p1080 -a -n
             return False
 
     def apply_changes(self, clients: List[ProxyClient]) -> bool:
-        """Full cycle: generate config + restart + update iptables."""
+        """Full cycle: generate config + restart + update iptables (IPv4 + IPv6)."""
         self.write_config(clients)
         result = self.restart()
         # Sync iptables PROXYGATE chain with all whitelisted IPs
@@ -213,6 +213,7 @@ socks -p1080 -a -n
             if client.is_active:
                 all_ips.update(client.allowed_ips)
         self.sync_iptables_whitelist(all_ips)
+        self.sync_ip6tables_whitelist(all_ips)
         return result
 
     @staticmethod
@@ -285,6 +286,65 @@ socks -p1080 -a -n
             logger.info(f"PROXYGATE iptables synced: {len(allowed_ips)} IPs")
         except Exception as e:
             logger.error(f"Failed to sync iptables: {e}")
+
+    @staticmethod
+    def sync_ip6tables_whitelist(allowed_ips: set) -> None:
+        """
+        Sync PROXYGATE ip6tables chain with whitelisted IPv6 addresses.
+
+        Mirrors IPv4 version for dual-stack support.
+        Ports: 2053/8080/3128/1080/2096 (same as IPv4).
+        NOT 443/8443 — public web panel + hidden proxy, auth in 3proxy.
+        """
+        chain = "PROXYGATE"
+        try:
+            # Ensure chain exists
+            subprocess.run(
+                ["ip6tables", "-N", chain],
+                capture_output=True
+            )
+            # Flush existing rules
+            subprocess.run(
+                ["ip6tables", "-F", chain],
+                capture_output=True, check=True
+            )
+            # Always allow localhost
+            subprocess.run(
+                ["ip6tables", "-A", chain, "-s", "::1", "-j", "ACCEPT"],
+                capture_output=True, check=True
+            )
+            # Filter IPv6 addresses from allowed_ips
+            ipv6_ips = [ip.strip() for ip in allowed_ips if ":" in ip.strip()]
+            for ip in sorted(ipv6_ips):
+                if ip and ip != "::1":
+                    subprocess.run(
+                        ["ip6tables", "-A", chain, "-s", ip, "-j", "ACCEPT"],
+                        capture_output=True, check=True
+                    )
+            # Drop all other
+            subprocess.run(
+                ["ip6tables", "-A", chain, "-j", "DROP"],
+                capture_output=True, check=True
+            )
+            # Ensure chain is referenced from INPUT for proxy ports
+            for port in ["2053", "8080", "3128", "1080", "2096"]:
+                check = subprocess.run(
+                    ["ip6tables", "-C", "INPUT", "-p", "tcp", "--dport", port, "-j", chain],
+                    capture_output=True
+                )
+                if check.returncode != 0:
+                    subprocess.run(
+                        ["ip6tables", "-I", "INPUT", "1", "-p", "tcp", "--dport", port, "-j", chain],
+                        capture_output=True, check=True
+                    )
+            # Save ip6tables for persistence
+            subprocess.run(
+                "ip6tables-save > /etc/ip6tables.rules",
+                shell=True, capture_output=True
+            )
+            logger.info(f"PROXYGATE ip6tables synced: {len(ipv6_ips)} IPv6 IPs")
+        except Exception as e:
+            logger.error(f"Failed to sync ip6tables: {e}")
 
 
 async def rebuild_proxy_config(db):

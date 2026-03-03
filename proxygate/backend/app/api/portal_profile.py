@@ -55,7 +55,8 @@ async def get_profile_info(
     pac_url = None
     if client.proxy_account:
         web_port = get_configured_web_port()
-        pac_url = f"https://{domain}:{web_port}/pac/{client.access_token}"
+        port_suffix = "" if web_port == 443 else f":{web_port}"
+        pac_url = f"https://{domain}{port_suffix}/pac/{client.access_token}"
 
     return PortalProfileInfoResponse(
         vpn=vpn_info,
@@ -230,7 +231,8 @@ async def download_proxy_setup_script(
     domain = get_configured_domain()
     http_port, _ = get_configured_ports()
     web_port = get_configured_web_port()
-    pac_url = f"https://{domain}:{web_port}/pac/{client.access_token}"
+    port_suffix = "" if web_port == 443 else f":{web_port}"
+    pac_url = f"https://{domain}{port_suffix}/pac/{client.access_token}"
 
     script = f'''# ZETIT FNA - Windows Proxy Setup Script
 # Run as Administrator
