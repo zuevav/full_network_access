@@ -99,6 +99,9 @@ func expandTemplate(s string) string {
 }
 
 // buildPaddedResponse creates a realistic-looking HTTP 200 response for CONNECT disguise.
+// NOTE: CONNECT responses MUST NOT include a body — the tunnel starts immediately after
+// the header terminator (\r\n\r\n). Any body bytes would corrupt the tunneled TLS handshake.
+// Headers-only padding is safe since HTTP clients ignore extra headers in CONNECT 200 responses.
 func buildPaddedResponse() []byte {
 	var sb strings.Builder
 	sb.WriteString("HTTP/1.1 200 Connection established\r\n")
@@ -109,19 +112,8 @@ func buildPaddedResponse() []byte {
 	// Date header
 	sb.WriteString(fmt.Sprintf("Date: %s\r\n", time.Now().UTC().Format(http.TimeFormat)))
 
-	// Content-Type
-	r := rand.Intn(100)
-	switch {
-	case r < 70:
-		sb.WriteString("Content-Type: text/html; charset=utf-8\r\n")
-	case r < 90:
-		sb.WriteString("Content-Type: application/json\r\n")
-	default:
-		sb.WriteString("Content-Type: text/plain\r\n")
-	}
-
-	// Random subset of extra headers (4-7 headers, shuffled)
-	count := 4 + rand.Intn(4)
+	// Random subset of extra headers (3-5 headers, shuffled) — no Content-Type/Content-Length
+	count := 3 + rand.Intn(3)
 	perm := rand.Perm(len(extraHeaders))
 	if count > len(perm) {
 		count = len(perm)
@@ -131,33 +123,8 @@ func buildPaddedResponse() []byte {
 		sb.WriteString(fmt.Sprintf("%s: %s\r\n", h.key, expandTemplate(h.val)))
 	}
 
-	// Body padding — looks like HTML or JSON (5-50KB)
-	padSize := 5000 + rand.Intn(45000)
-	sb.WriteString(fmt.Sprintf("Content-Length: %d\r\n", padSize))
+	// End of headers — NO body for CONNECT responses
 	sb.WriteString("\r\n")
-
-	if rand.Intn(100) < 70 {
-		// HTML body
-		sb.WriteString("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">")
-		sb.WriteString("<title>Loading</title></head><body>")
-		for sb.Len() < padSize+200 { // +200 for headers already written
-			sb.WriteString(fmt.Sprintf("<div class=\"c-%s\"><span>%s</span></div>",
-				randomHex(4), randomHex(20+rand.Intn(60))))
-		}
-		sb.WriteString("</body></html>")
-	} else {
-		// JSON body
-		sb.WriteString(`{"status":"ok","data":{`)
-		first := true
-		for sb.Len() < padSize+200 {
-			if !first {
-				sb.WriteByte(',')
-			}
-			first = false
-			sb.WriteString(fmt.Sprintf(`"f_%s":"%s"`, randomHex(4), randomHex(20+rand.Intn(80))))
-		}
-		sb.WriteString("}}")
-	}
 
 	return []byte(sb.String())
 }
