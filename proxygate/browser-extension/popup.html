@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      width: 320px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #e0e0e0;
+      padding: 16px;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .header h1 {
+      font-size: 15px;
+      font-weight: 600;
+      color: #fff;
+    }
+    .logo {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: bold;
+      color: #fff;
+    }
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #16213e;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+    }
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    .dot.green { background: #22c55e; box-shadow: 0 0 6px #22c55e; }
+    .dot.red { background: #ef4444; box-shadow: 0 0 6px #ef4444; }
+    .dot.yellow { background: #eab308; box-shadow: 0 0 6px #eab308; }
+    .status-text { font-size: 13px; }
+    .toggle {
+      position: relative;
+      width: 44px;
+      height: 24px;
+    }
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: #334155;
+      border-radius: 12px;
+      transition: 0.2s;
+    }
+    .slider:before {
+      content: "";
+      position: absolute;
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: 0.2s;
+    }
+    input:checked + .slider { background: #667eea; }
+    input:checked + .slider:before { transform: translateX(20px); }
+    .domains {
+      background: #16213e;
+      border-radius: 10px;
+      padding: 10px 14px;
+      max-height: 180px;
+      overflow-y: auto;
+    }
+    .domains-header {
+      font-size: 11px;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+    .domain-item {
+      font-size: 12px;
+      padding: 3px 0;
+      color: #cbd5e1;
+      border-bottom: 1px solid #1e293b;
+    }
+    .domain-item:last-child { border-bottom: none; }
+    .footer {
+      margin-top: 12px;
+      text-align: center;
+      font-size: 11px;
+      color: #64748b;
+    }
+    .refresh-btn {
+      background: none;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+    .refresh-btn:hover { border-color: #667eea; color: #667eea; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">P</div>
+    <h1>ProxyGate Connect</h1>
+  </div>
+
+  <div class="status-row">
+    <div class="status-indicator">
+      <div class="dot" id="statusDot"></div>
+      <span class="status-text" id="statusText">Checking...</span>
+    </div>
+    <label class="toggle">
+      <input type="checkbox" id="toggleProxy">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="domains">
+    <div class="domains-header">Routed Domains (<span id="domainCount">0</span>)</div>
+    <div id="domainList"></div>
+  </div>
+
+  <div class="footer">
+    <button class="refresh-btn" id="refreshBtn">Refresh</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -19,12 +19,12 @@ import (
 
 // Config from environment
 var (
-	listenAddr  = envOr("TLS_PROXY_LISTEN", ":443")
-	backupAddr  = envOr("TLS_PROXY_BACKUP", ":8443")
+	listenAddr   = envOr("TLS_PROXY_LISTEN", ":443")
+	backupAddr   = envOr("TLS_PROXY_BACKUP", ":8443")
 	proxyBackend = envOr("TLS_PROXY_BACKEND", "127.0.0.1:3128")
-	webBackend  = envOr("TLS_PROXY_WEB", "127.0.0.1:8445")
-	certFile    = envOr("TLS_PROXY_CERT", "/etc/letsencrypt/live/fna.zetit.ru/fullchain.pem")
-	keyFile     = envOr("TLS_PROXY_KEY", "/etc/letsencrypt/live/fna.zetit.ru/privkey.pem")
+	webBackend   = envOr("TLS_PROXY_WEB", "127.0.0.1:8445")
+	certFile     = envOr("TLS_PROXY_CERT", "/etc/letsencrypt/live/fna.zetit.ru/fullchain.pem")
+	keyFile      = envOr("TLS_PROXY_KEY", "/etc/letsencrypt/live/fna.zetit.ru/privkey.pem")
 )
 
 func envOr(key, fallback string) string {
@@ -55,6 +55,46 @@ func (h *certHolder) getCertificate(*tls.ClientHelloInfo) (*tls.Certificate, err
 	h.mu.RLock()
 	defer h.mu.RUnlock()
 	return h.cert, nil
+}
+
+// --- ServerHello fragmentation for DPI bypass ---
+
+// serverFragmentingConn wraps a net.Conn and fragments the first N Write() calls
+// into small chunks. DPI (TSPU) inspects the first 3-5 TCP segments to extract
+// server certificate info. Fragmenting ServerHello + Certificate into 3-byte
+// chunks means DPI needs 20+ segments to reconstruct — it gives up after 3-5.
+type serverFragmentingConn struct {
+	net.Conn
+	mu        sync.Mutex
+	remaining int // number of writes left to fragment
+	fragSize  int // bytes per fragment
+}
+
+func (c *serverFragmentingConn) Write(p []byte) (int, error) {
+	c.mu.Lock()
+	if c.remaining <= 0 {
+		c.mu.Unlock()
+		return c.Conn.Write(p)
+	}
+	c.remaining--
+	c.mu.Unlock()
+
+	// Fragment this write into small TCP segments
+	total := 0
+	for total < len(p) {
+		end := total + c.fragSize
+		if end > len(p) {
+			end = len(p)
+		}
+		n, err := c.Conn.Write(p[total:end])
+		total += n
+		if err != nil {
+			return total, err
+		}
+		// Small jitter between fragments to look like natural network delay
+		time.Sleep(time.Duration(1+rand.Intn(3)) * time.Millisecond)
+	}
+	return total, nil
 }
 
 // --- Padding: realistic HTTP response disguise ---
@@ -143,7 +183,7 @@ func relay(a, b net.Conn, wg *sync.WaitGroup) {
 	}
 }
 
-func handleCONNECT(clientConn net.Conn, host string) {
+func handleCONNECT(clientConn net.Conn, host string, extraHeaders string) {
 	backend, err := net.DialTimeout("tcp", proxyBackend, 10*time.Second)
 	if err != nil {
 		clientConn.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
@@ -155,8 +195,8 @@ func handleCONNECT(clientConn net.Conn, host string) {
 		tc.SetNoDelay(true)
 	}
 
-	// Forward CONNECT to 3proxy
-	connectReq := fmt.Sprintf("CONNECT %s HTTP/1.1\r\nHost: %s\r\n\r\n", host, host)
+	// Forward CONNECT to 3proxy with any auth headers from client
+	connectReq := fmt.Sprintf("CONNECT %s HTTP/1.1\r\nHost: %s\r\n%s\r\n", host, host, extraHeaders)
 	if _, err := backend.Write([]byte(connectReq)); err != nil {
 		clientConn.Write([]byte("HTTP/1.1 502 Bad Gateway\r\n\r\n"))
 		return
@@ -205,9 +245,11 @@ func handleHTTP(clientConn net.Conn, firstBytes []byte) {
 		tc.SetNoDelay(true)
 	}
 
-	// Send buffered data
-	if _, err := backend.Write(firstBytes); err != nil {
-		return
+	// Send buffered data (may be nil for h2 direct relay)
+	if len(firstBytes) > 0 {
+		if _, err := backend.Write(firstBytes); err != nil {
+			return
+		}
 	}
 
 	// Bidirectional relay
@@ -232,14 +274,15 @@ func handleConnection(conn net.Conn) {
 	}
 
 	if strings.HasPrefix(strings.ToUpper(strings.TrimSpace(firstLine)), "CONNECT ") {
-		// Read remaining headers
-		var headers strings.Builder
-		headers.WriteString(firstLine)
+		// Read remaining headers, extract Proxy-Authorization for forwarding to 3proxy
+		var proxyAuth string
 		for {
 			line, err := reader.ReadString('\n')
-			headers.WriteString(line)
 			if err != nil || strings.TrimSpace(line) == "" {
 				break
+			}
+			if strings.HasPrefix(strings.ToLower(strings.TrimSpace(line)), "proxy-authorization:") {
+				proxyAuth = strings.TrimSpace(line) + "\r\n"
 			}
 		}
 
@@ -256,7 +299,7 @@ func handleConnection(conn net.Conn) {
 
 		// Remove deadline for relay
 		conn.SetReadDeadline(time.Time{})
-		handleCONNECT(conn, target)
+		handleCONNECT(conn, target, proxyAuth)
 	} else {
 		// Regular HTTP — pass everything to nginx
 		// Inject X-Real-IP / X-Forwarded-For so nginx sees real client IP
@@ -277,18 +320,36 @@ func handleConnection(conn net.Conn) {
 	}
 }
 
+// --- TLS configuration with DPI-resistant features ---
+
+var cipherSuites = []uint16{
+	tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+	tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+	tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+	tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+	tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+	tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+}
+
 func makeTLSConfig(holder *certHolder) *tls.Config {
 	return &tls.Config{
 		GetCertificate: holder.getCertificate,
 		MinVersion:     tls.VersionTLS12,
 		NextProtos:     []string{"http/1.1"},
-		CipherSuites: []uint16{
-			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
-			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
-			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
-			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+		CipherSuites:   cipherSuites,
+		// Randomize cipher suite order per connection to defeat TLS fingerprinting
+		GetConfigForClient: func(hello *tls.ClientHelloInfo) (*tls.Config, error) {
+			shuffled := make([]uint16, len(cipherSuites))
+			copy(shuffled, cipherSuites)
+			rand.Shuffle(len(shuffled), func(i, j int) {
+				shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
+			})
+			return &tls.Config{
+				GetCertificate: holder.getCertificate,
+				MinVersion:     tls.VersionTLS12,
+				NextProtos:     []string{"http/1.1"},
+				CipherSuites:   shuffled,
+			}, nil
 		},
 	}
 }
@@ -299,20 +360,45 @@ func listenTLS(addr string, tlsConf *tls.Config, wg *sync.WaitGroup) net.Listene
 	if err != nil {
 		log.Fatalf("Failed to listen on %s: %v", addr, err)
 	}
-	tlsLn := tls.NewListener(ln, tlsConf)
 
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		for {
-			conn, err := tlsLn.Accept()
+			rawConn, err := ln.Accept()
 			if err != nil {
 				if strings.Contains(err.Error(), "use of closed") {
 					return
 				}
 				continue
 			}
-			go handleConnection(conn)
+			go func(rc net.Conn) {
+				// Enable TCP_NODELAY so each Write() goes as a separate TCP segment
+				if tc, ok := rc.(*net.TCPConn); ok {
+					tc.SetNoDelay(true)
+				}
+
+				// Wrap in serverFragmentingConn — fragments the first 10 TLS writes
+				// (ServerHello + Certificate chain) into 3-byte TCP segments.
+				// DPI inspects first 3-5 segments; with 3-byte fragments,
+				// certificate data doesn't appear until segment 20+.
+				fragConn := &serverFragmentingConn{
+					Conn:      rc,
+					remaining: 10,
+					fragSize:  3,
+				}
+
+				// Manual TLS handshake on the fragmenting conn
+				tlsConn := tls.Server(fragConn, tlsConf)
+				tlsConn.SetDeadline(time.Now().Add(15 * time.Second))
+				if err := tlsConn.Handshake(); err != nil {
+					tlsConn.Close()
+					return
+				}
+				tlsConn.SetDeadline(time.Time{})
+
+				handleConnection(tlsConn)
+			}(rawConn)
 		}
 	}()
 
@@ -338,7 +424,7 @@ func main() {
 	ln2 := listenTLS(backupAddr, tlsConf, &listenWg)
 	log.Printf("Listening on %s (backup)", backupAddr)
 
-	log.Printf("CONNECT -> %s | HTTP/WS -> %s | ALPN: http/1.1", proxyBackend, webBackend)
+	log.Printf("CONNECT -> %s | HTTP/WS -> %s | ALPN: http/1.1 | ServerHello fragmentation: 3B/segment", proxyBackend, webBackend)
 
 	// Signal handling
 	sigCh := make(chan os.Signal, 1)

@@ -408,6 +408,58 @@ def _build_connect_html(client, access_token, status_emoji, valid_until_str,
         </div>
         """
 
+    # ProxyGate Connect card (DPI bypass client)
+    connect_html = ""
+    if client.proxy_account:
+        connect_cmd = f"proxygate-connect.exe -token={access_token} -server={escape(proxy_host)}"
+        connect_html = f"""
+        <div class="card">
+            <div class="card-header" style="background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);">
+                <div class="card-icon">\U0001f517</div>
+                <div>
+                    <div class="card-title" style="color: white;">ProxyGate Connect</div>
+                    <div class="card-desc" style="color: rgba(255,255,255,0.8);">Обход DPI — фрагментация TLS</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div style="background:#eef2ff;border:1px solid #c7d2fe;border-radius:10px;padding:16px;margin-bottom:12px;">
+                    <div style="font-size:14px;font-weight:600;color:#3730a3;margin-bottom:12px;">Портативный клиент для Windows</div>
+
+                    <div style="margin-bottom:12px;">
+                        <div style="font-size:13px;font-weight:500;color:#374151;margin-bottom:6px;">1. Скачайте клиент:</div>
+                        <a href="/downloads/proxygate-connect.exe" class="action-btn" style="background:#4f46e5;color:white;border:none;width:100%;justify-content:center;padding:12px;font-size:14px;">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            proxygate-connect.exe (~5 MB)
+                        </a>
+                    </div>
+
+                    <div style="margin-bottom:12px;">
+                        <div style="font-size:13px;font-weight:500;color:#374151;margin-bottom:6px;">2. Запустите в командной строке:</div>
+                        <div style="position:relative;">
+                            <code id="connect-cmd" style="display:block;font-size:11px;word-break:break-all;color:#3730a3;background:white;padding:10px;border-radius:6px;border:1px solid #c7d2fe;font-family:monospace;">{escape(connect_cmd)}</code>
+                            <button class="copy-btn" onclick="copyText('connect-cmd')" title="Копировать" style="position:absolute;top:6px;right:6px;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="font-size:13px;font-weight:500;color:#374151;margin-bottom:4px;">3. Настройте браузер:</div>
+                        <div style="font-size:12px;color:#4b5563;">Установите прокси <code style="background:white;padding:1px 6px;border-radius:4px;border:1px solid #c7d2fe;color:#3730a3;font-size:11px;">127.0.0.1:8800</code> или используйте расширение Chrome.</div>
+                    </div>
+                </div>
+
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;font-size:12px;color:#475569;line-height:1.7;">
+                    <strong style="color:#1e293b;">Как это работает:</strong><br>
+                    \u2022 ClientHello фрагментируется на пакеты по 2 байта<br>
+                    \u2022 DPI (TSPU) не может извлечь SNI из 125+ TCP-сегментов<br>
+                    \u2022 Сервер фрагментирует ServerHello для двусторонней защиты<br>
+                    \u2022 Работает без установки \u2014 портативный .exe файл
+                </div>
+            </div>
+        </div>
+        """
+
     # JavaScript — password stored separately to avoid HTML injection
     js_password = proxy_password if client.proxy_account else ""
 
@@ -523,6 +575,8 @@ def _build_connect_html(client, access_token, status_emoji, valid_until_str,
         {xray_html}
 
         {wg_html}
+
+        {connect_html}
 
         <div style="text-align:center;padding:16px 0;color:#9ca3af;font-size:13px;">
             Вопросы? Обратитесь к администратору
@@ -1079,6 +1133,49 @@ async def get_pac_file(
             "Cache-Control": "public, max-age=300",
         }
     )
+
+
+@router.get("/connect-config/{access_token}")
+async def get_connect_config(
+    access_token: str,
+    db: DBSession
+):
+    """Get configuration for proxygate-connect client binary."""
+    result = await db.execute(
+        select(Client)
+        .options(selectinload(Client.domains), selectinload(Client.proxy_account))
+        .where(Client.access_token == access_token)
+    )
+    client = result.scalar_one_or_none()
+
+    if client is None:
+        raise HTTPException(status_code=404, detail="Not found")
+    if is_access_token_expired(client):
+        raise HTTPException(status_code=410, detail="Link expired")
+    if client.proxy_account is None:
+        raise HTTPException(status_code=404, detail="No proxy account")
+
+    domain = get_configured_domain()
+    web_port = get_configured_web_port()
+
+    # Collect client domains
+    domains = []
+    for d in client.domains:
+        domains.append(d.domain)
+
+    # Server ports: always include 443, 8443
+    server_ports = [443, 8443]
+
+    config = {
+        "domains": domains,
+        "include_wildcard": True,
+        "server_host": domain,
+        "server_ports": server_ports,
+        "proxy_user": client.proxy_account.username,
+        "proxy_pass": client.proxy_account.password_plain,
+    }
+
+    return config
 
 
 @router.get("/download/{access_token}/proxy-setup")

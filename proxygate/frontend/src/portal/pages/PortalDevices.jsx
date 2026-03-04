@@ -20,7 +20,8 @@ import {
   Wifi,
   Plus,
   Trash2,
-  CheckCircle
+  CheckCircle,
+  Cable
 } from 'lucide-react'
 import api from '../../api'
 
@@ -358,6 +359,12 @@ const TAB_CONFIG = {
     color: 'blue',
     Icon: Wifi,
   },
+  connect: {
+    id: 'connect',
+    label: 'Connect',
+    color: 'indigo',
+    Icon: Cable,
+  },
 }
 
 // Tab color styles
@@ -385,6 +392,12 @@ const TAB_COLORS = {
     inactive: 'border-transparent text-gray-500 hover:text-blue-600 hover:border-blue-300',
     iconBg: 'bg-blue-100',
     iconText: 'text-blue-600',
+  },
+  indigo: {
+    active: 'border-indigo-500 text-indigo-700',
+    inactive: 'border-transparent text-gray-500 hover:text-indigo-600 hover:border-indigo-300',
+    iconBg: 'bg-indigo-100',
+    iconText: 'text-indigo-600',
   },
 }
 
@@ -813,6 +826,85 @@ function WireguardTabContent({ wgData, wgQr, wgQrLoading, showWgQr, setShowWgQr,
   )
 }
 
+// ---- Connect Tab Content ----
+function ConnectTabContent({ profileInfo, copied, copyToClipboard }) {
+  const accessToken = profileInfo?.access_token
+  const server = profileInfo?.proxy?.host || window.location.hostname
+  const downloadUrl = `/downloads/proxygate-connect.exe`
+
+  const command = `proxygate-connect.exe -token=${accessToken} -server=${server}`
+
+  return (
+    <div className="card p-4 sm:p-6 border-2 border-indigo-200">
+      <p className="text-sm text-gray-600 mb-4">
+        Обход DPI блокировок — портативный клиент для Windows
+      </p>
+
+      <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100 mb-4">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="p-2 bg-indigo-100 rounded-lg">
+            <Cable className="w-6 h-6 text-indigo-600" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-indigo-900">ProxyGate Connect</h3>
+            <p className="text-sm text-indigo-700">TLS-фрагментация для обхода TSPU/DPI</p>
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-1">1. Скачайте клиент:</p>
+            <a
+              href={downloadUrl}
+              className="btn btn-primary inline-flex items-center gap-2"
+            >
+              <Download className="w-4 h-4" />
+              proxygate-connect.exe (~5 MB)
+            </a>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-1">2. Запустите в командной строке:</p>
+            <div className="relative">
+              <code className="block text-xs text-indigo-800 font-mono break-all bg-white p-3 rounded border border-indigo-100">
+                {command}
+              </code>
+              <button
+                onClick={() => copyToClipboard(command, 'connect-cmd')}
+                className="absolute top-2 right-2 text-indigo-400 hover:text-indigo-600"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+              {copied === 'connect-cmd' && (
+                <span className="absolute top-2 right-8 text-xs text-green-600">Скопировано!</span>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-1">3. Настройте браузер:</p>
+            <p className="text-sm text-gray-600">
+              Установите прокси <code className="bg-white px-1.5 py-0.5 rounded border text-indigo-700">127.0.0.1:8800</code> в настройках браузера,
+              или используйте расширение ProxyGate Connect для Chrome.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <h3 className="text-sm font-medium text-gray-700">Как это работает:</h3>
+        <ul className="text-sm text-gray-600 space-y-1 list-disc list-inside">
+          <li>TLS ClientHello фрагментируется на пакеты по 2 байта</li>
+          <li>DPI (TSPU) не может извлечь SNI из 125+ мелких TCP-сегментов</li>
+          <li>Сервер фрагментирует ServerHello для двусторонней защиты</li>
+          <li>Cipher suites рандомизируются для уникального TLS-отпечатка</li>
+          <li>Работает без установки — портативный .exe файл</li>
+        </ul>
+      </div>
+    </div>
+  )
+}
+
 export default function PortalDevices() {
   const { t } = useTranslation()
   const [showPassword, setShowPassword] = useState(false)
@@ -881,6 +973,7 @@ export default function PortalDevices() {
     if (hasVpn) tabs.push(TAB_CONFIG.vpn)
     if (hasXray) tabs.push(TAB_CONFIG.xray)
     if (hasWg) tabs.push(TAB_CONFIG.wireguard)
+    if (hasProxy) tabs.push(TAB_CONFIG.connect)
     return tabs
   }, [hasVpn, hasProxy, hasXray, hasWg])
 
@@ -1047,6 +1140,14 @@ export default function PortalDevices() {
           wgQrLoading={wgQrLoading}
           showWgQr={showWgQr}
           setShowWgQr={setShowWgQr}
+          copied={copied}
+          copyToClipboard={copyToClipboard}
+        />
+      )}
+
+      {currentTab === 'connect' && hasProxy && (
+        <ConnectTabContent
+          profileInfo={profileInfo}
           copied={copied}
           copyToClipboard={copyToClipboard}
         />
